@@ -73,6 +73,7 @@ int main(void)
 
     expect(strstr(text, "M104 S205\n") && strstr(text, "M190 S60\n") && strstr(text, "G28"), "the machine's start code, filled in");
     expect(strstr(text, "M84") > strstr(text, "; LAYER 2"), "its end code, last");
+    expect(got > 4 && strcmp(text + got - 4, "M84\n") == 0 && !strstr(text, "\n\n"), "no empty lines, and M84 the last");
     expect(count("; LAYER ") == 2 && count("G92 E0") >= 2, "each layer marked, E from 0 on each");
     expect(count("G1 X") == 6, "six lines laid down");
     expect(count(" F18000") >= 1 && !strstr(text, "F30000"), "travels held to the machine's 300 mm/s");

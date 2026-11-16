@@ -7,6 +7,9 @@ GFOpenSlicer.
 - `src/job.c`, `include/gs_job.h`: a slice with its layers, for the window.
 - `src/amiga.c`, `src/markup.h`: the Amiga window (GFOpenLayout).
 - `src/cli.c`: the same from the shell.
+- `src/openmake_slice.c`: `openmake-slice`, the new slice from the shell: OpenMakeCore's
+  layers (brim, walls, skin, infill) to G-code for a machine from `../machines`,
+  checked against the machine first.
 - `tools/preview.c`, `tools/paint.py`: a host picture of the window.
 - `tests/`: the host tests.
 

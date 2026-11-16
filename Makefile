@@ -10,7 +10,7 @@ LAYOUT ?= ../gfopenlayout
 
 .PHONY: all test preview clean
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/openmake-slice
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -77,6 +77,10 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core
 $(BUILD)/test_plan: core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c core/include/gs_plan.h core/include/gs_toolpath.h core/tests/data/nasa-wrench.stl | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c -lm
 
+# A part to G-code for a machine, from the shell.
+$(BUILD)/openmake-slice: slicer/src/openmake_slice.c $(PLAN) core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(PLAN) core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c -lm
+
 # openmakemesh.library's calls, the same way.
 MESH_LIB = core/library/openmakemesh_lib.sfd
 $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl.c $(MESH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
@@ -87,7 +91,7 @@ $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/openmake-slice
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -104,6 +108,13 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_fill
 	$(BUILD)/test_gcode
 	$(BUILD)/test_plan
+	$(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/wrench.gcode \
+	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om
+	test "$$(grep -c '^; LAYER ' $(BUILD)/wrench.gcode)" = 130 && grep -q '^M109 S200' $(BUILD)/wrench.gcode && tail -n 1 $(BUILD)/wrench.gcode | grep -q M84
+	! $(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/tiny.gcode \
+	    DRIVER=machines/printer/marlin/driver.om PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/tiny.txt
+	grep -q 'Tiny 50 cannot print this: [XY] runs to' $(BUILD)/tiny.txt && test ! -e $(BUILD)/tiny.gcode
+	@echo "slice command ok"
 
 preview: $(BUILD)/preview
 
