@@ -6,6 +6,7 @@ import { cylinder, cube, intersect, subtract, union, volume } from "./gs.js";
 import { BED, BOOLEAN_LIMIT, METALS } from "./library";
 import { coneAt, makeSolid, SOLID_LABEL, stadium, type SolidKind } from "./solids";
 import { encodeSTL, loadBuffer, normalizeUnits, parseSTL, thinTriangles } from "./stl";
+import { contoursAt } from "./layers";
 
 export type Tool = "translate" | "rotate" | "scale";
 export type Sketch = "rect" | "circle" | "slot";
@@ -46,6 +47,11 @@ export type BenchSnapshot = {
   sketchHeight: number;
   sketchOp: SketchOp;
   pulling: boolean;
+  layer: boolean;
+  layerHeight: number;
+  layerIndex: number;
+  layerCount: number;
+  layerMm: number;
 };
 
 type Part = {
@@ -88,6 +94,11 @@ const EMPTY: BenchSnapshot = {
   sketchHeight: 8,
   sketchOp: "add",
   pulling: false,
+  layer: false,
+  layerHeight: 0.2,
+  layerIndex: 0,
+  layerCount: 0,
+  layerMm: 0,
 };
 
 function deg(r: number) {
@@ -132,6 +143,12 @@ export class Bench {
   private sketchOp: SketchOp = "add";
   private sketchDrag: { x: number; y: number } | null = null;
   private pulling = false;
+  private layerOn = false;
+  private layerH = 0.2;
+  private layerIndex = 0;
+  private layerCount = 0;
+  private layerMm = 0;
+  private readonly layerLines: THREE.LineSegments;
   private pullDrag: {
     localN: THREE.Vector3;
     worldN: THREE.Vector3;
@@ -163,7 +180,7 @@ export class Bench {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    this.scene.background = new THREE.Color("#14161c");
+    this.scene.background = new THREE.Color("#d5dbe3");
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
@@ -177,7 +194,7 @@ export class Bench {
     this.sectionSheet = new THREE.Mesh(
       new THREE.PlaneGeometry(BED - 6, BED - 6),
       new THREE.MeshBasicMaterial({
-        color: "#e8b84a",
+        color: "#0067c0",
         transparent: true,
         opacity: 0.16,
         side: THREE.DoubleSide,
@@ -188,6 +205,15 @@ export class Bench {
     this.sectionSheet.raycast = () => {};
     this.sectionSheet.renderOrder = 2;
     this.scene.add(this.sectionSheet);
+
+    this.layerLines = new THREE.LineSegments(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: "#0067c0" }),
+    );
+    this.layerLines.visible = false;
+    this.layerLines.raycast = () => {};
+    this.layerLines.renderOrder = 3;
+    this.scene.add(this.layerLines);
 
     this.orbit = new OrbitControls(this.camera, canvas);
     this.orbit.target.set(0, 0, 16);
@@ -209,6 +235,7 @@ export class Bench {
       const dragging = Boolean((ev as { value?: boolean }).value);
       this.orbit.enabled = !dragging;
       if (dragging) this.pushUndo();
+      else if (this.layerOn) this.syncLayer(false);
       else this.emit();
     });
     this.transform.addEventListener("objectChange", () => this.emit());
@@ -216,7 +243,7 @@ export class Bench {
     this.faceMark = new THREE.Mesh(
       new THREE.BufferGeometry(),
       new THREE.MeshBasicMaterial({
-        color: "#f4e8c8",
+        color: "#d6e6f5",
         side: THREE.DoubleSide,
         polygonOffset: true,
         polygonOffsetFactor: -4,
@@ -229,7 +256,7 @@ export class Bench {
     this.sketchPreview = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1),
       new THREE.MeshStandardMaterial({
-        color: "#e8b84a",
+        color: "#0067c0",
         transparent: true,
         opacity: 0.42,
         roughness: 0.35,
@@ -268,7 +295,7 @@ export class Bench {
       if (!this.userMoved) this.frame(true);
       this.setStatus(
         this.describeSelection(
-          "NASA wrench is on the bed. Block or Round, on the left, extrudes a solid you drag on the plate.",
+        "NASA wrench is on the bed. Extrude, on the left, makes a solid you drag on the plate.",
         ),
       );
     } catch {
@@ -335,7 +362,8 @@ export class Bench {
     this.face = null;
     this.hideFace();
     this.attachGizmo();
-    this.emit();
+    if (this.layerOn) this.syncLayer(true);
+    else this.emit();
   }
 
   toggleVisible(id: string) {
@@ -398,7 +426,7 @@ export class Bench {
       this.leaveSketch(false);
       this.leavePull(false);
       this.transform.detach();
-      this.setStatus("Click two points. The brass line is the distance in millimetres.");
+      this.setStatus("Click two points. The line is the distance in millimetres.");
     } else {
       this.attachGizmo();
       this.emit();
@@ -443,7 +471,7 @@ export class Bench {
   setSketchOp(op: SketchOp) {
     this.sketchOp = op;
     const mat = this.sketchPreview.material as THREE.MeshStandardMaterial;
-    mat.color.set(op === "cut" ? "#e85d4c" : op === "top" ? "#3e7a45" : "#e8b84a");
+    mat.color.set(op === "cut" ? "#e85d4c" : op === "top" ? "#3e7a45" : "#0067c0");
     const line =
       op === "cut"
         ? `Cut is on. ${round1(this.sketchHeight)} mm comes off the top of the selected part.`
@@ -687,6 +715,65 @@ export class Bench {
     );
   }
 
+  setLayer(on: boolean) {
+    this.layerOn = on;
+    if (!on) {
+      this.layerLines.visible = false;
+      this.layerCount = 0;
+      this.layerMm = 0;
+      this.setStatus("Layers are off.");
+      return;
+    }
+    this.syncLayer(true);
+  }
+
+  setLayerHeight(mm: number) {
+    if (!Number.isFinite(mm)) return;
+    this.layerH = Math.min(0.8, Math.max(0.08, mm));
+    this.layerIndex = 0;
+    this.layerOn = true;
+    this.syncLayer(true);
+  }
+
+  setLayerIndex(index: number) {
+    if (!Number.isFinite(index)) return;
+    this.layerOn = true;
+    this.layerIndex = Math.max(0, Math.floor(index));
+    this.syncLayer(false);
+  }
+
+  private syncLayer(announce: boolean) {
+    const part = this.current();
+    if (!this.layerOn || !part) {
+      this.layerLines.visible = false;
+      this.layerCount = 0;
+      this.layerMm = 0;
+      if (this.layerOn && announce) this.setStatus("Select a part to see its layers.");
+      else this.emit();
+      return;
+    }
+    const box = new THREE.Box3().setFromObject(part.mesh);
+    const span = Math.max(0, box.max.z - box.min.z);
+    const count = Math.max(1, Math.ceil(span / this.layerH));
+    this.layerCount = count;
+    if (this.layerIndex >= count) this.layerIndex = count - 1;
+    const z = box.min.z + (this.layerIndex + 0.5) * this.layerH;
+    const cut = contoursAt(this.worldTris(part.mesh), z);
+    this.layerMm = cut.length;
+    const geom = this.layerLines.geometry;
+    geom.dispose();
+    this.layerLines.geometry = new THREE.BufferGeometry();
+    if (cut.segments.length) {
+      this.layerLines.geometry.setAttribute("position", new THREE.BufferAttribute(cut.segments, 3));
+    }
+    this.layerLines.visible = cut.segments.length > 0;
+    if (announce) {
+      this.setStatus(
+        `${part.name}, layer ${this.layerIndex + 1} of ${count} at ${round1(z)} mm. ${round1(cut.length)} mm of wall. No infill.`,
+      );
+    } else this.emit();
+  }
+
   setSection(on: boolean) {
     this.sectionOn = on;
     if (on) {
@@ -696,7 +783,7 @@ export class Bench {
       }
       if (!box.isEmpty()) this.sectionZ = (box.min.z + box.max.z) / 2;
       this.syncSection();
-      this.setStatus(`Section at ${round1(this.sectionZ)} mm. Everything above the brass plane is hidden.`);
+      this.setStatus(`Section at ${round1(this.sectionZ)} mm. Everything above the plane is hidden.`);
       return;
     }
     this.syncSection();
@@ -1375,6 +1462,8 @@ export class Bench {
     this.transform.detach();
     this.transform.dispose();
     this.orbit.dispose();
+    this.layerLines.geometry.dispose();
+    (this.layerLines.material as THREE.Material).dispose();
     this.sketchPreview.geometry.dispose();
     (this.sketchPreview.material as THREE.Material).dispose();
     this.sectionSheet.geometry.dispose();
@@ -1680,14 +1769,14 @@ export class Bench {
     mat.roughness = this.shade === "clay" ? 0.92 : 0.46;
     mat.clearcoat = this.shade === "metal" ? 0.15 : 0;
     mat.envMapIntensity = this.shade === "metal" ? 0.55 : 0.3;
-    mat.emissive.set(selected ? "#e8b84a" : "#000000");
+    mat.emissive.set(selected ? "#0067c0" : "#000000");
     mat.emissiveIntensity = selected ? 0.16 : 0;
     mat.clippingPlanes = this.sectionOn ? [this.clipPlane] : null;
     mat.clipShadows = this.sectionOn;
     if (part.edges) {
       part.edges.visible = part.mesh.visible && this.shade !== "wire";
       const line = part.edges.material as THREE.LineBasicMaterial;
-      line.color.set(selected ? "#e8b84a" : "#1a140c");
+      line.color.set(selected ? "#0067c0" : "#1a140c");
       line.opacity = selected ? 0.85 : 0.32;
     }
   }
@@ -2230,13 +2319,13 @@ export class Bench {
     const b = this.measureHits[1];
     if (!a || !b) return;
     const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
-    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: "#e8b84a", depthTest: false }));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: "#0067c0", depthTest: false }));
     line.renderOrder = 4;
     this.measureGroup.add(line);
     for (const p of [a, b]) {
       const dot = new THREE.Mesh(
         new THREE.SphereGeometry(1.3, 12, 8),
-        new THREE.MeshBasicMaterial({ color: "#f4e8c8", depthTest: false }),
+        new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false }),
       );
       dot.position.copy(p);
       dot.renderOrder = 5;
@@ -2260,7 +2349,7 @@ export class Bench {
     const half = BED / 2;
     const bed = new THREE.Mesh(
       new THREE.PlaneGeometry(BED, BED),
-      new THREE.MeshStandardMaterial({ color: "#1a1d26", roughness: 0.94, metalness: 0.04 }),
+      new THREE.MeshStandardMaterial({ color: "#e7ebf1", roughness: 0.94, metalness: 0.04 }),
     );
     bed.position.z = -0.45;
     bed.receiveShadow = true;
@@ -2274,7 +2363,7 @@ export class Bench {
     }
     const grid = new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(gridPts, 3)),
-      new THREE.LineBasicMaterial({ color: "#343844" }),
+      new THREE.LineBasicMaterial({ color: "#b7c0cc" }),
     );
     this.scene.add(grid);
 
@@ -2287,13 +2376,13 @@ export class Bench {
     this.scene.add(
       new THREE.LineSegments(
         new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(frame, 3)),
-        new THREE.LineBasicMaterial({ color: "#e8b84a" }),
+        new THREE.LineBasicMaterial({ color: "#8e99a8" }),
       ),
     );
 
     this.addAxis(new THREE.Vector3(28, 0, 0), "#e85d4c", "X");
     this.addAxis(new THREE.Vector3(0, 28, 0), "#3e8f96", "Y");
-    this.addAxis(new THREE.Vector3(0, 0, 28), "#e8b84a", "Z");
+    this.addAxis(new THREE.Vector3(0, 0, 28), "#0067c0", "Z");
 
     this.scene.add(new THREE.HemisphereLight("#f4e8c8", "#1a2030", 0.55));
     const key = new THREE.DirectionalLight("#fff1d6", 2.5);
@@ -2417,6 +2506,11 @@ export class Bench {
       sketchHeight: round1(this.sketchHeight),
       sketchOp: this.sketchOp,
       pulling: this.pulling,
+      layer: this.layerOn,
+      layerHeight: Math.round(this.layerH * 1000) / 1000,
+      layerIndex: this.layerIndex,
+      layerCount: this.layerCount,
+      layerMm: round1(this.layerMm),
     };
     this.snapshot = next;
     for (const fn of this.listeners) fn(next);

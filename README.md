@@ -74,9 +74,11 @@ plate, so a move is visible.
 
 ## Preview bench
 
-`preview/` is the browser bench. It is ahead of `src/make.c`. It is in this tree so that work is not only on one machine.
+`preview/` is the browser bench. It is ahead of `src/make.c`. It is in this tree so that work is not only on one machine. The handover is [docs/HANDOVER.md](docs/HANDOVER.md).
 
 Add drops a block or a round on a 220 mm bed. On stands that shape on the selected part and joins it. Cut takes the height off the top. Place uses the W, D and H fields. A round uses W as the diameter. Keyway places a slot. Dragging still draws the footprint. Pull and Chamfer move the face you clicked. A washer, a slot, a line and a ring are there. Drill bores one hole. Bolt circle bores several of that diameter on a pitch circle, and Row bores them in a line. Counterbore adds a wider shallow step to the drill. Countersink is a 90° cone on that drill. Split cuts the selected part on the section, or at mid-height. Join, cut, intersect and drill stop at 2,500 triangles.
+
+Layers draw the walls of the selected part at one height. The segments are not joined, and there is no infill and no G-code. The window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
 
 The meshes in `preview/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. The Amiga window does not have these tools yet.
 
