@@ -3,3 +3,5 @@ build/
 *.gcode
 *.stl
 !preview/library/*.stl
+preview/node_modules/
+preview/dist/
