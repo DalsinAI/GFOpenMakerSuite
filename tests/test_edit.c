@@ -129,7 +129,10 @@ int main(void)
         expect(ge_start(&start, "build/missing.stl", err, (int)sizeof err) == -1 && err[0], "a missing file says why");
         expect((f = fopen("build/missing.stl", "rb")) == NULL, "and is not made");
         if (f) fclose(f);
+        expect(GS_BED == 220.f, "the plate is 220 mm, as on the bench");
         expect(ge_start(&start, NULL, err, (int)sizeof err) == 0 && start.n > 12, "no file starts with the holed cube");
+        expect(near((start.min.x + start.max.x) * 0.5f, 110.f) && near((start.min.y + start.max.y) * 0.5f, 110.f),
+               "in the middle of the plate");
         expect(near(start.min.z, 8.f) && near(start.max.z - start.min.z, 20.f), "8 mm off the plate");
         gs_mesh_free(&start);
         gs_mesh_free(&part);

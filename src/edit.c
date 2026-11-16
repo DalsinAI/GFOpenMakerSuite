@@ -405,7 +405,8 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
         snprintf(err, (size_t)errlen, "the solid did not build");
         return -1;
     }
-    /* Off the plate, so Drop is a visible move. */
+    /* In the middle of the plate, and off it, so Drop is a visible move. */
+    ge_centre(m);
     ge_move(m, 0.f, 0.f, 8.f);
     return 0;
 }

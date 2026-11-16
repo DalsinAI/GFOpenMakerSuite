@@ -66,7 +66,7 @@ the line width and the filament diameter. A hotend or a bed of 0 leaves that
 temperature command out.
 
 The solid editor is `src/make.c`. It starts from a 20 mm cube with a
-cylinder cut out, on a 60 mm plate. Cube and Cylinder add a second part.
+cylinder cut out, on a 220 mm plate. Cube and Cylinder add a second part.
 Join, Cut and Intersect combine the selected part with the other one.
 Move, Rotate and Scale drag the selected part. Drop, Centre and Lay flat
 place it. Open, Save and Undo are there. The picture is fitted to the

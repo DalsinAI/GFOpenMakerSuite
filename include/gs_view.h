@@ -53,7 +53,7 @@ int gs_view_solid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w
 
 /* The editor's plate, in millimetres, from (0, 0) to (GS_BED, GS_BED).
  * The picture is fitted to the plate, not the part, so a move shows. */
-#define GS_BED 60.f
+#define GS_BED 220.f /* the same plate as the bench */
 
 /* Fit x0,y0 .. x1,y1. The mesh may be empty. 0, or -1. */
 int gs_view_frame_bed(const gs_mesh *m, const gs_cam *cam, int w, int h,

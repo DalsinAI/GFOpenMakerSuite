@@ -4,7 +4,7 @@
 
 ## What it is
 
-A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `src/make.c`, on a 60 mm plate. It does not have the bench tools.
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `src/make.c`, on the same 220 mm plate. It does not have the bench tools.
 
 The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
 
@@ -65,7 +65,7 @@ Turning a part off hides the lines. Moving the part with the gizmo refreshes the
 ## Not done
 
 - Layers do not become the slicer's loops.
-- `src/make.c` does not have extrude, keyway, pull, chamfer, the hole tools, split, or layers. The plate there is still 60 mm.
+- `src/make.c` does not have extrude, keyway, pull, chamfer, the hole tools, split, or layers.
 - The view is the solid. Toolpaths are not drawn back on it.
 - The slicer is still one wall, a rectangular skirt, no brim, no support, and no start or end G-code of your own.
 
