@@ -2,6 +2,8 @@
  * library has no start-up code, so it cannot take libnix's malloc, stdio or
  * maths: these stand in, on exec.library alone. Built for the host test
  * (OM_RT_HOST) every name gets rt_ in front, to sit beside the host's.
+ * The maths has no FPU instruction but fsqrt (the 68040 and 68060 have no
+ * FSIN: it traps to software), so it is right with or without an FPU.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef OM_RUNTIME_H
 #define OM_RUNTIME_H
@@ -38,5 +40,13 @@ int RT(vsnprintf)(char *buf, size_t len, const char *fmt, va_list ap);
 int RT(snprintf)(char *buf, size_t len, const char *fmt, ...);
 double RT(strtod)(const char *s, char **end);
 float RT(strtof)(const char *s, char **end);
+
+float RT(sqrtf)(float x);
+float RT(sinf)(float x);
+float RT(cosf)(float x);
+float RT(fabsf)(float x);
+float RT(ceilf)(float x);
+float RT(floorf)(float x);
+long RT(lroundf)(float x);
 
 #endif

@@ -147,6 +147,27 @@ int main(void)
         }
         expect(ok, "strtod and strtof read as the host does");
     }
+    {
+        /* The maths: sinf and cosf for the camera and cylinders, sqrtf,
+         * ceilf, floorf, fabsf and lroundf. */
+        float worst = 0.f, x;
+        int ok = 1;
+        for (x = -100.f; x <= 100.f; x += 0.0137f) {
+            float e1 = fabsf(rt_sinf(x) - sinf(x)), e2 = fabsf(rt_cosf(x) - cosf(x));
+            if (e1 > worst) worst = e1;
+            if (e2 > worst) worst = e2;
+        }
+        printf("sinf and cosf: at most %.2g from the host's\n", (double)worst);
+        expect(worst < 2e-6f, "sinf and cosf within 2e-6");
+        for (x = 0.f; x < 1e6f; x = x * 1.37f + 0.01f)
+            if (fabsf(rt_sqrtf(x) - sqrtf(x)) > sqrtf(x) * 2e-7f) ok = 0;
+        expect(ok && rt_sqrtf(0.f) == 0.f && rt_sqrtf(4.f) == 2.f, "sqrtf");
+        expect(rt_ceilf(1.2f) == 2.f && rt_ceilf(-1.2f) == -1.f && rt_ceilf(3.f) == 3.f && rt_floorf(-1.2f) == -2.f &&
+                   rt_floorf(1.9f) == 1.f && rt_floorf(1e9f) == 1e9f,
+               "ceilf and floorf");
+        expect(rt_fabsf(-3.f) == 3.f && rt_lroundf(2.5f) == 3 && rt_lroundf(-2.5f) == -3 && rt_lroundf(1.49f) == 1,
+               "fabsf and lroundf");
+    }
     if (fails) {
         printf("%d failed\n", fails);
         return 1;
