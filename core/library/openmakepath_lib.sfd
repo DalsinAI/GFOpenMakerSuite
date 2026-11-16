@@ -1,0 +1,24 @@
+==id $Id: openmakepath_lib.sfd 1.0 (16.11.2026) $
+* "openmakepath.library": OpenMakeCore's paths (gs_layer.h): a part cut
+* into layers, the pieces of wall welded into loops. Each call is its C
+* function in snake case (GL_LoopArea is gl_loop_area); floats travel as
+* their bits. Never reorder or take a call out; add new ones at the end.
+* core/library/gen-library.py writes the rest from this.
+==base _OpenMakePathBase
+==basetype struct Library *
+==libname openmakepath.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_layer.h>
+float GL_Height(float h)(d0)
+int GL_Layers(const gs_mesh *m, float h)(a0,d0)
+float GL_LayerZ(const gs_mesh *m, float h, int layer)(a0,d0,d1)
+int GL_Cut(const gs_mesh *m, float h, int layer, gl_walls *w)(a0,d0,d1,a1)
+void GL_WallsFree(gl_walls *w)(a0)
+void GL_Status(char *buf, int len, const gs_mesh *m, float h, int layer, const gl_walls *w)(a0,d0,a1,d1,d2,a2)
+int GL_Weld(const gl_walls *w, float tol, gl_loops *out)(a0,d0,a1)
+void GL_LoopsFree(gl_loops *out)(a0)
+float GL_LoopArea(const gl_loop *l)(a0)
+float GL_LoopLength(const gl_loop *l)(a0)
+==end
