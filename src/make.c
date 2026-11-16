@@ -1,4 +1,4 @@
-/* GFOpenMake on the Amiga. A 20 mm cube with a hole through it, on a 60 mm
+/* GFOpenMake on the Amiga. A 20 mm cube with a hole through it, on a 220 mm
  * plate, in a GFOpenLayout window. Orbit turns the view. Move, rotate and
  * scale change the solid. Drop, Centre and Lay flat put it on the bed.
  *
@@ -552,7 +552,7 @@ static void on_add_cube(olui *ui, const olui_event *ev, void *userdata)
     (void)ev;
     (void)userdata;
     memset(&box, 0, sizeof box);
-    if (gm_cube(&box, 12.f, 4.f, 0.f, 16.f, 16.f, 16.f)) {
+    if (gm_cube(&box, hole.min.x + 12.f, hole.min.y + 4.f, hole.min.z, 16.f, 16.f, 16.f)) {
         say(ui, "The cube did not build");
         return;
     }
