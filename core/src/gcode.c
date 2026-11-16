@@ -118,6 +118,28 @@ void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_sta
     run(&w, p);
 }
 
+void gc_job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job)
+{
+    int i, k;
+    memset(job, 0, sizeof *job);
+    for (i = 0; i < p->n; i++) {
+        const gt_move *a = &p->m[i];
+        const float v[3] = {a->x, a->y, a->z};
+        float s = held(m, OM_X, o->speed[a->kind]);
+        for (k = 0; k < 3; k++) {
+            if (!i || v[k] < job->min[k]) job->min[k] = v[k];
+            if (!i || v[k] > job->max[k]) job->max[k] = v[k];
+        }
+        if (s > job->speed[OM_X]) job->speed[OM_X] = job->speed[OM_Y] = s;
+        if (i && a->z != p->m[i - 1].z) job->speed[OM_Z] = held(m, OM_Z, s);
+    }
+    if (o->retract > 0.f) job->speed[OM_E] = held(m, OM_E, o->retract_speed);
+    job->hotend = o->hotend;
+    job->bed = o->bed;
+    job->extruders = 1;
+    job->needs = o->bed > 0.f ? OM_HEATED_BED : 0u;
+}
+
 int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err, int errlen)
 {
     char code[OM_CODE + 256];

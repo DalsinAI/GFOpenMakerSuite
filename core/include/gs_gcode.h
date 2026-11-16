@@ -33,6 +33,12 @@ void gc_defaults(gc_opts *o);
  * the speeds are not held to a machine's). */
 void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st);
 
+/* The job p is for om_check: where every move goes (travels too), the
+ * fastest of each axis as gc_write would ask it of m (held to m's most,
+ * so never too fast for m itself; m may be NULL), o's temperatures, one
+ * extruder, and a heated bed when o heats one. */
+void gc_job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job);
+
 /* p's G-code for the printer m to out, st (may be NULL) filled in. 0, or
  * -1 with why in err: m is not a printer, its code does not fit, or out
  * could not be written. */

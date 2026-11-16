@@ -87,6 +87,24 @@ int main(void)
            "the estimate is what was written");
     printf("%d moves, %.1f s, %.3f mm of filament\n", st.moves, st.seconds, st.filament);
 
+    {
+        om_job job;
+        char why[96];
+        gc_job(&p, &m, &o, &job);
+        expect(job.min[0] == 0 && job.max[0] == 70 && job.max[1] == 50 && job.min[2] == 0.2f && job.max[2] == 0.4f,
+               "the job's box, travels and all");
+        expect(job.speed[OM_X] == 300.f && job.speed[OM_E] == 20.f && job.hotend == 205.f && job.bed == 60.f &&
+                   job.extruders == 1 && job.needs == OM_HEATED_BED,
+               "its speeds as written, temperatures and needs");
+        expect(om_check(&m, &job, why, (int)sizeof why) == OM_OK, "fits the generic Marlin");
+        gt_add(&p, GT_SKIN, 230, 50, 0.4f, 0.4f);
+        o.hotend = 300.f;
+        gc_job(&p, &m, &o, &job);
+        expect(om_check(&m, &job, why, (int)sizeof why) == (OM_TOO_BIG | OM_TOO_HOT) && strstr(why, "230"),
+               "230 mm on a 220 mm bed, and too hot, said so");
+        printf("om_check: %s\n", why);
+    }
+
     m.family = OM_LASER;
     f = fopen("build/test-laser.gcode", "w");
     expect(f && gc_write(f, &p, &m, &o, NULL, err, (int)sizeof err) == -1 && strstr(err, "printer"), "a laser is refused");
