@@ -804,6 +804,111 @@ typedef struct {
     int v[3];
 } itri;
 
+/* A crack: a loop of open edges round a gap thinner than CRACK on
+ * average. The BSP leaves one where a plane cuts a long sliver almost
+ * along its length, and both sides of the cut disagree in the last bits
+ * by more than a weld. The loop is filled with a fan, turned to face the
+ * way the missing surface faced. A wider loop is a real hole and is left. */
+#define CRACK 0.01f
+#define CRACK_MAX 64
+
+typedef struct {
+    int a, b, way;
+} dedge;
+
+static int by_dedge(const void *p, const void *q)
+{
+    const dedge *x = (const dedge *)p, *y = (const dedge *)q;
+    int xl = x->a < x->b ? x->a : x->b, yl = y->a < y->b ? y->a : y->b;
+    int xh = x->a < x->b ? x->b : x->a, yh = y->a < y->b ? y->b : y->a;
+    if (xl != yl) return xl < yl ? -1 : 1;
+    return xh < yh ? -1 : xh > yh ? 1 : 0;
+}
+
+/* Adds the filling to *out (n of cap). 0, or -1 out of memory. */
+static int fill_cracks(const wv *pts, int nv, itri **out, int *n, int *cap)
+{
+    int i, k, ne = 0, no = 0, rc = -1;
+    dedge *e = (dedge *)malloc((size_t)(*n ? *n : 1) * 3 * sizeof *e);
+    int *next = (int *)malloc((size_t)(nv ? nv : 1) * sizeof *next);
+    dedge *open = NULL;
+    if (!e || !next) goto done;
+    for (i = 0; i < nv; i++) next[i] = -1;
+    for (i = 0; i < *n; i++)
+        for (k = 0; k < 3; k++) {
+            e[ne].a = (*out)[i].v[k];
+            e[ne].b = (*out)[i].v[(k + 1) % 3];
+            e[ne].way = 1;
+            ne++;
+        }
+    qsort(e, (size_t)ne, sizeof *e, by_dedge);
+    open = (dedge *)malloc((size_t)(ne ? ne : 1) * sizeof *open);
+    if (!open) goto done;
+    for (i = 0; i < ne; i = k) {
+        int sum = 0, lo = e[i].a < e[i].b ? e[i].a : e[i].b, hi = e[i].a < e[i].b ? e[i].b : e[i].a;
+        for (k = i; k < ne && by_dedge(&e[k], &e[i]) == 0; k++) sum += e[k].a == lo ? 1 : -1;
+        if (sum == 1 || sum == -1) {
+            open[no].a = sum == 1 ? lo : hi;
+            open[no].b = sum == 1 ? hi : lo;
+            no++;
+        } else if (sum) {
+            no = -1; /* more than one sheet on an edge: not a crack this can mend */
+            break;
+        }
+    }
+    rc = 0;
+    if (no <= 0) goto done;
+    for (i = 0; i < no; i++) {
+        if (next[open[i].a] >= 0) goto done; /* two ways on: leave it */
+        next[open[i].a] = open[i].b;
+    }
+    for (i = 0; i < no; i++) {
+        int loop[CRACK_MAX], len = 0, v = open[i].a, j;
+        float ax = 0.f, ay = 0.f, az = 0.f, per = 0.f, area;
+        if (next[v] < 0) continue;
+        while (len < CRACK_MAX && next[v] >= 0) {
+            loop[len++] = v;
+            j = next[v];
+            next[v] = -1;
+            v = j;
+            if (v == loop[0]) break;
+        }
+        if (v != loop[0] || len < 3) continue;
+        for (j = 0; j < len; j++) {
+            const wv *p = &pts[loop[j]], *q = &pts[loop[(j + 1) % len]];
+            float dx = q->x - p->x, dy = q->y - p->y, dz = q->z - p->z;
+            ax += p->y * q->z - p->z * q->y;
+            ay += p->z * q->x - p->x * q->z;
+            az += p->x * q->y - p->y * q->x;
+            per += sqrtf(dx * dx + dy * dy + dz * dz);
+        }
+        area = 0.5f * sqrtf(ax * ax + ay * ay + az * az);
+        if (per <= 0.f || area > CRACK * per) continue;
+        for (j = 1; j + 1 < len; j++) {
+            if (*n >= *cap) {
+                itri *g = (itri *)realloc(*out, (size_t)*cap * 2 * sizeof *g);
+                if (!g) {
+                    rc = -1;
+                    goto done;
+                }
+                *out = g;
+                *cap *= 2;
+            }
+            /* The open edges run a to b on the surface there; the missing
+             * piece runs them b to a. */
+            (*out)[*n].v[0] = loop[0];
+            (*out)[*n].v[1] = loop[j + 1];
+            (*out)[*n].v[2] = loop[j];
+            (*n)++;
+        }
+    }
+done:
+    free(e);
+    free(next);
+    free(open);
+    return rc;
+}
+
 /* Closes the cracks a BSP leaves: corners are welded, and a triangle
  * whose edge passes through another vertex is split there (a T-junction),
  * so every edge is met by one going the other way. 0, or -1. */
@@ -874,6 +979,7 @@ static int seal(gs_mesh *m)
             top++;
         }
     }
+    if (fill_cracks(pts, nv, &out, &n, &cap)) goto fail;
     {
         gs_mesh fresh;
         memset(&fresh, 0, sizeof fresh);

@@ -155,15 +155,15 @@ int main(void)
             snprintf(what, sizeof what, "%s of two cubes is closed", k == 0 ? "union" : k == 1 ? "cut" : "overlap");
             expect(rc == 0 && gm_open_edges(&out) == 0, what);
         }
-        /* Wrench sized: a 114 mm bar, a hole at each end, a boss joined
-         * on. The join must not open the bar any further. */
+        /* Wrench sized: a 114 mm bar, a hole at each end, a boss joined on. */
         expect(gm_cube(&a, 0, 0, 0, 114, 33, 8) == 0 && gm_cylinder(&b, 14, 16.5f, -1, 9, 10, 48) == 0 &&
                    gm_subtract(&part, &a, &b) == 0, "bar with one hole");
         expect(gm_cylinder(&c, 100, 16.5f, -1, 11, 10, 48) == 0 && gm_subtract(&out, &part, &c) == 0, "and the other");
-        k = gm_open_edges(&out);
+        fprintf(stderr, "bar, two holes: %d open edges\n", gm_open_edges(&out));
+        expect(gm_open_edges(&out) == 0, "the bar with two holes is closed");
         expect(gm_cylinder(&d, 57, 16.5f, 4, 8, 12, 40) == 0 && gm_union(&part, &out, &d) == 0, "a boss joined on");
-        fprintf(stderr, "bar: %d open edges; with the boss: %d, volume %.0f\n", k, gm_open_edges(&part), volume(&part));
-        expect(gm_open_edges(&part) <= k, "joining the boss opens no more edges");
+        fprintf(stderr, "bar and boss: %d open edges, volume %.0f\n", gm_open_edges(&part), volume(&part));
+        expect(gm_open_edges(&part) == 0, "the bar and boss are closed");
         expect(fabsf(volume(&part) - 26635.6f) < 26635.6f * 0.01f, "the bar keeps its volume");
         gs_mesh_free(&a);
         gs_mesh_free(&b);
