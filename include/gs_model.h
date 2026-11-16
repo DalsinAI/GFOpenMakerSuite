@@ -26,6 +26,9 @@ int gm_subtract(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);
 /* dst = only the overlap of a and b. 0, or -1. An empty result has no triangles. */
 int gm_intersect(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);
 
+/* Edges not matched by one going the other way: 0 for a closed solid. */
+int gm_open_edges(const gs_mesh *m);
+
 /* Binary STL, little-endian, which is what a desktop slicer writes. */
 int gm_stl_write(const gs_mesh *m, const char *path);
 

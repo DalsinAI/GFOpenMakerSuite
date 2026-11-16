@@ -132,6 +132,17 @@ int main(void)
         }
     }
     {
+        /* An open edge is one not met by an edge going the other way. */
+        gs_mesh a;
+        memset(&a, 0, sizeof a);
+        expect(gm_open_edges(&box) == 0, "a cube is closed");
+        expect(gm_cube(&a, 0, 0, 0, 20, 20, 20) == 0, "cube to break");
+        a.n--;
+        expect(gm_open_edges(&a) == 3, "a cube less one triangle has 3 open edges");
+        fprintf(stderr, "holed cube: %d open edges\n", gm_open_edges(&hole));
+        gs_mesh_free(&a);
+    }
+    {
         /* Binary STL is little-endian on every machine: an 80 byte header,
          * a uint32 count, then 50 bytes a triangle. */
         gs_mesh again;
