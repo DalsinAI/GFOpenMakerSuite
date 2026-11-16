@@ -1,6 +1,6 @@
 # GFOpenSlicer
 
-GFOpenSlicer 0.1.0-rc1 slices an STL to G-code on AmigaOS 3.2. v0.2.0-rc1 adds the solid editor on OpenGPU, and the browser bench in `preview/`. The window is
+GFOpenSlicer 0.1.0-rc1 slices an STL to G-code on AmigaOS 3.2. v0.2.0-rc1 adds the solid editor on OpenGPU, and the browser bench in `cad/bench/`. The window is
 GFOpenLayout. The same engine runs from the shell, and the host tests run it
 with no Amiga.
 
@@ -65,7 +65,7 @@ layer can have a rectangular skirt. Extrusion comes from the layer height,
 the line width and the filament diameter. A hotend or a bed of 0 leaves that
 temperature command out.
 
-The solid editor is `src/make.c`. It starts from a 20 mm cube with a
+The solid editor is `cad/src/make.c`. It starts from a 20 mm cube with a
 cylinder cut out, on a 220 mm plate. Cube and Cylinder add a second part.
 Join, Cut and Intersect combine the selected part with the other one.
 Move, Rotate and Scale drag the selected part. Drop, Centre and Lay flat
@@ -74,13 +74,13 @@ plate, so a move is visible.
 
 ## Preview bench
 
-`preview/` is the browser bench. It is ahead of `src/make.c`. It is in this tree so that work is not only on one machine. To run it: `cd preview && npm install && npm run dev`, then open http://127.0.0.1:5199. `npm run check` type-checks it and `npm run build` writes `preview/dist/`; CI does both. The handover is [docs/HANDOVER.md](docs/HANDOVER.md).
+`cad/bench/` is the browser bench. It is ahead of `cad/src/make.c`. It is in this tree so that work is not only on one machine. To run it: `cd cad/bench && npm install && npm run dev`, then open http://127.0.0.1:5199. `npm run check` type-checks it and `npm run build` writes `cad/bench/dist/`; CI does both. The handover is [docs/HANDOVER.md](docs/HANDOVER.md).
 
 Add drops a block or a round on a 220 mm bed. On stands that shape on the selected part and joins it. Cut takes the height off the top. Place uses the W, D and H fields. A round uses W as the diameter. Keyway places a slot. Dragging still draws the footprint. Pull and Chamfer move the face you clicked. A washer, a slot, a line and a ring are there. Drill bores one hole. Bolt circle bores several of that diameter on a pitch circle, and Row bores them in a line. Counterbore adds a wider shallow step to the drill. Countersink is a 90° cone on that drill. Split cuts the selected part on the section, or at mid-height. Join, cut, intersect and drill stop at 2,500 triangles.
 
 Layers draw the walls of the selected part at one height. The segments are not joined, and there is no infill and no G-code. The window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
 
-The meshes in `preview/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. The Amiga window does not have these tools yet.
+The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. The Amiga window does not have these tools yet.
 
 ## Not in this release
 

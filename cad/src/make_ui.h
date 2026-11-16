@@ -1,6 +1,6 @@
 /* GFOpenMake's window. GFOpenLayout lays it out and draws it; make.c
  * only answers the buttons and draws the view. It is here, not in make.c,
- * so tests/test_make_ui.c can lay it out on the host. The markup is the
+ * so cad/tests/test_make_ui.c can lay it out on the host. The markup is the
  * window itself: wrapped in a <window> element, the view got no height.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef GS_MAKE_UI_H

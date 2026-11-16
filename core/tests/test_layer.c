@@ -48,7 +48,7 @@ int main(void)
     expect(gl_cut(&holed, 0.5f, 20, &w) == 0, "cut the holed cube");
     expect(near(w.length, 80.f + 64.f * 6.f * sinf(3.14159265f / 32.f), 0.05f), "outside and hole are both wall");
 
-    expect(gs_stl_load(&wrench, "preview/library/nasa-wrench.stl", err, (int)sizeof err) == 0, "wrench loads");
+    expect(gs_stl_load(&wrench, "cad/bench/library/nasa-wrench.stl", err, (int)sizeof err) == 0, "wrench loads");
     gs_mesh_repair(&wrench);
     expect(gl_layers(&wrench, 0.2f) == 130, "the wrench is 130 layers at 0.2: 26 mm, no empty layer above it");
     expect(gl_cut(&wrench, 0.2f, 1, &w) == 0, "cut the wrench");
