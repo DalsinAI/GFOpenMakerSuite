@@ -4,6 +4,7 @@
  * what it uses instead. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "../library/runtime.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -103,6 +104,48 @@ int main(void)
         expect(sorted, "and records of eleven bytes");
         rt_qsort(o, 0, sizeof o[0], by_key);
         rt_qsort(o, 1, sizeof o[0], by_key);
+    }
+    {
+        /* snprintf as the libraries use it: %s %d %c %% and %.Nf. */
+        static const double nums[] = {0.0, 1.0, -1.5, 0.05, 2.5, 3.5, 0.125, 441.2, 117.6, 9.99, 199.95, -0.04, 1e9, 220.0};
+        char a[96], b[96];
+        int k, ok = 1;
+        for (k = 0; k < (int)(sizeof nums / sizeof nums[0]); k++) {
+            int p;
+            for (p = 0; p <= 3; p++) {
+                int ra = rt_snprintf(a, sizeof a, "%.*f|", p, nums[k]);
+                int rb = snprintf(b, sizeof b, "%.*f|", p, nums[k]);
+                if (ra != rb || strcmp(a, b)) {
+                    printf("  %%.%df of %g: %s, host %s\n", p, nums[k], a, b);
+                    ok = 0;
+                }
+            }
+        }
+        expect(ok, "%.Nf as the host prints it");
+        rt_snprintf(a, sizeof a, "Layer %d of %d, %.1f mm of wall. %s%c%%", 20, -40, 117.6, "No infill.", '!');
+        expect(strcmp(a, "Layer 20 of -40, 117.6 mm of wall. No infill.!%") == 0, "a status line");
+        k = rt_snprintf(a, 8, "%s", "longer than eight");
+        expect(k == 17 && strcmp(a, "longer ") == 0, "cut to the buffer, the whole length returned");
+        rt_snprintf(a, sizeof a, "%ld %u %f", -70000L, 4000000000u, 1.0 / 3.0);
+        snprintf(b, sizeof b, "%ld %u %f", -70000L, 4000000000u, 1.0 / 3.0);
+        expect(strcmp(a, b) == 0, "%ld, %u and %f");
+        expect(rt_snprintf(NULL, 0, "%d", 12345) == 5, "a length with no buffer");
+    }
+    {
+        /* strtod and strtof: as the host reads them, and where they stop. */
+        static const char *const s[] = {"0", "1", "-2.5", "3.14159", "1e3", "-1.25E-2", "  42mm", ".5", "220", "0.08",
+                                        "6.02214076e23", "x"};
+        int k, ok = 1;
+        for (k = 0; k < (int)(sizeof s / sizeof s[0]); k++) {
+            char *ea, *eb;
+            double a = rt_strtod(s[k], &ea), b = strtod(s[k], &eb);
+            float fa = rt_strtof(s[k], &ea);
+            if (ea != eb || fabs(a - b) > fabs(b) * 1e-15 || fa != (float)b) {
+                printf("  strtod(%s): %.17g, host %.17g\n", s[k], a, b);
+                ok = 0;
+            }
+        }
+        expect(ok, "strtod and strtof read as the host does");
     }
     if (fails) {
         printf("%d failed\n", fails);
