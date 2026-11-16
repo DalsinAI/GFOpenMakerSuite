@@ -96,7 +96,7 @@ int main(void)
         free(rgb);
     }
 
-    expect(gs_stl_load(&wrench, "cad/bench/library/nasa-wrench.stl", err, (int)sizeof err) == 0, "wrench loads");
+    expect(gs_stl_load(&wrench, "core/tests/data/nasa-wrench.stl", err, (int)sizeof err) == 0, "wrench loads");
     gs_mesh_repair(&wrench);
     expect(gl_layers(&wrench, 0.2f) == 130, "the wrench is 130 layers at 0.2: 26 mm, no empty layer above it");
     expect(gl_cut(&wrench, 0.2f, 1, &w) == 0, "cut the wrench");
