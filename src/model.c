@@ -472,6 +472,125 @@ int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg
     return 0;
 }
 
+/* Welding: corners closer than WELD on every axis are one vertex. A cut
+ * reaches the same point from two polygons by different sums, so the two
+ * copies can differ in the last bits. */
+#define WELD 1e-3f
+
+typedef struct {
+    float x, y, z;
+    int i;
+} wv;
+
+static int by_x(const void *p, const void *q)
+{
+    float a = ((const wv *)p)->x, b = ((const wv *)q)->x;
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+static int root(int *up, int i)
+{
+    while (up[i] != i) {
+        up[i] = up[up[i]];
+        i = up[i];
+    }
+    return i;
+}
+
+/* idx[3n]: each corner's vertex. *pts: the vertices in x order (free it).
+ * The number of vertices, or -1. */
+static int weld(const gs_mesh *m, int *idx, wv **pts)
+{
+    int n = m->n * 3, i, j, nv = 0;
+    size_t sz = (size_t)(n ? n : 1);
+    wv *v = (wv *)malloc(sz * sizeof *v), *p = (wv *)malloc(sz * sizeof *p);
+    int *up = (int *)malloc(sz * sizeof *up), *num = (int *)malloc(sz * sizeof *num);
+    if (!v || !p || !up || !num) {
+        free(v);
+        free(p);
+        free(up);
+        free(num);
+        return -1;
+    }
+    for (i = 0; i < m->n; i++) {
+        const gs_v *c[3];
+        c[0] = &m->t[i].a;
+        c[1] = &m->t[i].b;
+        c[2] = &m->t[i].c;
+        for (j = 0; j < 3; j++) {
+            v[i * 3 + j].x = c[j]->x;
+            v[i * 3 + j].y = c[j]->y;
+            v[i * 3 + j].z = c[j]->z;
+            v[i * 3 + j].i = i * 3 + j;
+        }
+    }
+    qsort(v, (size_t)n, sizeof *v, by_x);
+    for (i = 0; i < n; i++) up[i] = i;
+    for (i = 0; i < n; i++)
+        for (j = i + 1; j < n && v[j].x - v[i].x <= WELD; j++)
+            if (fabsf(v[j].y - v[i].y) <= WELD && fabsf(v[j].z - v[i].z) <= WELD) {
+                int a = root(up, i), b = root(up, j);
+                if (a < b) up[b] = a;
+                else if (b < a) up[a] = b;
+            }
+    for (i = 0; i < n; i++)
+        if (root(up, i) == i) {
+            num[i] = nv;
+            p[nv++] = v[i];
+        }
+    for (i = 0; i < n; i++) idx[v[i].i] = num[root(up, i)];
+    free(v);
+    free(up);
+    free(num);
+    *pts = p;
+    return nv;
+}
+
+typedef struct {
+    int lo, hi, way;
+} edge;
+
+static int by_ends(const void *p, const void *q)
+{
+    const edge *a = (const edge *)p, *b = (const edge *)q;
+    if (a->lo != b->lo) return a->lo < b->lo ? -1 : 1;
+    return a->hi < b->hi ? -1 : a->hi > b->hi ? 1 : 0;
+}
+
+int gm_open_edges(const gs_mesh *m)
+{
+    int *idx, nv, i, k, ne = 0, open = 0;
+    wv *pts = NULL;
+    edge *e;
+    if (!m->n) return 0;
+    idx = (int *)malloc((size_t)m->n * 3 * sizeof *idx);
+    e = (edge *)malloc((size_t)m->n * 3 * sizeof *e);
+    if (!idx || !e || (nv = weld(m, idx, &pts)) < 0) {
+        free(idx);
+        free(e);
+        return -1;
+    }
+    free(pts);
+    for (i = 0; i < m->n; i++)
+        for (k = 0; k < 3; k++) {
+            int a = idx[i * 3 + k], b = idx[i * 3 + (k + 1) % 3];
+            if (a == b) continue;
+            e[ne].lo = a < b ? a : b;
+            e[ne].hi = a < b ? b : a;
+            e[ne].way = a < b ? 1 : -1;
+            ne++;
+        }
+    qsort(e, (size_t)ne, sizeof *e, by_ends);
+    for (i = 0; i < ne; i = k) {
+        int sum = 0;
+        for (k = i; k < ne && e[k].lo == e[i].lo && e[k].hi == e[i].hi; k++) sum += e[k].way;
+        open += sum < 0 ? -sum : sum;
+    }
+    free(idx);
+    free(e);
+    return open;
+}
+
 /* Join 0, cut 1, overlap 2. The same clips; only the turns of the
  * surface change, which is what picks inside from outside. */
 static int gm_csg(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b, int op)
