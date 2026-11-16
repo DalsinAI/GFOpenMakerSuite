@@ -109,6 +109,36 @@ int main(void)
         gs_mesh_free(&shared);
         gs_mesh_free(&miss);
     }
+    {
+        /* Binary STL is little-endian on every machine: an 80 byte header,
+         * a uint32 count, then 50 bytes a triangle. */
+        gs_mesh again;
+        unsigned char raw[84 + 50 * 12];
+        FILE *f;
+        size_t got = 0;
+        char err[80];
+        unsigned u;
+        float x;
+        memset(&again, 0, sizeof again);
+        expect(gm_cube(&box, 0, 0, 0, 20, 20, 20) == 0 && box.n == 12, "a cube is 12 triangles");
+        expect(gm_stl_write(&box, "build/le.stl") == 0, "write le.stl");
+        f = fopen("build/le.stl", "rb");
+        if (f) {
+            got = fread(raw, 1, sizeof raw, f);
+            expect(fgetc(f) == EOF, "nothing after the last triangle");
+            fclose(f);
+        }
+        expect(got == sizeof raw, "84 + 50 bytes a triangle");
+        expect(raw[80] == 12 && raw[81] == 0 && raw[82] == 0 && raw[83] == 0, "the count is uint32 little-endian");
+        u = (unsigned)raw[84 + 12] | (unsigned)raw[85 + 12] << 8 | (unsigned)raw[86 + 12] << 16 | (unsigned)raw[87 + 12] << 24;
+        memcpy(&x, &u, 4);
+        expect(x == box.t[0].a.x, "the first x is a little-endian float");
+        expect(raw[84 + 48] == 0 && raw[84 + 49] == 0, "the attribute is two zero bytes");
+        expect(gs_stl_load(&again, "build/le.stl", err, (int)sizeof err) == 0 && again.n == 12 &&
+                   memcmp(again.t, box.t, 12 * sizeof *box.t) == 0,
+               "the file reads back the same triangles");
+        gs_mesh_free(&again);
+    }
     expect(gm_stl_write(&hole, "/tmp/gfopenslicer/build/hole.stl") == 0, "stl");
     rgb = (unsigned char *)malloc(480 * 360 * 3);
     expect(rgb != NULL, "picture");

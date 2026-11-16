@@ -7,6 +7,7 @@
 #include "gs_model.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -537,29 +538,39 @@ int gm_intersect(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b)
     return gm_csg(dst, a, b, 2);
 }
 
+/* Little-endian on every machine, so a 68k file loads on a desktop. */
+static void put_le32(unsigned char *p, unsigned long u)
+{
+    p[0] = (unsigned char)(u & 0xffu);
+    p[1] = (unsigned char)((u >> 8) & 0xffu);
+    p[2] = (unsigned char)((u >> 16) & 0xffu);
+    p[3] = (unsigned char)((u >> 24) & 0xffu);
+}
+
+static void put_lef32(unsigned char *p, float x)
+{
+    uint32_t u;
+    memcpy(&u, &x, 4);
+    put_le32(p, (unsigned long)u);
+}
+
 int gm_stl_write(const gs_mesh *m, const char *path)
 {
     FILE *f;
-    unsigned char hdr[80];
-    unsigned long n;
-    int i;
+    unsigned char hdr[84], rec[50];
+    int i, k;
     if (!m || !path) return -1;
     f = fopen(path, "wb");
     if (!f) return -1;
     memset(hdr, 0, sizeof hdr);
     memcpy(hdr, "GFOpenMake hole", 15);
-    if (fwrite(hdr, 1, 80, f) != 80) {
-        fclose(f);
-        return -1;
-    }
-    n = (unsigned long)m->n;
-    if (fwrite(&n, 4, 1, f) != 1) {
+    put_le32(hdr + 80, (unsigned long)m->n);
+    if (fwrite(hdr, 1, 84, f) != 84) {
         fclose(f);
         return -1;
     }
     for (i = 0; i < m->n; i++) {
         float v[12];
-        unsigned short attr = 0;
         mv e1, e2, nn;
         e1.x = m->t[i].b.x - m->t[i].a.x;
         e1.y = m->t[i].b.y - m->t[i].a.y;
@@ -581,11 +592,13 @@ int gm_stl_write(const gs_mesh *m, const char *path)
         v[9] = m->t[i].c.x;
         v[10] = m->t[i].c.y;
         v[11] = m->t[i].c.z;
-        if (fwrite(v, 4, 12, f) != 12 || fwrite(&attr, 2, 1, f) != 1) {
+        for (k = 0; k < 12; k++) put_lef32(rec + 4 * k, v[k]);
+        rec[48] = rec[49] = 0;
+        if (fwrite(rec, 1, 50, f) != 50) {
             fclose(f);
             return -1;
         }
     }
-    fclose(f);
+    if (fclose(f)) return -1;
     return 0;
 }
