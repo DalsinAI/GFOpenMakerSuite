@@ -25,4 +25,11 @@ int gp_layers(const gs_mesh *m, const gp_opts *o);
  * the bed. 0, or -1 out of memory. */
 int gp_layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n);
 
+/* Moves m to sit on the bed, its lowest point at z 0, centred on a bed
+ * bed_x by bed_y mm. */
+void gp_place(gs_mesh *m, float bed_x, float bed_y);
+
+/* Every layer of m, in order, replacing p. 0, or -1 out of memory. */
+int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o);
+
 #endif

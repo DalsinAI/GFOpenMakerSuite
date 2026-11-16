@@ -80,3 +80,37 @@ int gp_layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)
     gl_loops_free(&L);
     return rc ? -1 : 0;
 }
+
+static void shift(gs_v *v, float dx, float dy, float dz)
+{
+    v->x += dx;
+    v->y += dy;
+    v->z += dz;
+}
+
+void gp_place(gs_mesh *m, float bed_x, float bed_y)
+{
+    float dx = bed_x * 0.5f - (m->min.x + m->max.x) * 0.5f, dy = bed_y * 0.5f - (m->min.y + m->max.y) * 0.5f,
+          dz = -m->min.z;
+    int i;
+    for (i = 0; i < m->n; i++) {
+        shift(&m->t[i].a, dx, dy, dz);
+        shift(&m->t[i].b, dx, dy, dz);
+        shift(&m->t[i].c, dx, dy, dz);
+    }
+    m->min.x += dx;
+    m->max.x += dx;
+    m->min.y += dy;
+    m->max.y += dy;
+    m->min.z = 0.f;
+    m->max.z += dz;
+}
+
+int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o)
+{
+    int n, layers = gp_layers(m, o);
+    gt_free(p);
+    for (n = 1; n <= layers; n++)
+        if (gp_layer(p, m, o, n)) return -1;
+    return 0;
+}
