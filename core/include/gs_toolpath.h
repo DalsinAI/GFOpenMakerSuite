@@ -66,4 +66,13 @@ int gt_bounds(const gt_path *p, float min[3], float max[3]);
 int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
             int every, int cross);
 
+/* The colour each kind is drawn in: 0xRRGGBB. A travel is not drawn. */
+unsigned long gt_colour(int kind);
+
+/* The toolpath over the plate, framed as gs_view_bed frames it (cam NULL:
+ * the home view), into rgb, w*h*3. Layers 1 to upto (0: all), each line
+ * in its kind's colour, darker the lower it is, nearer lines in front.
+ * The pen drawer's picture of a slice. 0, or -1. */
+int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h);
+
 #endif
