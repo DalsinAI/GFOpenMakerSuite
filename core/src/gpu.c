@@ -9,6 +9,8 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_gpu.h"
 
+#include <math.h>
+
 #include <gfopengpu/stream.h>
 #include <gfopengpu/stream3d.h>
 
@@ -85,6 +87,54 @@ int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h, uin
     if (!verts || cap < 3 || !cam) return -1;
     if (gs_view_frame_bed(m, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
     return verts_frame(m, cam, &f, verts, cap);
+}
+
+static void vert(uint32_t *v, float x, float y)
+{
+    v[0] = fix16(x);
+    v[1] = fix16(y);
+    v[2] = 0xFF0067C0u;
+    v[3] = 0;
+    v[4] = 0;
+    v[5] = 0xFFFFFFFFu;
+}
+
+int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, int w, int h,
+                       uint32_t *verts, int cap)
+{
+    gs_frame f;
+    int i, n = 0;
+    if (!wl || !verts || !cam) return -1;
+    if (gs_view_frame_bed(m, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    for (i = 0; i < wl->n; i++) {
+        gs_v a = {wl->s[i].x0, wl->s[i].y0, wl->z}, b = {wl->s[i].x1, wl->s[i].y1, wl->z};
+        float ax, ay, az, bx, by, bz, dx, dy, len, nx, ny;
+        uint32_t *v;
+        if (n + 6 > cap) return -1;
+        gs_view_map(&f, cam, a, &ax, &ay, &az);
+        gs_view_map(&f, cam, b, &bx, &by, &bz);
+        dx = bx - ax;
+        dy = by - ay;
+        len = sqrtf(dx * dx + dy * dy);
+        /* One pixel either side of the line; a piece too short to have a
+         * direction is a two-pixel square. */
+        if (len < 1e-3f) {
+            nx = 1.f;
+            ny = 0.f;
+        } else {
+            nx = -dy / len;
+            ny = dx / len;
+        }
+        v = verts + n * 6;
+        vert(v, ax + nx, ay + ny);
+        vert(v + 6, bx + nx, by + ny);
+        vert(v + 12, bx - nx, by - ny);
+        vert(v + 18, ax + nx, ay + ny);
+        vert(v + 24, bx - nx, by - ny);
+        vert(v + 30, ax - nx, ay - ny);
+        n += 6;
+    }
+    return n;
 }
 
 static int put(uint32_t *s, int *n, int cap, uint32_t w)

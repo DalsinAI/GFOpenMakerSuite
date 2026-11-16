@@ -4,6 +4,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_gpu.h"
 #include "gs_model.h"
+#include "gs_layer.h"
 
 #include <gfopengpu/stream.h>
 #include <gfopengpu/stream3d.h>
@@ -193,6 +194,31 @@ int main(void)
             }
             expect(gm_stl_write(&hole, "build/hole.stl") == 0, "public stl");
         }
+    }
+    {
+        /* The Layers group's walls: two triangles a piece of wall, Clear's
+         * blue, nearest of all so they show through the part, on screen. */
+        gl_walls wl;
+        uint32_t *wv;
+        int k, cap, blue = 1, near = 1, onscreen = 1;
+        memset(&wl, 0, sizeof wl);
+        expect(gl_cut(&hole, 0.5f, 20, &wl) == 0 && wl.n > 4, "walls to draw");
+        cap = wl.n * 6;
+        wv = (uint32_t *)malloc((size_t)cap * 6u * sizeof *wv);
+        nv = wv ? gs_gpu_walls_plate(&wl, &hole, &cam, w, h, wv, cap) : -1;
+        expect(nv == wl.n * 6, "six vertices a piece of wall");
+        for (k = 0; k < nv; k++) {
+            int32_t x = (int32_t)wv[k * 6], y = (int32_t)wv[k * 6 + 1];
+            if (wv[k * 6 + 2] != 0xFF0067C0u) blue = 0;
+            if (wv[k * 6 + 5] != 0xFFFFFFFFu) near = 0;
+            if (x < -65536 || y < -65536 || x > (w + 1) * 65536 || y > (h + 1) * 65536) onscreen = 0;
+        }
+        expect(blue, "the walls are #0067c0");
+        expect(near, "the walls are nearest");
+        expect(onscreen, "the walls are in the picture");
+        expect(gs_gpu_walls_plate(&wl, &hole, &cam, w, h, wv, 5) == -1, "too small a buffer is refused");
+        free(wv);
+        gl_walls_free(&wl);
     }
     free(verts);
     free(gpu);

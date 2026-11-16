@@ -2,6 +2,10 @@
  * the NASA wrench from the shelf. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_layer.h"
 #include "gs_model.h"
+#include "gs_view.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -47,6 +51,50 @@ int main(void)
     expect(gm_subtract(&holed, &box, &rod) == 0, "hole");
     expect(gl_cut(&holed, 0.5f, 20, &w) == 0, "cut the holed cube");
     expect(near(w.length, 80.f + 64.f * 6.f * sinf(3.14159265f / 32.f), 0.05f), "outside and hole are both wall");
+    {
+        /* The status line and the blue walls on the plate (the pen drawer's
+         * picture; OpenGPU's are in test_gpu). */
+        char line[96];
+        unsigned char *rgb = (unsigned char *)malloc(160 * 120 * 3);
+        gs_cam cam;
+        gs_frame f;
+        float x0, y0, x1, y1, z;
+        int i, blue = 0, outside = 0;
+        gl_status(line, (int)sizeof line, &holed, 0.5f, 20, &w);
+        printf("%s\n", line);
+        expect(strcmp(line, "Layer 20 of 40, 117.6 mm of wall. No infill.") == 0, "the status line");
+        gl_status(line, (int)sizeof line, &empty, 0.2f, 1, &w);
+        expect(strcmp(line, "No layers: there is no part.") == 0, "and with nothing to cut");
+        gs_cam_home(&cam);
+        expect(rgb && gs_view_bed(&holed, &cam, rgb, 160, 120) == 0, "the plate");
+        for (i = 0; rgb && i < 160 * 120; i++)
+            if (rgb[i * 3] == 0 && rgb[i * 3 + 1] == 103 && rgb[i * 3 + 2] == 192) blue++;
+        expect(blue == 0, "no blue before the walls");
+        gl_cut(&holed, 0.5f, 20, &w);
+        expect(rgb && gl_paint(&w, &holed, &cam, rgb, 160, 120) == 0, "paint the walls");
+        /* Every blue pixel lies inside where the part's corners land. */
+        gs_view_frame_bed(&holed, &cam, 160, 120, 0.f, 0.f, GS_BED, GS_BED, &f);
+        x0 = y0 = 1e9f;
+        x1 = y1 = -1e9f;
+        for (i = 0; i < 8; i++) {
+            gs_v c = {(i & 1) ? 20.f : 0.f, (i & 2) ? 20.f : 0.f, (i & 4) ? 20.f : 0.f};
+            float x, y;
+            gs_view_map(&f, &cam, c, &x, &y, &z);
+            if (x < x0) x0 = x;
+            if (y < y0) y0 = y;
+            if (x > x1) x1 = x;
+            if (y > y1) y1 = y;
+        }
+        for (i = 0; rgb && i < 160 * 120; i++)
+            if (rgb[i * 3] == 0 && rgb[i * 3 + 1] == 103 && rgb[i * 3 + 2] == 192) {
+                int px = i % 160, py = i / 160;
+                blue++;
+                if (px < x0 - 2 || px > x1 + 2 || py < y0 - 2 || py > y1 + 2) outside++;
+            }
+        printf("walls: %d blue pixels, %d outside the part\n", blue, outside);
+        expect(blue > 20 && outside == 0, "the walls are blue, on the part");
+        free(rgb);
+    }
 
     expect(gs_stl_load(&wrench, "cad/bench/library/nasa-wrench.stl", err, (int)sizeof err) == 0, "wrench loads");
     gs_mesh_repair(&wrench);

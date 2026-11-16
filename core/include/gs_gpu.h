@@ -5,6 +5,7 @@
 #ifndef GS_GPU_H
 #define GS_GPU_H
 
+#include "gs_layer.h"
 #include "gs_view.h"
 
 #include <stdint.h>
@@ -18,6 +19,12 @@ int gs_gpu_vertices(const gs_mesh *m, const gs_cam *cam, int w, int h,
 /* The same vertices, fitted to the plate instead of the part. */
 int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h,
                           uint32_t *verts, int cap);
+
+/* The Layers group's walls as triangles to draw after the part's (two a
+ * piece, two pixels wide), in Clear's blue and nearest of all, in the
+ * plate's frame of m. Returns how many vertices, or -1. */
+int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, int w, int h,
+                       uint32_t *verts, int cap);
 
 /* The stream that clears an ARGB32 picture and a Z32 depth, draws the bed
  * grid (grid != 0), then the vertices. picture_bpr is the picture's row
