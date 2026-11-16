@@ -281,6 +281,33 @@ int main(void)
     }
     gs_mesh_free(&box);
     gs_mesh_free(&peg);
+    {
+        /* Depth: nearer the eye is larger, as gs_view.h says, so the top of
+         * a cube hides its bottom and its front hides its back. */
+        gs_mesh cube;
+        gs_frame f;
+        gs_v top = {10, 10, 20}, bottom = {10, 10, 0}, front = {10, 0, 10}, back = {10, 20, 10};
+        gs_v t0 = {0, 0, 20}, t1 = {20, 0, 20}, t2 = {20, 20, 20};
+        float tx, ty, tz, bx, by, bz, fx, fy, fz, kx, ky, kz;
+        int r, g, b;
+        static unsigned char pic[240 * 180 * 3];
+        memset(&cube, 0, sizeof cube);
+        gs_cam_home(&cam);
+        expect(gm_cube(&cube, 0, 0, 0, 20, 20, 20) == 0 && gs_view_frame(&cube, &cam, 240, 180, &f) == 0, "a cube, framed");
+        gs_view_map(&f, &cam, top, &tx, &ty, &tz);
+        gs_view_map(&f, &cam, bottom, &bx, &by, &bz);
+        gs_view_map(&f, &cam, front, &fx, &fy, &fz);
+        gs_view_map(&f, &cam, back, &kx, &ky, &kz);
+        expect(tz > bz && fz > kz, "the top and the front are nearer");
+        expect(tz <= f.zmax && kz >= f.zmin, "inside the frame's depths");
+        expect(gs_view_solid(&cube, &cam, pic, 240, 180) == 0 && gs_view_colour(&cam, f.origin, t0, t1, t2, &r, &g, &b) == 0,
+               "the cube, and its top's colour");
+        {
+            const unsigned char *q = pic + ((size_t)(int)ty * 240 + (size_t)(int)tx) * 3;
+            expect(q[0] == r && q[1] == g && q[2] == b, "the middle of the top shows the top");
+        }
+        gs_mesh_free(&cube);
+    }
     gs_mesh_free(&hole);
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);

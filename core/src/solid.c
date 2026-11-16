@@ -188,8 +188,8 @@ int gs_view_frame(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_frame *f
      * of the bed. Applied after the fit, or the fit would cancel it. */
     f->ox = ((float)w - (maxx - minx) * f->s) * 0.5f - minx * f->s + cam->panx * (maxx - minx) * f->s;
     f->oy = ((float)h - (maxy - miny) * f->s) * 0.5f - miny * f->s + cam->pany * (maxy - miny) * f->s;
-    f->zmin = zmin;
-    f->zmax = zmax;
+    f->zmin = -zmax; /* as gs_view_map gives depth: nearer is larger */
+    f->zmax = -zmin;
     return 0;
 }
 
@@ -263,8 +263,8 @@ int gs_view_frame_bed(const gs_mesh *m, const gs_cam *cam, int w, int h,
     f->s *= cam->dist;
     f->ox = ((float)w - (maxx - minx) * f->s) * 0.5f - minx * f->s + cam->panx * (maxx - minx) * f->s;
     f->oy = ((float)h - (maxy - miny) * f->s) * 0.5f - miny * f->s + cam->pany * (maxy - miny) * f->s;
-    f->zmin = zmin;
-    f->zmax = zmax;
+    f->zmin = -zmax; /* as gs_view_map gives depth: nearer is larger */
+    f->zmax = -zmin;
     return 0;
 }
 
@@ -273,7 +273,7 @@ void gs_view_map(const gs_frame *f, const gs_cam *cam, gs_v p, float *x, float *
     v3 r = xform(p, cam, f->origin);
     *x = f->ox + r.x * f->s;
     *y = (float)f->h - (f->oy + r.y * f->s);
-    *z = r.z;
+    *z = -r.z; /* xform's depth grows away from the eye; nearer is larger here */
 }
 
 int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *r, int *g, int *bl)
