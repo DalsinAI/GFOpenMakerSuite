@@ -561,6 +561,21 @@ static void put_lef32(unsigned char *p, float x)
     put_le32(p, (unsigned long)u);
 }
 
+/* "GFOpenMake " and the file's name without its drawer or extension, in
+ * at most 79 bytes, so the header never starts with "solid". */
+static void stl_header(unsigned char *hdr, const char *path)
+{
+    const char *base = path, *p;
+    size_t n;
+    for (p = path; *p; p++)
+        if (*p == '/' || *p == ':' || *p == '\\') base = p + 1;
+    p = strrchr(base, '.');
+    n = p ? (size_t)(p - base) : strlen(base);
+    if (n > 68) n = 68;
+    memcpy(hdr, "GFOpenMake ", 11);
+    memcpy(hdr + 11, base, n);
+}
+
 int gm_stl_write(const gs_mesh *m, const char *path)
 {
     FILE *f;
@@ -570,7 +585,7 @@ int gm_stl_write(const gs_mesh *m, const char *path)
     f = fopen(path, "wb");
     if (!f) return -1;
     memset(hdr, 0, sizeof hdr);
-    memcpy(hdr, "GFOpenMake hole", 15);
+    stl_header(hdr, path);
     put_le32(hdr + 80, (unsigned long)m->n);
     if (fwrite(hdr, 1, 84, f) != 84) {
         fclose(f);
@@ -586,7 +601,7 @@ int gm_stl_write(const gs_mesh *m, const char *path)
         e2.y = m->t[i].c.y - m->t[i].a.y;
         e2.z = m->t[i].c.z - m->t[i].a.z;
         nn = cross(e1, e2);
-        unit(&nn);
+        if (!unit(&nn)) nn.x = nn.y = nn.z = 0.f; /* no direction to give */
         v[0] = nn.x;
         v[1] = nn.y;
         v[2] = nn.z;

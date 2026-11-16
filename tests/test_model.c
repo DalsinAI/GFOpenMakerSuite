@@ -156,10 +156,36 @@ int main(void)
         memcpy(&x, &u, 4);
         expect(x == box.t[0].a.x, "the first x is a little-endian float");
         expect(raw[84 + 48] == 0 && raw[84 + 49] == 0, "the attribute is two zero bytes");
+        expect(memcmp(raw, "GFOpenMake le", 13) == 0 && raw[13] == 0, "the header names the part");
+        expect(raw[79] == 0, "the header is padded with zeros");
         expect(gs_stl_load(&again, "build/le.stl", err, (int)sizeof err) == 0 && again.n == 12 &&
                    memcmp(again.t, box.t, 12 * sizeof *box.t) == 0,
                "the file reads back the same triangles");
         gs_mesh_free(&again);
+    }
+    {
+        /* A triangle too small to have a direction gets a zero normal. */
+        gs_mesh dot;
+        unsigned char raw[84 + 50];
+        float nz = 1.f;
+        FILE *f;
+        char err[80];
+        memset(&dot, 0, sizeof dot);
+        dot.t = (gs_tri *)calloc(1, sizeof *dot.t);
+        dot.n = dot.cap = 1;
+        dot.t[0].b.x = 1e-7f;
+        dot.t[0].c.y = 1e-7f;
+        expect(gm_stl_write(&dot, "build/dot.stl") == 0, "write dot.stl");
+        f = fopen("build/dot.stl", "rb");
+        if (f) {
+            expect(fread(raw, 1, sizeof raw, f) == sizeof raw, "dot.stl is one triangle");
+            fclose(f);
+            memcpy(&nz, raw + 84 + 8, 4);
+        }
+        expect(nz == 0.f && raw[84] == 0 && raw[88] == 0, "its normal is zero");
+        gs_mesh_free(&dot);
+        expect(gs_stl_load(&dot, "build/dot.stl", err, (int)sizeof err) == 0 && dot.n == 1, "and it still loads");
+        gs_mesh_free(&dot);
     }
     expect(gm_stl_write(&hole, "build/hole.stl") == 0, "stl");
     rgb = (unsigned char *)malloc(480 * 360 * 3);
