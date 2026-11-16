@@ -220,6 +220,45 @@ int main(void)
         free(wv);
         gl_walls_free(&wl);
     }
+    {
+        /* The pen drawer's runs: a row as runs of one pen, to fill with a
+         * blit each (RectFill), not a WritePixel a pixel. */
+        unsigned char row[8 * 3] = {20, 22, 28, 20, 22, 28, 90, 90, 90, 90, 90, 90,
+                                    0, 103, 192, 200, 200, 200, 20, 22, 28, 20, 22, 28};
+        gs_run runs[8];
+        unsigned char *pic = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
+        gs_run *rr = (gs_run *)malloc((size_t)w * sizeof *rr);
+        int n = gs_pen_row(row, 8, runs), y, total = 0, cover = 1, same = 1, apart = 1;
+        expect(n == 5, "five runs in the row");
+        expect(n == 5 && runs[0].x == 0 && runs[0].n == 2 && runs[0].pen == 0 && runs[1].x == 2 && runs[1].n == 2 &&
+                   runs[1].pen == 1 && runs[2].pen == 3 && runs[3].pen == 2 && runs[4].x == 6 && runs[4].n == 2,
+               "the runs are where the pens change");
+        expect(gs_pen_of(row) == 0 && gs_pen_of(row + 6) == 1 && gs_pen_of(row + 12) == 3 && gs_pen_of(row + 15) == 2,
+               "background, grey, the walls' blue, light");
+        expect(pic && rr && gs_view_bed(&hole, &cam, pic, w, h) == 0, "the plate for the pens");
+        for (y = 0; pic && rr && y < h; y++) {
+            const unsigned char *line = pic + (size_t)y * (size_t)w * 3;
+            int k, x = 0;
+            n = gs_pen_row(line, w, rr);
+            total += n;
+            for (k = 0; k < n; k++) {
+                int j;
+                if (rr[k].x != x || rr[k].n < 1) cover = 0;
+                if (k && rr[k].pen == rr[k - 1].pen) apart = 0;
+                for (j = 0; j < rr[k].n && rr[k].x + j < w; j++)
+                    if (gs_pen_of(line + (rr[k].x + j) * 3) != rr[k].pen) same = 0;
+                x += rr[k].n;
+            }
+            if (x != w) cover = 0;
+        }
+        printf("pens: %d runs for %d pixels\n", total, w * h);
+        expect(cover, "the runs cover every row, once");
+        expect(same, "each run is one pen");
+        expect(apart, "and the next run another");
+        expect(total > 0 && total * 20 < w * h, "twenty pixels a blit or more");
+        free(rr);
+        free(pic);
+    }
     free(verts);
     free(gpu);
     free(cpu);

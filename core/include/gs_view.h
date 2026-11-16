@@ -62,6 +62,17 @@ int gs_view_frame_bed(const gs_mesh *m, const gs_cam *cam, int w, int h,
 /* The plate and the mesh. 0, or -1. */
 int gs_view_bed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h);
 
+/* The pen drawer (no OpenGPU): a picture's colours as four pens, 0 the
+ * background, 1 grey, 2 light, 3 the walls' blue, and a row of it as runs
+ * of one pen, so a run is one blit (RectFill), not a pixel each. */
+typedef struct {
+    short x, n;
+    unsigned char pen;
+} gs_run;
+int gs_pen_of(const unsigned char *rgb);
+/* runs needs room for w; returns how many. */
+int gs_pen_row(const unsigned char *rgb, int w, gs_run *runs);
+
 /* 1 when a graphics chip would draw this scene. 0 on a machine with none,
  * where gs_view_solid is what the window shows. */
 int gs_view_on_gpu(void);
