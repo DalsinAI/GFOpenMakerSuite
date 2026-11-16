@@ -91,6 +91,37 @@ int main(void)
         }
         expect(face >= 0 && face < box.n, "a click hits a face");
     }
+    {
+        /* Launching with a file opens it and leaves it as it was. */
+        gs_mesh start, part;
+        FILE *f;
+        long before = -1, after = -2;
+        char err[160];
+        memset(&start, 0, sizeof start);
+        memset(&part, 0, sizeof part);
+        expect(gm_cube(&part, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f) == 0 && gm_stl_write(&part, "build/start.stl") == 0, "a file to open");
+        if ((f = fopen("build/start.stl", "rb"))) {
+            fseek(f, 0, SEEK_END);
+            before = ftell(f);
+            fclose(f);
+        }
+        expect(ge_start(&start, "build/start.stl", err, (int)sizeof err) == 0, "start with that file");
+        expect(start.n == 12 && near(start.min.x, 1.f) && near(start.max.z, 9.f), "the window shows that file");
+        if ((f = fopen("build/start.stl", "rb"))) {
+            fseek(f, 0, SEEK_END);
+            after = ftell(f);
+            fclose(f);
+        }
+        expect(before == after, "the file is not written over");
+        remove("build/missing.stl");
+        expect(ge_start(&start, "build/missing.stl", err, (int)sizeof err) == -1 && err[0], "a missing file says why");
+        expect((f = fopen("build/missing.stl", "rb")) == NULL, "and is not made");
+        if (f) fclose(f);
+        expect(ge_start(&start, NULL, err, (int)sizeof err) == 0 && start.n > 12, "no file starts with the holed cube");
+        expect(near(start.min.z, 8.f) && near(start.max.z - start.min.z, 20.f), "8 mm off the plate");
+        gs_mesh_free(&start);
+        gs_mesh_free(&part);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

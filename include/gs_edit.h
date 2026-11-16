@@ -33,6 +33,11 @@ int ge_lay_face(gs_mesh *m, int face);
 /* The front triangle under a pixel of the plate view, or -1. */
 int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y);
 
+/* The solid GFOpenMake starts with: the STL named by path, or with no
+ * path the 20 mm cube with a hole, 8 mm off the plate. Reads only; the
+ * file is written only by Save. 0, or -1 with why in err. */
+int ge_start(gs_mesh *m, const char *path, char *err, int errlen);
+
 /* Up to 32 copies. */
 typedef struct ge_hist ge_hist;
 
