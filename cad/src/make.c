@@ -187,7 +187,8 @@ static int draw_gpu(int x, int y, int w, int h)
 static void draw_pens(int x, int y, int w, int h)
 {
     unsigned char *rgb;
-    int row, col;
+    gs_run *runs;
+    int row;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     vw = w;
@@ -198,16 +199,17 @@ static void draw_pens(int x, int y, int w, int h)
         return;
     }
     if (show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
-    for (row = 0; row < h; row++) {
-        for (col = 0; col < w; col++) {
-            unsigned char *p = rgb + ((size_t)row * (size_t)w + (size_t)col) * 3;
-            /* Grey to the three greys; the walls' blue to the window's
-             * fourth pen, the Workbench blue. */
-            int pen = (p[2] > 150 && p[0] < 40) ? 3 : p[0] < 40 ? 0 : p[0] < 140 ? 1 : 2;
-            SetAPen(win->RPort, (UBYTE)pen);
-            WritePixel(win->RPort, (WORD)(x + col), (WORD)(y + row));
+    /* A run of one pen is one RectFill. Grey goes to the three greys,
+     * the walls' blue to the window's fourth pen, the Workbench blue. */
+    runs = (gs_run *)malloc((size_t)w * sizeof *runs);
+    for (row = 0; runs && row < h; row++) {
+        int n = gs_pen_row(rgb + (size_t)row * (size_t)w * 3, w, runs), k;
+        for (k = 0; k < n; k++) {
+            SetAPen(win->RPort, runs[k].pen);
+            RectFill(win->RPort, x + runs[k].x, y + row, x + runs[k].x + runs[k].n - 1, y + row);
         }
     }
+    free(runs);
     free(rgb);
 }
 

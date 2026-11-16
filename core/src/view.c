@@ -154,3 +154,26 @@ int gs_view_paint(const char *gcode, int len, unsigned char *rgb, int w, int h)
     free(ls);
     return n;
 }
+
+int gs_pen_of(const unsigned char *p)
+{
+    if (p[2] > 150 && p[0] < 40) return 3;
+    return p[0] < 40 ? 0 : p[0] < 140 ? 1 : 2;
+}
+
+int gs_pen_row(const unsigned char *rgb, int w, gs_run *runs)
+{
+    int x, n = 0;
+    for (x = 0; x < w; x++) {
+        int pen = gs_pen_of(rgb + x * 3);
+        if (n && runs[n - 1].pen == pen) {
+            runs[n - 1].n++;
+            continue;
+        }
+        runs[n].x = (short)x;
+        runs[n].n = 1;
+        runs[n].pen = (unsigned char)pen;
+        n++;
+    }
+    return n;
+}
