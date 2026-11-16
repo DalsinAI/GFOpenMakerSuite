@@ -104,6 +104,25 @@ int main(void)
         expect(face >= 0 && face < box.n, "a click hits a face");
     }
     {
+        /* A click on the middle of the top picks the top, not the bottom under it. */
+        gs_mesh cube;
+        gs_cam cam;
+        gs_frame f;
+        gs_v mid = {110, 110, 20};
+        float x, y, z;
+        int face;
+        memset(&cube, 0, sizeof cube);
+        gs_cam_home(&cam);
+        expect(gm_cube(&cube, 100, 100, 0, 20, 20, 20) == 0 &&
+                   gs_view_frame_bed(&cube, &cam, 320, 240, 0.f, 0.f, GS_BED, GS_BED, &f) == 0,
+               "a cube on the plate");
+        gs_view_map(&f, &cam, mid, &x, &y, &z);
+        face = ge_pick(&cube, &cam, 320, 240, (int)x, (int)y);
+        expect(face >= 0 && near(cube.t[face].a.z, 20.f) && near(cube.t[face].b.z, 20.f) && near(cube.t[face].c.z, 20.f),
+               "the top is picked");
+        gs_mesh_free(&cube);
+    }
+    {
         /* Launching with a file opens it and leaves it as it was. */
         gs_mesh start, part;
         FILE *f;

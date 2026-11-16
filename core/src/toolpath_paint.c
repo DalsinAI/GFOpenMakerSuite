@@ -31,7 +31,7 @@ static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, co
         unsigned char *p;
         if (x < 0 || y < 0 || x >= w || y >= h) continue;
         k = y * w + x;
-        if (z > zb[k]) continue; /* gs_view_map's depth grows away from the eye */
+        if (z < zb[k]) continue; /* nearer is larger */
         zb[k] = z;
         p = rgb + k * 3;
         p[0] = (unsigned char)(((c >> 16) & 255) * (unsigned long)shade / 256);
@@ -101,7 +101,7 @@ static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *r
         if (p->m[i].z > top) top = p->m[i].z;
     zb = (float *)malloc((size_t)w * (size_t)h * sizeof *zb);
     if (!zb) return -1;
-    for (i = 0; i < w * h; i++) zb[i] = 1e30f;
+    for (i = 0; i < w * h; i++) zb[i] = -1e30f;
     for (i = 0; i < end; i++) {
         const gt_move *m = &p->m[i];
         gs_v v;
