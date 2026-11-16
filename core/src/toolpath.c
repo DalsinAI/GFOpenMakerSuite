@@ -99,7 +99,7 @@ static void grow(const gt_move *m, float min[3], float max[3])
     }
 }
 
-int gt_bounds(const gt_path *p, float min[3], float max[3])
+int gt_bounds(const gt_path *p, float *min, float *max)
 {
     int i, any = 0;
     for (i = 0; i < p->n; i++) {

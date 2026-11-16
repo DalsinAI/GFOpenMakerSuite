@@ -1,6 +1,7 @@
-==id $Id: openmakepath_lib.sfd 1.0 (16.11.2026) $
+==id $Id: openmakepath_lib.sfd 1.1 (16.11.2026) $
 * "openmakepath.library": OpenMakeCore's paths (gs_layer.h): a part cut
-* into layers, the pieces of wall welded into loops. Each call is its C
+* into layers, the pieces of wall welded into loops, and the toolpath
+* (gs_toolpath.h) the slicer and the laser and CNC apps fill. Each call is its C
 * function in snake case (GL_LoopArea is gl_loop_area); floats travel as
 * their bits. Never reorder or take a call out; add new ones at the end.
 * core/library/gen-library.py writes the rest from this.
@@ -11,6 +12,7 @@
 ==public
 ==include <exec/types.h>
 ==include <gs_layer.h>
+==include <gs_toolpath.h>
 float GL_Height(float h)(d0)
 int GL_Layers(const gs_mesh *m, float h)(a0,d0)
 float GL_LayerZ(const gs_mesh *m, float h, int layer)(a0,d0,d1)
@@ -21,4 +23,15 @@ int GL_Weld(const gl_walls *w, float tol, gl_loops *out)(a0,d0,a1)
 void GL_LoopsFree(gl_loops *out)(a0)
 float GL_LoopArea(const gl_loop *l)(a0)
 float GL_LoopLength(const gl_loop *l)(a0)
+* 1.1: the loops inset, the toolpath and its fill
+int GL_Inset(const gl_loops *in, float d, gl_loops *out)(a0,d0,a1)
+void GT_Init(gt_path *p)(a0)
+void GT_Free(gt_path *p)(a0)
+int GT_Layer(gt_path *p)(a0)
+int GT_Add(gt_path *p, int kind, float x, float y, float z, float w)(a0,d0,d1,d2,d3,d4)
+int GT_Loop(gt_path *p, int kind, const gl_loop *l, float z, float w)(a0,d0,a1,d1,d2)
+int GT_Append(gt_path *dst, const gt_path *src)(a0,a1)
+float GT_Length(const gt_path *p, int kind)(a0,d0)
+int GT_Bounds(const gt_path *p, float *min, float *max)(a0,a1,a2)
+int GT_Fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)(a0,a1,a2,d0,d1,d2,d3,d4)
 ==end

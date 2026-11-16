@@ -52,3 +52,53 @@ float gl_loop_length(const gl_loop *l)
 {
     return GL_LoopLength(l);
 }
+
+int gl_inset(const gl_loops *in, float d, gl_loops *out)
+{
+    return GL_Inset(in, d, out);
+}
+
+void gt_init(gt_path *p)
+{
+    GT_Init(p);
+}
+
+void gt_free(gt_path *p)
+{
+    GT_Free(p);
+}
+
+int gt_layer(gt_path *p)
+{
+    return GT_Layer(p);
+}
+
+int gt_add(gt_path *p, int kind, float x, float y, float z, float w)
+{
+    return GT_Add(p, kind, x, y, z, w);
+}
+
+int gt_loop(gt_path *p, int kind, const gl_loop *l, float z, float w)
+{
+    return GT_Loop(p, kind, l, z, w);
+}
+
+int gt_append(gt_path *dst, const gt_path *src)
+{
+    return GT_Append(dst, src);
+}
+
+float gt_length(const gt_path *p, int kind)
+{
+    return GT_Length(p, kind);
+}
+
+int gt_bounds(const gt_path *p, float *min, float *max)
+{
+    return GT_Bounds(p, min, max);
+}
+
+int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)
+{
+    return GT_Fill(p, region, solid, nsolid, z, w, every, cross);
+}

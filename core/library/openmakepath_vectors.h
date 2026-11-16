@@ -2,6 +2,7 @@
  * The library's side of each call: its registers to the C function. */
 #include "omlib.h"
 #include <gs_layer.h>
+#include <gs_toolpath.h>
 
 static ULONG LIB_GL_Height(REG(d0, ULONG h), REG(a6, struct Library *base))
 {
@@ -63,7 +64,67 @@ static ULONG LIB_GL_LoopLength(REG(a0, const gl_loop *l), REG(a6, struct Library
     return om_lib_bits(gl_loop_length(l));
 }
 
-#define OPENMAKEPATH_LAST_BIAS 84
+static int LIB_GL_Inset(REG(a0, const gl_loops *in), REG(d0, ULONG d), REG(a1, gl_loops *out), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gl_inset(in, om_lib_float(d), out);
+}
+
+static void LIB_GT_Init(REG(a0, gt_path *p), REG(a6, struct Library *base))
+{
+    (void)base;
+    gt_init(p);
+}
+
+static void LIB_GT_Free(REG(a0, gt_path *p), REG(a6, struct Library *base))
+{
+    (void)base;
+    gt_free(p);
+}
+
+static int LIB_GT_Layer(REG(a0, gt_path *p), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_layer(p);
+}
+
+static int LIB_GT_Add(REG(a0, gt_path *p), REG(d0, int kind), REG(d1, ULONG x), REG(d2, ULONG y), REG(d3, ULONG z), REG(d4, ULONG w), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_add(p, kind, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(w));
+}
+
+static int LIB_GT_Loop(REG(a0, gt_path *p), REG(d0, int kind), REG(a1, const gl_loop *l), REG(d1, ULONG z), REG(d2, ULONG w), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_loop(p, kind, l, om_lib_float(z), om_lib_float(w));
+}
+
+static int LIB_GT_Append(REG(a0, gt_path *dst), REG(a1, const gt_path *src), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_append(dst, src);
+}
+
+static ULONG LIB_GT_Length(REG(a0, const gt_path *p), REG(d0, int kind), REG(a6, struct Library *base))
+{
+    (void)base;
+    return om_lib_bits(gt_length(p, kind));
+}
+
+static int LIB_GT_Bounds(REG(a0, const gt_path *p), REG(a1, float *min), REG(a2, float *max), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_bounds(p, min, max);
+}
+
+static int LIB_GT_Fill(REG(a0, gt_path *p), REG(a1, const gl_loops *region), REG(a2, const gl_loops *const *solid), REG(d0, int nsolid), REG(d1, ULONG z), REG(d2, ULONG w), REG(d3, int every), REG(d4, int cross), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_fill(p, region, solid, nsolid, om_lib_float(z), om_lib_float(w), every, cross);
+}
+
+#define OPENMAKEPATH_LAST_BIAS 144
 #define OPENMAKEPATH_VECTORS \
     (APTR)LIB_GL_Height, \
     (APTR)LIB_GL_Layers, \
@@ -74,4 +135,14 @@ static ULONG LIB_GL_LoopLength(REG(a0, const gl_loop *l), REG(a6, struct Library
     (APTR)LIB_GL_Weld, \
     (APTR)LIB_GL_LoopsFree, \
     (APTR)LIB_GL_LoopArea, \
-    (APTR)LIB_GL_LoopLength
+    (APTR)LIB_GL_LoopLength, \
+    (APTR)LIB_GL_Inset, \
+    (APTR)LIB_GT_Init, \
+    (APTR)LIB_GT_Free, \
+    (APTR)LIB_GT_Layer, \
+    (APTR)LIB_GT_Add, \
+    (APTR)LIB_GT_Loop, \
+    (APTR)LIB_GT_Append, \
+    (APTR)LIB_GT_Length, \
+    (APTR)LIB_GT_Bounds, \
+    (APTR)LIB_GT_Fill

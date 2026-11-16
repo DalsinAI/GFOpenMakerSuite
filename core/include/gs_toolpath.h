@@ -51,8 +51,9 @@ int gt_append(gt_path *dst, const gt_path *src);
 /* mm moved by moves of one kind, or by all of them (kind -1). The first
  * move only places the tool, so it has no length. */
 float gt_length(const gt_path *p, int kind);
-/* The box round every move but travels. 0, or -1 when there are none. */
-int gt_bounds(const gt_path *p, float min[3], float max[3]);
+/* The box round every move but travels, three floats each (x, y, z). 0,
+ * or -1 when there are none. */
+int gt_bounds(const gt_path *p, float *min, float *max);
 
 /* Lines across the region in (its loops' insides, even-odd), one line
  * width w apart on a grid fixed to the bed, so a layer's lines sit on the

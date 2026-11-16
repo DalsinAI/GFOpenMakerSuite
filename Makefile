@@ -60,9 +60,11 @@ $(BUILD)/test_machine_lib: machines/tests/test_machine_lib.c machines/src/machin
 
 # openmakepath.library's calls, the same way.
 PATH_LIB = core/library/openmakepath_lib.sfd
-$(BUILD)/test_path_lib: core/tests/test_path_lib.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c $(PATH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+# What the library is built from.
+PATH_SRC = core/src/layer.c core/src/loops.c core/src/inset.c core/src/toolpath.c core/src/fill.c
+$(BUILD)/test_path_lib: core/tests/test_path_lib.c $(PATH_SRC) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c $(PATH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
 	python3 core/library/gen-library.py $(PATH_LIB) --check
-	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_path_lib.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_path_lib.c $(PATH_SRC) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 $(BUILD)/test_toolpath: core/tests/test_toolpath.c core/src/toolpath.c core/include/gs_toolpath.h core/include/gs_layer.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath.c core/src/toolpath.c -lm

@@ -69,13 +69,19 @@ for v in fpu soft; do
         -DLINK_BASE=OpenMakeMachineBase '-DLINK_NAME="openmakemachine.library"' -lm
     echo "$OUT/$v/TestMachineLib: $(wc -c < "$OUT/$v/TestMachineLib") bytes"
     lib "$v" "$flags" openmakepath.library core/include \
-        core/library/openmakepath_lib.c core/src/layer.c core/src/loops.c
+        core/library/openmakepath_lib.c core/src/layer.c core/src/loops.c core/src/inset.c \
+        core/src/toolpath.c core/src/fill.c
     # core/tests/test_layer.c, the cut and the loops through the library
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestLayerLib" core/tests/test_layer.c \
         core/src/layer_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c \
         core/library/openmakepath_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakePathBase '-DLINK_NAME="openmakepath.library"' -lm
     echo "$OUT/$v/TestLayerLib: $(wc -c < "$OUT/$v/TestLayerLib") bytes"
+    # core/tests/test_fill.c, the toolpath and its fill through the library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestFillLib" core/tests/test_fill.c \
+        core/library/openmakepath_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakePathBase '-DLINK_NAME="openmakepath.library"' -lm
+    echo "$OUT/$v/TestFillLib: $(wc -c < "$OUT/$v/TestFillLib") bytes"
     lib "$v" "$flags" openmakemesh.library core/include \
         core/library/openmakemesh_lib.c core/src/model.c core/src/stl.c
     # core/tests/test_model.c, the solids, booleans and STL through the library
