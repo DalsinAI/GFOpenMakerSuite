@@ -14,4 +14,11 @@ jobs:
           ref: 79e8d48151082ef2ee3cfe97998ebb80eec2aa86
           path: gfopensdk
           sparse-checkout: Include/gfopengpu
-      - run: make test SDK=$GITHUB_WORKSPACE/gfopensdk/Include
+      # GFOpenLayout (DalsinAI/gfopenlayout, MIT), pinned, for test_make_ui.
+      - uses: actions/checkout@v4
+        with:
+          repository: DalsinAI/gfopenlayout
+          ref: c414f38fedcea1ea6c9a00ab3a12bf5214358678
+          path: gfopenlayout
+      - run: make -C gfopenlayout build/libopenlayout.a
+      - run: make test SDK=$GITHUB_WORKSPACE/gfopensdk/Include LAYOUT=$GITHUB_WORKSPACE/gfopenlayout

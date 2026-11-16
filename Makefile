@@ -9,7 +9,7 @@ LAYOUT ?= ../gfopenlayout
 
 .PHONY: all test preview clean
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -37,12 +37,19 @@ $(BUILD)/test_edit: tests/test_edit.c src/edit.c src/model.c src/stl.c src/view.
 $(BUILD)/test_layer: tests/test_layer.c src/layer.c src/model.c src/stl.c src/view.c src/solid.c include/gs_layer.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Iinclude -o $@ tests/test_layer.c src/layer.c src/model.c src/stl.c src/view.c src/solid.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer
+# GFOpenMake's window, laid out by GFOpenLayout (LAYOUT, built with make there).
+$(BUILD)/test_make_ui: tests/test_make_ui.c src/make_ui.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Isrc -I$(LAYOUT)/include -o $@ tests/test_make_ui.c \
+	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
+	    $(LAYOUT)/build/libopenlayout.a -lm
+
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
 	$(BUILD)/test_edit
 	$(BUILD)/test_layer
+	$(BUILD)/test_make_ui
 
 preview: $(BUILD)/preview
 
