@@ -31,7 +31,7 @@ static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, co
         unsigned char *p;
         if (x < 0 || y < 0 || x >= w || y >= h) continue;
         k = y * w + x;
-        if (z < zb[k]) continue;
+        if (z > zb[k]) continue; /* gs_view_map's depth grows away from the eye */
         zb[k] = z;
         p = rgb + k * 3;
         p[0] = (unsigned char)(((c >> 16) & 255) * (unsigned long)shade / 256);
@@ -40,12 +40,43 @@ static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, co
     }
 }
 
-int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+/* f refitted so the moves (not travels) fill the picture, as gs_view_frame
+ * fits a mesh: 18 pixels round, cam's zoom and pan after. */
+static void fit_moves(const gt_path *p, const gs_cam *cam, gs_frame *f)
+{
+    float x0 = 1e30f, y0 = 1e30f, x1 = -1e30f, y1 = -1e30f, s;
+    int i;
+    for (i = 0; i < p->n; i++) {
+        gs_v v;
+        float x, y, z, rx, ry;
+        if (p->m[i].kind == GT_TRAVEL) continue;
+        v.x = p->m[i].x;
+        v.y = p->m[i].y;
+        v.z = p->m[i].z;
+        gs_view_map(f, cam, v, &x, &y, &z);
+        rx = (x - f->ox) / f->s; /* back to the view's own units */
+        ry = ((float)f->h - y - f->oy) / f->s;
+        x0 = rx < x0 ? rx : x0;
+        x1 = rx > x1 ? rx : x1;
+        y0 = ry < y0 ? ry : y0;
+        y1 = ry > y1 ? ry : y1;
+    }
+    if (x1 - x0 < 0.01f || y1 - y0 < 0.01f) return;
+    s = (float)(f->w - 36) / (x1 - x0);
+    if ((float)(f->h - 36) / (y1 - y0) < s) s = (float)(f->h - 36) / (y1 - y0);
+    s *= cam->dist;
+    f->ox = ((float)f->w - (x1 - x0) * s) * 0.5f - x0 * s + cam->panx * (x1 - x0) * s;
+    f->oy = ((float)f->h - (y1 - y0) * s) * 0.5f - y0 * s + cam->pany * (y1 - y0) * s;
+    f->s = s;
+}
+
+/* fit: framed to the moves' box over a plain background, else the plate. */
+static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h, int fit)
 {
     gs_mesh none;
     gs_cam home;
     gs_frame f;
-    float *zb, top = 0.f, at[3], was[3];
+    float *zb, top = 0.f, at[3], was[3], lo[3], hi[3];
     int i, end = p->n;
     if (!rgb || w < 4 || h < 4) return -1;
     if (!cam) {
@@ -53,13 +84,24 @@ int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, 
         cam = &home;
     }
     memset(&none, 0, sizeof none);
-    if (gs_view_bed(&none, cam, rgb, w, h) || gs_view_frame_bed(&none, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    if (gs_view_bed(&none, cam, rgb, w, h)) return -1;
+    if (fit && gt_bounds(p, lo, hi) == 0) {
+        for (i = 0; i < w * h * 3; i += 3) {
+            rgb[i] = 20;
+            rgb[i + 1] = 22;
+            rgb[i + 2] = 28;
+        }
+        if (gs_view_frame_bed(&none, cam, w, h, lo[0], lo[1], hi[0], hi[1], &f)) return -1;
+        fit_moves(p, cam, &f);
+    } else if (gs_view_frame_bed(&none, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) {
+        return -1;
+    }
     if (upto > 0 && upto < p->nlayers) end = p->layer[upto];
     for (i = 0; i < end; i++)
         if (p->m[i].z > top) top = p->m[i].z;
     zb = (float *)malloc((size_t)w * (size_t)h * sizeof *zb);
     if (!zb) return -1;
-    for (i = 0; i < w * h; i++) zb[i] = -1e30f;
+    for (i = 0; i < w * h; i++) zb[i] = 1e30f;
     for (i = 0; i < end; i++) {
         const gt_move *m = &p->m[i];
         gs_v v;
@@ -73,4 +115,14 @@ int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, 
     }
     free(zb);
     return 0;
+}
+
+int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    return paint(p, cam, upto, rgb, w, h, 0);
+}
+
+int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    return paint(p, cam, upto, rgb, w, h, 1);
 }

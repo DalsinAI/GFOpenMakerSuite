@@ -81,8 +81,8 @@ $(BUILD)/test_toolpath_paint: core/tests/test_toolpath_paint.c core/src/toolpath
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # A part to G-code for a machine, from the shell.
-$(BUILD)/openmake-slice: slicer/src/openmake_slice.c $(PLAN) core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(PLAN) core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c -lm
+$(BUILD)/openmake-slice: slicer/src/openmake_slice.c $(PLAN) core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(PLAN) core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c -lm
 
 # openmakemesh.library's calls, the same way.
 MESH_LIB = core/library/openmakemesh_lib.sfd
@@ -113,7 +113,9 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_plan
 	$(BUILD)/test_toolpath_paint
 	$(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/wrench.gcode \
-	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om
+	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om \
+	    PREVIEW=$(BUILD)/wrench.ppm SIZE=320x240
+	head -c 15 $(BUILD)/wrench.ppm | grep -q '^320 240' && test "$$(wc -c < $(BUILD)/wrench.ppm)" = 230415
 	test "$$(grep -c '^; LAYER ' $(BUILD)/wrench.gcode)" = 130 && grep -q '^M109 S200' $(BUILD)/wrench.gcode && tail -n 1 $(BUILD)/wrench.gcode | grep -q M84
 	! $(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/tiny.gcode \
 	    DRIVER=machines/printer/marlin/driver.om PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/tiny.txt
