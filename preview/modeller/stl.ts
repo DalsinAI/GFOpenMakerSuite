@@ -19,7 +19,10 @@ export function parseSTL(buf: ArrayBuffer): Float32Array {
   const nums: number[] = [];
   VERTEX.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = VERTEX.exec(text))) nums.push(+m[1], +m[2], +m[3]);
+  while ((m = VERTEX.exec(text))) {
+    const [, x = "", y = "", z = ""] = m;
+    nums.push(+x, +y, +z);
+  }
   if (nums.length < 9 || nums.length % 9 !== 0) throw new Error("empty-stl");
   return Float32Array.from(nums);
 }
