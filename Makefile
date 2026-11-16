@@ -9,7 +9,7 @@ LAYOUT ?= ../gfopenlayout
 
 .PHONY: all test preview clean
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -34,11 +34,15 @@ $(BUILD)/preview: tools/preview.c src/job.c src/stl.c src/slice.c src/view.c src
 $(BUILD)/test_edit: tests/test_edit.c src/edit.c src/model.c src/stl.c src/view.c src/solid.c include/gs_edit.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Iinclude -o $@ tests/test_edit.c src/edit.c src/model.c src/stl.c src/view.c src/solid.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit
+$(BUILD)/test_layer: tests/test_layer.c src/layer.c src/model.c src/stl.c src/view.c src/solid.c include/gs_layer.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Iinclude -o $@ tests/test_layer.c src/layer.c src/model.c src/stl.c src/view.c src/solid.c -lm
+
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
 	$(BUILD)/test_edit
+	$(BUILD)/test_layer
 
 preview: $(BUILD)/preview
 
