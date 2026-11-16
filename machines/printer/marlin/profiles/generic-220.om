@@ -1,0 +1,8 @@
+# A generic Marlin printer with a 220 mm bed: the common size, as GFOpenMake's
+# plate is. Change these to the machine's own numbers.
+name = Generic Marlin 220
+area = 220 220 250
+speed = 300 300 5 25
+accel = 3000 3000 100 5000
+hotend = 260
+bed = 100

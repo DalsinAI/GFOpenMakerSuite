@@ -12,6 +12,7 @@ as the fallback.
 | `slicer/` | STL to G-code for printers | OpenMakeSlicer |
 | `burn/` | A laser app, not started | OpenMakeBurn |
 | `cnc/` | A CNC app, not started | OpenMakeCNC |
+| `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
 
 The binaries keep their names (GFOpenSlicer, GFOpenMake). `make test` builds
 and runs every host test.
