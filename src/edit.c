@@ -380,12 +380,21 @@ int ge_bool(ge_scene *s, int op, ge_hist *h)
     return 0;
 }
 
+int ge_open(gs_mesh *m, const char *path, char *err, int errlen)
+{
+    gs_mesh_free(m);
+    if (gs_stl_load(m, path, err, errlen)) return -1;
+    gs_mesh_repair(m);
+    ge_drop(m);
+    return 0;
+}
+
 int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
 {
     gs_mesh box, peg;
     int rc;
     gs_mesh_free(m);
-    if (path && path[0]) return gs_stl_load(m, path, err, errlen) ? -1 : 0;
+    if (path && path[0]) return ge_open(m, path, err, errlen);
     memset(&box, 0, sizeof box);
     memset(&peg, 0, sizeof peg);
     rc = gm_cube(&box, 0, 0, 0, 20, 20, 20) || gm_cylinder(&peg, 10, 10, -1, 6, 22, 32) ||
