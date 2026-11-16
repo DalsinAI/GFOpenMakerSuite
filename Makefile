@@ -10,7 +10,7 @@ LAYOUT ?= ../gfopenlayout
 
 .PHONY: all test preview clean
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -48,11 +48,18 @@ $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
 $(BUILD)/test_machine: machines/tests/test_machine.c machines/src/machine.c machines/include/om_machine.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_machine.c machines/src/machine.c
 
+# openmakemachine.library's calls through its jump table, on the host; the
+# glue is written by core/library/gen-library.py, and must be as it writes it.
+MACHINE_LIB = machines/library/openmakemachine_lib.sfd
+$(BUILD)/test_machine_lib: machines/tests/test_machine_lib.c machines/src/machine.c $(MACHINE_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+	python3 core/library/gen-library.py $(MACHINE_LIB) --check
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Imachines/include -Icore/library -o $@ machines/tests/test_machine_lib.c machines/src/machine.c
+
 # The C runtime the OpenMake libraries are built with, under rt_ names.
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -61,6 +68,7 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_make_ui
 	$(BUILD)/test_machine
 	$(BUILD)/test_runtime
+	$(BUILD)/test_machine_lib
 
 preview: $(BUILD)/preview
 

@@ -1,0 +1,20 @@
+==id $Id: openmakemachine_lib.sfd 1.0 (16.11.2026) $
+* "openmakemachine.library": OpenMakeMachine's C API (om_machine.h), each
+* call under its library name (OM_ClampSpeed is om_clamp_speed). Floats go
+* in a data register as their bits. Never reorder or take a call out; add
+* new ones at the end. core/library/gen-library.py writes the rest from this.
+==base _OpenMakeMachineBase
+==basetype struct Library *
+==libname openmakemachine.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <om_machine.h>
+int OM_Parse(om_machine *m, const char *text, char *err, int errlen)(a0,a1,a2,d0)
+int OM_Load(om_machine *m, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+void OM_Clear(om_machine *m)(a0)
+int OM_Has(const om_machine *m, unsigned feature)(a0,d0)
+int OM_Check(const om_machine *m, const om_job *job, char *why, int whylen)(a0,a1,a2,d0)
+float OM_ClampSpeed(const om_machine *m, int axis, float v, int *held)(a0,d0,d1,a1)
+int OM_Code(const char *tmpl, float hotend, float bed, char *out, int outlen)(a0,d0,d1,a1,d2)
+==end
