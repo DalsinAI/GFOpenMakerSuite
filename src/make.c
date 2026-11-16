@@ -268,9 +268,37 @@ static void refresh(olui *ui)
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
+/* The two parts as one scene. The meshes move, they are not copied. */
+static ge_scene scene_out(void)
+{
+    ge_scene sc;
+    sc.stock = hole;
+    sc.added = added;
+    sc.has_added = has_added;
+    sc.on_added = on_added;
+    return sc;
+}
+
+static void scene_in(const ge_scene *sc)
+{
+    hole = sc->stock;
+    added = sc->added;
+    has_added = sc->has_added;
+    on_added = sc->on_added;
+}
+
+/* Both parts go in the step, so Undo after Join gives both back. */
 static void remember(void)
 {
-    if (hist && work()->n) ge_hist_push(hist, work());
+    ge_scene sc = scene_out();
+    if (hist && hole.n) ge_hist_push_scene(hist, &sc);
+}
+
+/* Takes back the step remember() just made. */
+static void forget(void)
+{
+    ge_scene sc = scene_out();
+    if (hist && ge_hist_pop_scene(hist, &sc) == 0) scene_in(&sc);
 }
 
 static void verts_fit(void)
@@ -363,11 +391,13 @@ static void on_save(olui *ui, const olui_event *ev, void *userdata)
 static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)ev;
+    ge_scene sc = scene_out();
     (void)userdata;
-    if (!hist || ge_hist_pop(hist, work())) {
+    if (!hist || ge_hist_pop_scene(hist, &sc)) {
         say(ui, "Nothing to undo");
         return;
     }
+    scene_in(&sc);
     picked = -1;
     verts_fit();
     refresh(ui);
@@ -415,7 +445,7 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
     was_max = m->max;
     remember();
     if (ge_lay_face(m, face)) {
-        if (hist) ge_hist_pop(hist, m);
+        forget();
         say(ui, "That face will not lie flat");
         return;
     }
@@ -423,7 +453,7 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
            fabsf(m->min.z - was_min.z) < 1e-3f && fabsf(m->max.x - was_max.x) < 1e-3f &&
            fabsf(m->max.y - was_max.y) < 1e-3f && fabsf(m->max.z - was_max.z) < 1e-3f;
     if (same) {
-        if (hist) ge_hist_pop(hist, m);
+        forget();
         say(ui, "That face is already flat on the bed");
         return;
     }
@@ -506,6 +536,7 @@ static int in_view(olui *ui, struct Window *w, int mx, int my, int *lx, int *ly)
 
 static void take_added(olui *ui, gs_mesh box)
 {
+    remember();
     if (has_added) gs_mesh_free(&added);
     added = box;
     has_added = 1;
@@ -550,44 +581,20 @@ static void on_add_cyl(olui *ui, const olui_event *ev, void *userdata)
 
 static void on_bool(olui *ui, const olui_event *ev, void *userdata)
 {
-    int op = (int)(intptr_t)userdata;
-    gs_mesh out;
-    gs_mesh *a;
-    gs_mesh *b;
+    ge_scene sc = scene_out();
     int rc;
     (void)ev;
-    memset(&out, 0, sizeof out);
-    if (!has_added) {
+    /* Cut removes the selected part from the other one. */
+    rc = ge_bool(&sc, (int)(intptr_t)userdata, hist);
+    scene_in(&sc);
+    if (rc == -1) {
         say(ui, "Add a second part first");
         return;
     }
-    /* Cut removes the selected part from the other one. */
-    if (op == 1 && on_added) {
-        a = &hole;
-        b = &added;
-    } else if (op == 1) {
-        a = &added;
-        b = &hole;
-    } else {
-        a = &hole;
-        b = &added;
-    }
-    if (hist) ge_hist_push(hist, &hole);
-    if (op == 0) rc = gm_union(&out, a, b);
-    else if (op == 1) rc = gm_subtract(&out, a, b);
-    else rc = gm_intersect(&out, a, b);
-    if (rc || out.n < 1) {
-        gs_mesh_free(&out);
-        if (hist) ge_hist_pop(hist, &hole);
+    if (rc) {
         say(ui, "Those two do not meet");
         return;
     }
-    gs_mesh_free(&hole);
-    gs_mesh_free(&added);
-    memset(&added, 0, sizeof added);
-    hole = out;
-    has_added = 0;
-    on_added = 0;
     picked = -1;
     verts_fit();
     refresh(ui);
