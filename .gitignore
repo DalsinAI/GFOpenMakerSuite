@@ -2,6 +2,7 @@ build/
 *.ops
 *.gcode
 *.stl
+!core/tests/data/*.stl
 !cad/bench/library/*.stl
 cad/bench/node_modules/
 cad/bench/dist/
