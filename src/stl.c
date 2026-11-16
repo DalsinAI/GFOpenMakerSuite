@@ -132,6 +132,13 @@ int gs_stl_load(gs_mesh *m, const char *path, char *err, int errlen)
         if (memcmp(probe + i, "facet", 5) == 0) ascii = 1;
     }
     if (!ascii && got >= 5 && memcmp(probe, "solid", 5) == 0) ascii = 1;
+    /* A binary file is 84 bytes and 50 a triangle, whatever its header says. */
+    if (ascii && got >= 84 && fseek(f, 0, SEEK_END) == 0) {
+        long size = ftell(f);
+        unsigned long n = (unsigned long)probe[80] | ((unsigned long)probe[81] << 8) |
+                          ((unsigned long)probe[82] << 16) | ((unsigned long)probe[83] << 24);
+        if (size >= 84 && (size - 84) % 50 == 0 && (unsigned long)((size - 84) / 50) == n) ascii = 0;
+    }
     rewind(f);
     if ((ascii ? load_ascii(m, f, err, errlen) : load_bin(m, f, err, errlen))) {
         fclose(f);
