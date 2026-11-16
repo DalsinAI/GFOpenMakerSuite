@@ -61,6 +61,18 @@ int main(void)
     expect(gl_inset(&L, 10.5f, &gone) == 0 && gone.n == 1 && gl_loop_area(&gone.l[0]) < 0.f,
            "10.5 closes the outside up, and only the hole is left");
 
+    gl_loops_free(&gone);
+    expect(gl_inset(&L, -0.2f, &gone) == 0 && gone.n == 2, "moved out by 0.2, for a brim");
+    for (i = 0; i < gone.n; i++) {
+        float s = gl_loop_area(&gone.l[i]), h = 6.f * cosf(3.14159265f / 32.f) - 0.2f;
+        if (s > 0.f)
+            expect(near(s, 20.4f * 20.4f, 0.01f), "the outside grows to 20.4 square");
+        else
+            expect(near(-s, 32.f * h * h * tanf(3.14159265f / 32.f), 0.05f), "the hole shrinks 0.2 all round");
+    }
+    expect(gl_inset(&L, -6.5f, &gone) == 0 && gone.n == 1 && gl_loop_area(&gone.l[0]) > 400.f,
+           "6.5 out closes the hole up, and only the outside is left");
+
     thin.l = &bar;
     gl_loops_free(&gone);
     expect(gl_inset(&thin, 0.6f, &gone) == 0 && gone.n == 0, "a 1 mm bar has no room for 0.6 a side");
