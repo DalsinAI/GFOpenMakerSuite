@@ -369,10 +369,19 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* The chosen tool's button is :selected, lit in the accent. */
+static void light_tool(olui *ui)
+{
+    static const char *const ids[] = { "orbit", "move", "rot", "scale" };
+    int i;
+    for (i = 0; i < 4; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
+}
+
 static void on_tool(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)ev;
     tool = (int)(intptr_t)userdata;
+    light_tool(ui);
     refresh(ui);
 }
 
@@ -686,6 +695,7 @@ int main(int argc, char **argv)
     }
     olui_amiga_theme(a, NULL);
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
+    light_tool(ui);
     olui_amiga_layout(a);
     refresh(ui);
     for (;;) {
