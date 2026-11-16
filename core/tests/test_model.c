@@ -228,6 +228,37 @@ int main(void)
         expect(gs_stl_load(&dot, "build/dot.stl", err, (int)sizeof err) == 0 && dot.n == 1, "and it still loads");
         gs_mesh_free(&dot);
     }
+    {
+        /* Text STL as the exporters write it: tabs, CRLF, exponents and
+         * signs; a vertex line short of three numbers is refused. */
+        static const char *const good =
+            "solid t\r\n facet normal 0 0 1\r\n  outer loop\r\n"
+            "\tvertex 0 0 0\r\n\tvertex\t1.5e1 -0 +0\r\n   vertex 0.0 1E+1 2.5e-1 \r\n"
+            "  endloop\r\n endfacet\r\nendsolid t\r\n";
+        static const char *const bad = "solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1, 2, 3\n";
+        gs_mesh t;
+        char err[96];
+        FILE *f = fopen("build/text.stl", "wb");
+        memset(&t, 0, sizeof t);
+        if (f) {
+            fputs(good, f);
+            fclose(f);
+        }
+        expect(gs_stl_load(&t, "build/text.stl", err, (int)sizeof err) == 0 && t.n == 1, "a text STL loads");
+        expect(t.n == 1 && t.t[0].b.x == 15.f && t.t[0].b.y == 0.f && t.t[0].c.y == 10.f && t.t[0].c.z == 0.25f,
+               "its numbers, exponents and all");
+        gs_mesh_free(&t);
+        f = fopen("build/text.stl", "wb");
+        if (f) {
+            fputs(bad, f);
+            fclose(f);
+        }
+        err[0] = 0;
+        expect(gs_stl_load(&t, "build/text.stl", err, (int)sizeof err) == -1 &&
+                   strcmp(err, "a vertex line is not three numbers") == 0,
+               "a vertex of 1, 2, 3 is refused");
+        gs_mesh_free(&t);
+    }
     expect(gm_stl_write(&hole, "build/hole.stl") == 0, "stl");
     rgb = (unsigned char *)malloc(480 * 360 * 3);
     expect(rgb != NULL, "picture");

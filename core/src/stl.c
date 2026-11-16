@@ -1,6 +1,5 @@
 #include "gs.h"
 
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +42,27 @@ static int push(gs_mesh *m, gs_tri t)
     return 0;
 }
 
+/* No ctype.h: its table is libnix's, and a library has no libnix. */
+static int space(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v';
+}
+
+/* Three numbers, as sscanf's "%f %f %f" took them; strtof skips the
+ * spaces before each. */
+static int three(const char *s, float *x, float *y, float *z)
+{
+    char *e;
+    *x = strtof(s, &e);
+    if (e == s) return 0;
+    s = e;
+    *y = strtof(s, &e);
+    if (e == s) return 0;
+    s = e;
+    *z = strtof(s, &e);
+    return e != s;
+}
+
 static int load_ascii(gs_mesh *m, FILE *f, char *err, int errlen)
 {
     char line[256];
@@ -51,9 +71,9 @@ static int load_ascii(gs_mesh *m, FILE *f, char *err, int errlen)
     while (fgets(line, sizeof line, f)) {
         char *s = line;
         float x, y, z;
-        while (*s && isspace((unsigned char)*s)) s++;
-        if (strncmp(s, "vertex", 6) != 0 || !isspace((unsigned char)s[6])) continue;
-        if (sscanf(s + 6, "%f %f %f", &x, &y, &z) != 3) {
+        while (*s && space(*s)) s++;
+        if (strncmp(s, "vertex", 6) != 0 || !space(s[6])) continue;
+        if (!three(s + 6, &x, &y, &z)) {
             snprintf(err, (size_t)errlen, "a vertex line is not three numbers");
             return -1;
         }
