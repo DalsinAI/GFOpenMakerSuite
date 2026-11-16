@@ -28,6 +28,7 @@
 #include <gfopenlayout_ui_amiga.h>
 #include <gfopengpu/gfopengpu.h>
 #include <gfopengpu/retained.h>
+#include <gfopengpu/stream3d.h>
 #include <proto/gfopengpu.h>
 
 #include <math.h>
@@ -345,7 +346,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
-        path_join(path, (int)sizeof path, fr->fr_Drawer, fr->fr_File);
+        path_join(path, (int)sizeof path, (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
         memset(&next, 0, sizeof next);
         if (ge_open(&next, path, err, (int)sizeof err)) {
             say(ui, err[0] ? err : "Could not open that STL");
@@ -381,7 +382,7 @@ static void on_save(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
-        path_join(path, (int)sizeof path, fr->fr_Drawer, fr->fr_File);
+        path_join(path, (int)sizeof path, (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
         if (gm_stl_write(work(), path)) say(ui, "Could not save that STL");
         else {
             strncpy(stl_path, path, sizeof stl_path - 1);

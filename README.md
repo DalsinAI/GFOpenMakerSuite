@@ -121,6 +121,20 @@ m68k-amigaos-gcc -O2 -std=c99 -noixemul -Icore/include -Islicer/include -o GFOpe
     slicer/src/amiga.c slicer/src/job.c core/src/stl.c slicer/src/slice.c -lgfopenlayout -lm
 ```
 
+GFOpenMake and the core tests have their own recipe, `build-amiga.sh`. It builds
+them twice, into `build-amiga/fpu` (68040/68060 or a 68881/68882, `-mhard-float`)
+and `build-amiga/soft` (no FPU: `-msoft-float` with the SDK's
+`m68k-soft-m68040.specs`). It fails if the soft build holds any FPU instruction
+(libnix's start-up, which sets the FPCR only when AttnFlags shows an FPU, aside):
+
+```
+CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
+OLUI=.../libolui.a ./build-amiga.sh
+```
+
+`OLUI` is GFOpenLayout's 68040 UI link library, from its `build-ui-amiga.sh`.
+It has no floating point, so the one library serves both builds.
+
 The pictures above are the real GFOpenLayout draw list, painted on the host.
 `make preview` rebuilds that tool when GFOpenLayout is checked out beside
 this tree (`LAYOUT=` if it is not). `make test` needs it too, with
