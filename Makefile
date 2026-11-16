@@ -1,6 +1,6 @@
 # Host build of the GFOpenMake suite. core/ is OpenMakeCore, shared by the
 # apps: the mesh and booleans, STL, the layer cut, the plate and the view.
-# The Amiga windows are src/amiga.c (the slicer) and src/make.c (the editor).
+# The Amiga windows are src/amiga.c (the slicer) and cad/src/make.c (OpenMakeCad, the editor).
 CC ?= gcc
 CFLAGS ?= -O2
 WARN = -std=c99 -Wall -Wextra -Werror -pedantic
@@ -32,15 +32,15 @@ $(BUILD)/preview: tools/preview.c src/job.c core/src/stl.c src/slice.c core/src/
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
-$(BUILD)/test_edit: tests/test_edit.c src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c include/gs_edit.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Iinclude -o $@ tests/test_edit.c src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_edit: cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c cad/include/gs_edit.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 $(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Iinclude -o $@ core/tests/test_layer.c core/src/layer.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # GFOpenMake's window, laid out by GFOpenLayout (LAYOUT, built with make there).
-$(BUILD)/test_make_ui: tests/test_make_ui.c src/make_ui.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Isrc -I$(LAYOUT)/include -o $@ tests/test_make_ui.c \
+$(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icad/src -I$(LAYOUT)/include -o $@ cad/tests/test_make_ui.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 

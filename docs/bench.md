@@ -2,7 +2,7 @@ Superseded for the current bench by [HANDOVER.md](HANDOVER.md), 16 November 2026
 
 # Bench notes
 
-`preview/` is the browser bench. `src/make.c` is the Amiga window. The bench is ahead. These notes are the state after 9 November 2026, on top of tag `v0.2.0-rc1`.
+`cad/bench/` is the browser bench. `cad/src/make.c` is the Amiga window. The bench is ahead. These notes are the state after 9 November 2026, on top of tag `v0.2.0-rc1`.
 
 The Amiga editor opens, saves and undoes. Move, rotate and scale drag the part. Drop, Centre and Lay flat put it on a 60 mm plate. Cube and Cylinder add a part. Join, cut and intersect combine two. The picture is an `OGPU_OP_TRIANGLES` batch with a Z32 depth on a retained surface. The pen drawer is the fallback. We already have OpenGPU.
 

@@ -1,10 +1,10 @@
 # Handover
 
-16 November 2026. The browser bench in `preview/` is ahead of `src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
+16 November 2026. The browser bench in `cad/bench/` is ahead of `cad/src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
 
 ## What it is
 
-A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `src/make.c`, on the same 220 mm plate. It does not have the bench tools.
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It does not have the bench tools.
 
 The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
 
@@ -36,14 +36,14 @@ New. Show layer draws the triangle edges that cross one horizontal plane through
 
 Checked on the NASA wrench, which lands about 26 mm tall: 131 layers. Layer 1 is at 0.1 mm and was 443 mm of wall. The status says so, and it says there is no infill.
 
-`contoursAt` in `preview/modeller/layers.ts` is the whole of it. Each triangle that the plane cuts contributes one segment. The segments are not joined into loops. There is no infill and no G-code. Do not call this a slice. The slicer, when someone wires this up, still has to weld the loops the way `src/slice.c` does.
+`contoursAt` in `cad/bench/modeller/layers.ts` is the whole of it. Each triangle that the plane cuts contributes one segment. The segments are not joined into loops. There is no infill and no G-code. Do not call this a slice. The slicer, when someone wires this up, still has to weld the loops the way `src/slice.c` does.
 
 Turning a part off hides the lines. Moving the part with the gizmo refreshes them when the drag ends, not on every move.
 
 ## Limits
 
 - 24 parts. Undo keeps 24 steps.
-- Join, cut, intersect, drill, bolt circle, row, counterbore, countersink and split stop at 2,500 triangles (`BOOLEAN_LIMIT` in `preview/modeller/library.ts`). A result over 20,000 triangles is refused and the part is left as it was.
+- Join, cut, intersect, drill, bolt circle, row, counterbore, countersink and split stop at 2,500 triangles (`BOOLEAN_LIMIT` in `cad/bench/modeller/library.ts`). A result over 20,000 triangles is refused and the part is left as it was.
 - The NASA wrench and the spacecraft can be opened, turned, measured and saved. They cannot be drilled or joined. The Utah teapot is CC0. The workshop parts are made here.
 - A part that hangs off the 220 mm plate is marked. The mass line assumes solid PLA at 1.24 g/cm³. That is a guess for the solid, not a sliced estimate.
 - Section is a clipping plane. It does not cut triangles until Split.
@@ -52,20 +52,20 @@ Turning a part off hides the lines. Moving the part with the gizmo refreshes the
 
 | Path | What it is |
 | --- | --- |
-| `preview/modeller/studio.tsx` | The window |
-| `preview/modeller/bench.ts` | The plate, the tools, the snapshot |
-| `preview/modeller/layers.ts` | One plane of wall segments |
-| `preview/styles.css` | The Clear window |
-| `preview/modeller/gs.js` | The BSP booleans |
-| `preview/modeller/solids.ts` | Box, cylinder, sphere, cone, torus, wedge, slot |
-| `preview/library/` | The shelf. NASA models are public domain |
+| `cad/bench/modeller/studio.tsx` | The window |
+| `cad/bench/modeller/bench.ts` | The plate, the tools, the snapshot |
+| `cad/bench/modeller/layers.ts` | One plane of wall segments |
+| `cad/bench/styles.css` | The Clear window |
+| `cad/bench/modeller/gs.js` | The BSP booleans |
+| `cad/bench/modeller/solids.ts` | Box, cylinder, sphere, cone, torus, wedge, slot |
+| `cad/bench/library/` | The shelf. NASA models are public domain |
 
 `library.ts`, `solids.ts`, `stl.ts` and `gs.js` were not changed for this note.
 
 ## Not done
 
 - Layers do not become the slicer's loops.
-- `src/make.c` does not have extrude, keyway, pull, chamfer, the hole tools, split, or layers.
+- `cad/src/make.c` does not have extrude, keyway, pull, chamfer, the hole tools, split, or layers.
 - The view is the solid. Toolpaths are not drawn back on it.
 - The slicer is still one wall, a rectangular skirt, no brim, no support, and no start or end G-code of your own.
 

@@ -2,6 +2,6 @@ build/
 *.ops
 *.gcode
 *.stl
-!preview/library/*.stl
-preview/node_modules/
-preview/dist/
+!cad/bench/library/*.stl
+cad/bench/node_modules/
+cad/bench/dist/
