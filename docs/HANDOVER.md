@@ -1,0 +1,74 @@
+# Handover
+
+16 November 2026. The browser bench in `preview/` is ahead of `src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
+
+## What it is
+
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `src/make.c`, on a 60 mm plate. It does not have the bench tools.
+
+The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
+
+Colours, from the Clear theme: window `#f9f9f9`, text `#1b1b1b`, accent `#0067c0`, buttons `#fefefe` to `#fbfbfb`, border `#d0d0d0`, radius 4 px, inputs `#ffffff` with border `#d6d6d6`, groups radius 8, font Segoe UI at 12 px. A selected tool, a selected part, and Save STL use the accent. Delete stays red.
+
+## The window
+
+Left: Tools, Picture, Extrude, Make, Library.
+
+Middle: the plate. Left drag orbits. Right drag pans. The wheel zooms. Drop an STL on the plate to open it.
+
+Right, once a part is selected: name and colour, size and place, arrange, layers, holes and joins.
+
+Bottom: the status, then Open STL, Save part, Undo, Redo, and Save STL.
+
+Keys, when the cursor is not in a field: G move, R turn, S scale, F frame, M measure, C section, `[` and `]` move the section, P pull, I solo. Delete removes the part. Escape leaves measure, sketch and pull. Ctrl-Z undoes. Ctrl-Shift-Z and Ctrl-Y redo. Ctrl-D copies.
+
+## What was already there
+
+The 9 November list in `docs/bench.md` still holds, and those checks were not redone for this note.
+
+Add sits on the bed. On joins a boss to the selected part. Cut takes that depth off the top. Place uses width, depth and height. A round uses width as the diameter. Keyway is a slot. Pull and Chamfer move the face you clicked. Drill, bolt circle, row, counterbore and a 90° countersink. Split keeps both halves. Washer, line, ring, mirror, copy, stack, solo, section, measure. Drop, Centre, Lay flat. Metal, clay and wire. Top, front, side, frame.
+
+The part under the selection is the stock. Join, Cut and Intersect combine the two. Drill bores the selection on its own.
+
+## Layers
+
+New. Show layer draws the triangle edges that cross one horizontal plane through the selected part. The height is 0.08 mm to 0.8 mm. The default is 0.2 mm. Previous, Next, and the slider on the picture step it. The line is blue, and it sits 0.05 mm above the plane so it reads on the surface.
+
+Checked on the NASA wrench, which lands about 26 mm tall: 131 layers. Layer 1 is at 0.1 mm and was 443 mm of wall. The status says so, and it says there is no infill.
+
+`contoursAt` in `preview/modeller/layers.ts` is the whole of it. Each triangle that the plane cuts contributes one segment. The segments are not joined into loops. There is no infill and no G-code. Do not call this a slice. The slicer, when someone wires this up, still has to weld the loops the way `src/slice.c` does.
+
+Turning a part off hides the lines. Moving the part with the gizmo refreshes them when the drag ends, not on every move.
+
+## Limits
+
+- 24 parts. Undo keeps 24 steps.
+- Join, cut, intersect, drill, bolt circle, row, counterbore, countersink and split stop at 2,500 triangles (`BOOLEAN_LIMIT` in `preview/modeller/library.ts`). A result over 20,000 triangles is refused and the part is left as it was.
+- The NASA wrench and the spacecraft can be opened, turned, measured and saved. They cannot be drilled or joined. The Utah teapot is CC0. The workshop parts are made here.
+- A part that hangs off the 220 mm plate is marked. The mass line assumes solid PLA at 1.24 g/cm³. That is a guess for the solid, not a sliced estimate.
+- Section is a clipping plane. It does not cut triangles until Split.
+
+## Files
+
+| Path | What it is |
+| --- | --- |
+| `preview/modeller/studio.tsx` | The window |
+| `preview/modeller/bench.ts` | The plate, the tools, the snapshot |
+| `preview/modeller/layers.ts` | One plane of wall segments |
+| `preview/styles.css` | The Clear window |
+| `preview/modeller/gs.js` | The BSP booleans |
+| `preview/modeller/solids.ts` | Box, cylinder, sphere, cone, torus, wedge, slot |
+| `preview/library/` | The shelf. NASA models are public domain |
+
+`library.ts`, `solids.ts`, `stl.ts` and `gs.js` were not changed for this note.
+
+## Not done
+
+- Layers do not become the slicer's loops.
+- `src/make.c` does not have extrude, keyway, pull, chamfer, the hole tools, split, or layers. The plate there is still 60 mm.
+- The view is the solid. Toolpaths are not drawn back on it.
+- The slicer is still one wall, a rectangular skirt, no brim, no support, and no start or end G-code of your own.
+
+## What was not run
+
+The Amiga window was not rebuilt. `make test` was not run for this note. A host picture of the bench is not an Amiga run.

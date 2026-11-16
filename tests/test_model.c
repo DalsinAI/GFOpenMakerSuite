@@ -110,6 +110,28 @@ int main(void)
         gs_mesh_free(&miss);
     }
     {
+        /* A sliver from a cut once made its own plane split it again, for
+         * ever: r = 5 and 5.5 on 32 sides overflowed the stack. */
+        static const int sides[2] = {32, 24};
+        int si, k;
+        for (si = 0; si < 2; si++) {
+            for (k = 2; k <= 16; k++) {
+                gs_mesh rod, cut;
+                float r = (float)k * 0.5f, want;
+                char what[64];
+                memset(&rod, 0, sizeof rod);
+                memset(&cut, 0, sizeof cut);
+                want = 8000.f - 10.f * (float)sides[si] * r * r * sinf(6.2831853f / (float)sides[si]);
+                snprintf(what, sizeof what, "cube minus r %.1f on %d sides", r, sides[si]);
+                expect(gm_cylinder(&rod, 10, 10, -1, r, 22, sides[si]) == 0 && gm_subtract(&cut, &box, &rod) == 0 &&
+                           fabsf(volume(&cut) - want) < want * 0.01f && !inside(&cut, 10.f, 10.f, 10.f),
+                       what);
+                gs_mesh_free(&rod);
+                gs_mesh_free(&cut);
+            }
+        }
+    }
+    {
         /* Binary STL is little-endian on every machine: an 80 byte header,
          * a uint32 count, then 50 bytes a triangle. */
         gs_mesh again;
