@@ -74,6 +74,35 @@ int main(void)
     expect(two.m[two.n - 1].x == two.m[two.n - 2].x, "and the next one's along y");
     gt_free(&two);
 
+    {
+        gs_mesh wrench;
+        gt_path all;
+        float lo[3], hi[3];
+        char err[96];
+        int empty = 0, i;
+        expect(gs_stl_load(&wrench, "core/tests/data/nasa-wrench.stl", err, (int)sizeof err) == 0, "the wrench");
+        gs_mesh_repair(&wrench);
+        gp_place(&wrench, 220.f, 220.f);
+        expect(wrench.min.z == 0.f && fabsf(wrench.min.x + wrench.max.x - 220.f) < 1e-3f &&
+                   fabsf(wrench.min.y + wrench.max.y - 220.f) < 1e-3f,
+               "placed on the bed, in the middle");
+        gt_init(&all);
+        expect(gp_part(&all, &wrench, &o) == 0 && all.nlayers == 130, "130 layers");
+        for (i = 0; i < all.nlayers; i++)
+            if ((i + 1 < all.nlayers ? all.layer[i + 1] : all.n) - all.layer[i] < 4) empty++;
+        expect(!empty, "something on every layer");
+        expect(gt_length(&all, GT_BRIM) > 0.f && gt_length(&all, GT_OUTER) > 0.f && gt_length(&all, GT_INNER) > 0.f &&
+                   gt_length(&all, GT_SKIN) > 0.f && gt_length(&all, GT_INFILL) > 0.f,
+               "brim, walls, skin and infill");
+        expect(gt_bounds(&all, lo, hi) == 0 && lo[0] > 0.f && hi[0] < 220.f && fabsf(lo[2] - 0.2f) < 1e-4f &&
+                   fabsf(hi[2] - 26.f) < 1e-3f,
+               "on the bed, from 0.2 up to 26");
+        printf("wrench: %d moves; walls %.0f, skin %.0f, infill %.0f mm\n", all.n,
+               gt_length(&all, GT_OUTER) + gt_length(&all, GT_INNER), gt_length(&all, GT_SKIN), gt_length(&all, GT_INFILL));
+        gt_free(&all);
+        gs_mesh_free(&wrench);
+    }
+
     gs_mesh_free(&box);
     gs_mesh_free(&rod);
     gs_mesh_free(&holed);

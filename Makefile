@@ -74,7 +74,7 @@ $(BUILD)/test_gcode: core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c -lm
 
 PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/layer.c core/src/loops.c
-$(BUILD)/test_plan: core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c core/include/gs_plan.h core/include/gs_toolpath.h | $(BUILD)
+$(BUILD)/test_plan: core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c core/include/gs_plan.h core/include/gs_toolpath.h core/tests/data/nasa-wrench.stl | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c -lm
 
 # openmakemesh.library's calls, the same way.
