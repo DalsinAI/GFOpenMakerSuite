@@ -13,14 +13,20 @@
 
 #define VMAX 16
 #define EPS 1e-5f
+#define COPLANAR 0.99f /* normals this close are one plane */
 
 typedef struct {
     float x, y, z;
 } mv;
 
+/* A polygon keeps the plane it was made on. Pieces of a split take
+ * their parent's plane rather than working one out from their own
+ * corners, which for a long sliver is far off. */
 typedef struct {
     mv v[VMAX];
     int n;
+    mv nrm;
+    float w;
 } poly;
 
 typedef struct {
@@ -84,11 +90,13 @@ static int bag_add(bag *b, const poly *p)
 /* A split can leave a piece with more corners than a poly holds; it is
  * convex, so it is cut in two along a diagonal from its first corner.
  * Both halves keep that diagonal's exact points, so no crack opens. */
-static int bag_add_long(bag *b, const mv *v, int n)
+static int bag_add_long(bag *b, const mv *v, int n, const poly *parent)
 {
     poly p;
     int i;
     if (n < 3) return 0;
+    p.nrm = parent->nrm;
+    p.w = parent->w;
     if (n <= VMAX) {
         p.n = n;
         for (i = 0; i < n; i++) p.v[i] = v[i];
@@ -102,7 +110,7 @@ static int bag_add_long(bag *b, const mv *v, int n)
         int k = 0;
         rest[k++] = v[0];
         for (i = VMAX - 1; i < n; i++) rest[k++] = v[i];
-        return bag_add_long(b, rest, k);
+        return bag_add_long(b, rest, k, parent);
     }
 }
 
@@ -143,6 +151,10 @@ static int less(mv a, mv b)
 static void flip_poly(poly *p)
 {
     int i, h = p->n / 2;
+    p->nrm.x = -p->nrm.x;
+    p->nrm.y = -p->nrm.y;
+    p->nrm.z = -p->nrm.z;
+    p->w = -p->w;
     for (i = 0; i < h; i++) {
         mv t = p->v[i];
         p->v[i] = p->v[p->n - 1 - i];
@@ -157,8 +169,6 @@ static int split_poly(const node *nd, const poly *in, bag *front, bag *back)
     float d[VMAX];
     int c[VMAX];
     mv f[VMAX + 2], b[VMAX + 2];
-    mv pn;
-    float pw;
     for (i = 0; i < in->n; i++) {
         d[i] = side(nd, in->v[i]);
         if (d[i] > EPS) {
@@ -172,8 +182,15 @@ static int split_poly(const node *nd, const poly *in, bag *front, bag *back)
         }
     }
     if (!nf && !nb) {
-        if (!plane_of(in, &pn, &pw)) return 0;
-        if (dot(pn, nd->nrm) > 0.f) return bag_add(front, in);
+        float k = dot(in->nrm, nd->nrm);
+        /* A sliver can lie within EPS of a plane it crosses at an angle:
+         * it is not on that plane, so its middle says which side it is. */
+        if (k < COPLANAR && k > -COPLANAR) {
+            float sum = 0.f;
+            for (i = 0; i < in->n; i++) sum += d[i];
+            return bag_add(sum > 0.f ? front : back, in);
+        }
+        if (k > 0.f) return bag_add(front, in);
         return bag_add(back, in);
     }
     if (!nb) return bag_add(front, in);
@@ -199,7 +216,7 @@ static int split_poly(const node *nd, const poly *in, bag *front, bag *back)
             b[nb++] = p;
         }
     }
-    if (bag_add_long(front, f, nf) || bag_add_long(back, b, nb)) return -1;
+    if (bag_add_long(front, f, nf, in) || bag_add_long(back, b, nb, in)) return -1;
     return 0;
 }
 
@@ -220,7 +237,8 @@ static int node_build(node *n, const bag *src)
     memset(&back, 0, sizeof back);
     if (!src->n) return 0;
     if (!n->has) {
-        if (!plane_of(&src->p[0], &n->nrm, &n->w)) return 0;
+        n->nrm = src->p[0].nrm;
+        n->w = src->p[0].w;
         n->has = 1;
         made = 1;
     }
@@ -245,7 +263,13 @@ static int node_build(node *n, const bag *src)
             }
         }
         if (on) {
-            if (bag_add(&n->co, p)) goto fail;
+            float k = dot(p->nrm, n->nrm), sum = 0.f;
+            if (k >= COPLANAR || k <= -COPLANAR) {
+                if (bag_add(&n->co, p)) goto fail;
+                continue;
+            }
+            for (vi = 0; vi < p->n; vi++) sum += side(n, p->v[vi]);
+            if (bag_add(sum > 0.f ? &front : &back, p)) goto fail;
             continue;
         }
         if (out && !inn) {
@@ -413,27 +437,6 @@ static int mesh_from(gs_mesh *m, const bag *b)
     return 0;
 }
 
-static int from_mesh(bag *b, const gs_mesh *m)
-{
-    int i;
-    memset(b, 0, sizeof *b);
-    for (i = 0; i < m->n; i++) {
-        poly p;
-        p.n = 3;
-        p.v[0].x = m->t[i].a.x;
-        p.v[0].y = m->t[i].a.y;
-        p.v[0].z = m->t[i].a.z;
-        p.v[1].x = m->t[i].b.x;
-        p.v[1].y = m->t[i].b.y;
-        p.v[1].z = m->t[i].b.z;
-        p.v[2].x = m->t[i].c.x;
-        p.v[2].y = m->t[i].c.y;
-        p.v[2].z = m->t[i].c.z;
-        if (bag_add(b, &p)) return -1;
-    }
-    return 0;
-}
-
 static int tri(gs_mesh *m, float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz)
 {
     gs_tri t;
@@ -585,6 +588,137 @@ static int weld(const gs_mesh *m, int *idx, wv **pts)
     free(num);
     *pts = p;
     return nv;
+}
+
+/* A sliver: its height is under SLIVER of its longest edge. Its own
+ * corners give a poor plane, so it takes a neighbour's when that plane
+ * holds all three of its corners. */
+#define SLIVER 0.05f
+
+static float shape(const poly *p)
+{
+    mv u, v, c;
+    float l0, l1, l2, L;
+    u.x = p->v[1].x - p->v[0].x;
+    u.y = p->v[1].y - p->v[0].y;
+    u.z = p->v[1].z - p->v[0].z;
+    v.x = p->v[2].x - p->v[0].x;
+    v.y = p->v[2].y - p->v[0].y;
+    v.z = p->v[2].z - p->v[0].z;
+    c = cross(u, v);
+    l0 = dot(u, u);
+    l1 = dot(v, v);
+    u.x -= v.x;
+    u.y -= v.y;
+    u.z -= v.z;
+    l2 = dot(u, u);
+    L = l0 > l1 ? l0 : l1;
+    if (l2 > L) L = l2;
+    return L > 0.f ? sqrtf(dot(c, c)) / L : 0.f;
+}
+
+static int fits(const poly *s, const poly *g)
+{
+    int k;
+    if (dot(s->nrm, g->nrm) < 0.99f) return 0;
+    for (k = 0; k < 3; k++)
+        if (fabsf(dot(g->nrm, s->v[k]) - g->w) > ONEDGE) return 0;
+    return 1;
+}
+
+typedef struct {
+    int lo, hi, t;
+} side_of;
+
+static int by_side(const void *p, const void *q)
+{
+    const side_of *a = (const side_of *)p, *b = (const side_of *)q;
+    if (a->lo != b->lo) return a->lo < b->lo ? -1 : 1;
+    return a->hi < b->hi ? -1 : a->hi > b->hi ? 1 : 0;
+}
+
+static int from_mesh(bag *b, const gs_mesh *m)
+{
+    int i, k, nv, round, ns = 0, changed = 1;
+    int *idx = NULL;
+    char *good = NULL;
+    side_of *sd = NULL;
+    wv *pts = NULL;
+    memset(b, 0, sizeof *b);
+    for (i = 0; i < m->n; i++) {
+        poly p;
+        p.n = 3;
+        p.v[0].x = m->t[i].a.x;
+        p.v[0].y = m->t[i].a.y;
+        p.v[0].z = m->t[i].a.z;
+        p.v[1].x = m->t[i].b.x;
+        p.v[1].y = m->t[i].b.y;
+        p.v[1].z = m->t[i].b.z;
+        p.v[2].x = m->t[i].c.x;
+        p.v[2].y = m->t[i].c.y;
+        p.v[2].z = m->t[i].c.z;
+        if (!plane_of(&p, &p.nrm, &p.w)) {
+            /* No area, so no plane: kept on z so the bag lines up with the mesh. */
+            p.nrm.x = p.nrm.y = 0.f;
+            p.nrm.z = 1.f;
+            p.w = p.v[0].z;
+            p.n = 0;
+        }
+        if (b->n >= b->cap) {
+            int c = b->cap ? b->cap * 2 : 32;
+            poly *np = (poly *)realloc(b->p, (size_t)c * sizeof *np);
+            if (!np) return -1;
+            b->p = np;
+            b->cap = c;
+        }
+        b->p[b->n++] = p;
+    }
+    if (!m->n) return 0;
+    idx = (int *)malloc((size_t)m->n * 3 * sizeof *idx);
+    good = (char *)malloc((size_t)m->n);
+    sd = (side_of *)malloc((size_t)m->n * 3 * sizeof *sd);
+    if (!idx || !good || !sd || (nv = weld(m, idx, &pts)) < 0) goto done;
+    for (i = 0; i < m->n; i++) {
+        good[i] = b->p[i].n == 3 && shape(&b->p[i]) >= SLIVER;
+        for (k = 0; k < 3; k++) {
+            int a = idx[i * 3 + k], c = idx[i * 3 + (k + 1) % 3];
+            if (a == c) continue;
+            sd[ns].lo = a < c ? a : c;
+            sd[ns].hi = a < c ? c : a;
+            sd[ns].t = i;
+            ns++;
+        }
+    }
+    qsort(sd, (size_t)ns, sizeof *sd, by_side);
+    /* A run of slivers takes the plane in from the good triangle at its end. */
+    for (round = 0; round < 32 && changed; round++) {
+        changed = 0;
+        for (i = 0; i < ns; i = k) {
+            int j, g = -1;
+            for (k = i; k < ns && sd[k].lo == sd[i].lo && sd[k].hi == sd[i].hi; k++)
+                if (good[sd[k].t]) g = sd[k].t;
+            if (g < 0) continue;
+            for (j = i; j < k; j++) {
+                int t = sd[j].t;
+                if (good[t] || b->p[t].n != 3 || !fits(&b->p[t], &b->p[g])) continue;
+                b->p[t].nrm = b->p[g].nrm;
+                b->p[t].w = b->p[g].w;
+                good[t] = 1;
+                changed = 1;
+            }
+        }
+    }
+done:
+    free(idx);
+    free(good);
+    free(sd);
+    free(pts);
+    /* Drop the empty ones now that the numbering is done with. */
+    for (i = k = 0; i < b->n; i++)
+        if (b->p[i].n == 3) b->p[k++] = b->p[i];
+    b->n = k;
+    (void)nv;
+    return 0;
 }
 
 typedef struct {
