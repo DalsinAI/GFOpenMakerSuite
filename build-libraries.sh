@@ -16,7 +16,8 @@ NM=${NM:-$BIN/m68k-amigaos-nm}
 SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 OUT=${OUT:-"$HERE/build-amiga/libs"}
 cd "$HERE"
-python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd --check
+python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
+    core/library/openmakemesh_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -75,5 +76,13 @@ for v in fpu soft; do
         core/library/openmakepath_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakePathBase '-DLINK_NAME="openmakepath.library"' -lm
     echo "$OUT/$v/TestLayerLib: $(wc -c < "$OUT/$v/TestLayerLib") bytes"
+    lib "$v" "$flags" openmakemesh.library core/include \
+        core/library/openmakemesh_lib.c core/src/model.c core/src/stl.c
+    # core/tests/test_model.c, the solids, booleans and STL through the library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestModelLib" core/tests/test_model.c \
+        core/src/view.c core/src/solid.c \
+        core/library/openmakemesh_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeMeshBase '-DLINK_NAME="openmakemesh.library"' -lm
+    echo "$OUT/$v/TestModelLib: $(wc -c < "$OUT/$v/TestModelLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"
