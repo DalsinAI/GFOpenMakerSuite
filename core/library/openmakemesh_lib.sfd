@@ -1,0 +1,24 @@
+==id $Id: openmakemesh_lib.sfd 1.0 (16.11.2026) $
+* "openmakemesh.library": OpenMakeCore's meshes (gs.h, gs_model.h): STL
+* in and out, repair, and the solids and booleans of a small CAD. Each
+* call is its C function in snake case (GM_OpenEdges is gm_open_edges);
+* floats travel as their bits. Never reorder or take a call out; add new
+* ones at the end. core/library/gen-library.py writes the rest from this.
+==base _OpenMakeMeshBase
+==basetype struct Library *
+==libname openmakemesh.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_model.h>
+int GS_StlLoad(gs_mesh *m, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+void GS_MeshFree(gs_mesh *m)(a0)
+void GS_MeshRepair(gs_mesh *m)(a0)
+int GM_Cube(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)(a0,d0,d1,d2,d3,d4,d5)
+int GM_Cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg)(a0,d0,d1,d2,d3,d4,d5)
+int GM_Union(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b)(a0,a1,a2)
+int GM_Subtract(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b)(a0,a1,a2)
+int GM_Intersect(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b)(a0,a1,a2)
+int GM_OpenEdges(const gs_mesh *m)(a0)
+int GM_StlWrite(const gs_mesh *m, const char *path)(a0,a1)
+==end
