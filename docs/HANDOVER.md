@@ -4,7 +4,7 @@
 
 ## What it is
 
-A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It does not have the bench tools.
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is still `slicer/src/slice.c`: one wall, 45° infill, a rectangular skirt. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It does not have the bench tools.
 
 The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
 
@@ -36,7 +36,7 @@ New. Show layer draws the triangle edges that cross one horizontal plane through
 
 Checked on the NASA wrench, which lands about 26 mm tall: 131 layers. Layer 1 is at 0.1 mm and was 443 mm of wall. The status says so, and it says there is no infill.
 
-`contoursAt` in `cad/bench/modeller/layers.ts` is the whole of it. Each triangle that the plane cuts contributes one segment. The segments are not joined into loops. There is no infill and no G-code. Do not call this a slice. The slicer, when someone wires this up, still has to weld the loops the way `src/slice.c` does.
+`contoursAt` in `cad/bench/modeller/layers.ts` is the whole of it. Each triangle that the plane cuts contributes one segment. The segments are not joined into loops. There is no infill and no G-code. Do not call this a slice. The slicer, when someone wires this up, still has to weld the loops the way `slicer/src/slice.c` does.
 
 Turning a part off hides the lines. Moving the part with the gizmo refreshes them when the drag ends, not on every move.
 
