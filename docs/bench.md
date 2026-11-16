@@ -1,3 +1,5 @@
+Superseded for the current bench by [HANDOVER.md](HANDOVER.md), 16 November 2026. The list below is the 9 November record.
+
 # Bench notes
 
 `preview/` is the browser bench. `src/make.c` is the Amiga window. The bench is ahead. These notes are the state after 9 November 2026, on top of tag `v0.2.0-rc1`.
