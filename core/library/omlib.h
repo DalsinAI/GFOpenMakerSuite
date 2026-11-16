@@ -4,13 +4,14 @@
 #ifndef OM_LIB_H
 #define OM_LIB_H
 
+struct Library;
+
 #ifdef OM_LIB_HOST
 #include <stdint.h>
 typedef uint32_t ULONG;
 /* On the host a slot holds a function: APTR is a function pointer here,
  * so the casts are ISO C's. */
 typedef void (*APTR)(void);
-struct Library;
 #define REG(r, decl) decl
 /* The host test's stand-in for the jump table: the call at bias. */
 APTR om_host_vector(struct Library *base, int bias);

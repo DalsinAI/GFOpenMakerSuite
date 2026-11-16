@@ -412,7 +412,9 @@ double RT(strtod)(const char *s, char **end)
     if (end) *end = (char *)p;
     /* Exact when the digits and the power of ten both are (up to 2^53 and
      * 1e22): one rounding, as the host's. */
-    v = (double)m;
+    /* In two halves: a uint64_t to double is a libgcc call the FPU's
+     * libgcc makes through soft-float ones. Exact below 2^53. */
+    v = (double)(uint32_t)(m >> 32) * 4294967296.0 + (double)(uint32_t)m;
     if (ex < 0 && ex >= -22) v /= ten_to(-ex);
     else if (ex < -22) v = v / ten_to(22) / ten_to(-ex - 22);
     else if (ex) v *= ten_to(ex);
