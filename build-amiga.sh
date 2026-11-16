@@ -41,11 +41,20 @@ build() {
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
     for f in "$dir"/*; do
+        # Decoded as a 68040's, or objdump shows FPU words as .short and
+        # misses them. Every FPU mnemonic starts with f; no other does.
         # libnix's start-up clears the FPCR only when AttnFlags says there
         # is an FPU, so that one is not counted.
-        n=$("$OBJDUMP" -d "$f" | grep -E '^\s+[0-9a-f]+:\s.*\sf(move|add|sub|mul|div|sqrt|cmp|abs|neg|int)' | grep -cv 'd0,fpcr$' || true)
+        n=$("$OBJDUMP" -m m68k:68040 -d "$f" | awk -F'\t' 'NF >= 3 && $3 ~ /^f/ && $3 !~ /d0,%?fpcr$/' | wc -l | tr -d ' ')
         echo "$f: $(wc -c < "$f") bytes, $n FPU instructions"
         echo "$(basename "$f") $n" >> "$OUT/$name.fpu"
+        # The 68040 and 68060 trap FSIN, FCOS, FETOX and the rest to
+        # software (68040.library); none may be in either build.
+        t=$("$OBJDUMP" -m m68k:68040 -d "$f" | awk -F'\t' 'NF >= 3 && $3 ~ /^f(sin|cos|tan|atan|asin|acos|etox|twotox|tentox|log|sinh|cosh|tanh|getexp|getman|rem|mod|scale)/' | wc -l | tr -d ' ')
+        if [ "$t" != 0 ]; then
+            echo "build-amiga: $f has $t FPU instructions a 68040 traps" >&2
+            exit 1
+        fi
     done
 }
 
