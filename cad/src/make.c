@@ -9,6 +9,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_gpu.h"
+#include "gs_layer.h"
 #include "gs_model.h"
 #include "make_ui.h"
 
@@ -48,6 +49,10 @@ static int gpu_on, on_chip, draw_grid, presented;
 static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip;
 static ge_hist *hist;
 static char stl_path[256] = "RAM:hole.stl";
+/* The Layers group: the height, whether a layer is shown, which, and its walls. */
+static float layer_h = 0.2f;
+static int show_layer, layer_no = 1;
+static gl_walls walls;
 struct Library *OpenGPUBase;
 
 static struct OGPURetained *rs;
@@ -149,6 +154,8 @@ static int gpu_ensure(int w, int h)
     return 1;
 }
 
+static void verts_fit(int extra);
+
 static int draw_gpu(int x, int y, int w, int h)
 {
     int nv, nw;
@@ -156,8 +163,14 @@ static int draw_gpu(int x, int y, int w, int h)
     if (!gpu_on || !verts || !batch) return 0;
     if (!gpu_ensure(w, h)) return 0;
     rebuild_shown();
+    verts_fit(show_layer ? walls.n * 6 : 0);
     nv = gs_gpu_vertices_plate(&shown, &cam, w, h, verts, vert_cap);
     if (nv < 3) return 0;
+    /* The layer's walls go after the part's, in the same batch. */
+    if (show_layer && walls.n) {
+        int nw2 = gs_gpu_walls_plate(&walls, &shown, &cam, w, h, verts + nv * 6, vert_cap - nv);
+        if (nw2 > 0) nv += nw2;
+    }
     nw = gs_gpu_stream_plate(batch, (int)(batch_bytes / 4),
                        (uint32_t)(uintptr_t)verts, nv,
                        (uint32_t)(uintptr_t)rs->rs_Pixels, (int)rs->rs_BytesPerRow,
@@ -184,10 +197,13 @@ static void draw_pens(int x, int y, int w, int h)
         free(rgb);
         return;
     }
+    if (show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
     for (row = 0; row < h; row++) {
         for (col = 0; col < w; col++) {
             unsigned char *p = rgb + ((size_t)row * (size_t)w + (size_t)col) * 3;
-            int pen = p[0] < 40 ? 0 : p[0] < 140 ? 1 : 2;
+            /* Grey to the three greys; the walls' blue to the window's
+             * fourth pen, the Workbench blue. */
+            int pen = (p[2] > 150 && p[0] < 40) ? 3 : p[0] < 40 ? 0 : p[0] < 140 ? 1 : 2;
             SetAPen(win->RPort, (UBYTE)pen);
             WritePixel(win->RPort, (WORD)(x + col), (WORD)(y + row));
         }
@@ -222,9 +238,29 @@ static const char *tool_label(void)
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
+/* Cuts the shown layer again, after the part or the height changed. */
+static void recut(void)
+{
+    int n;
+    rebuild_shown();
+    n = gl_layers(&shown, layer_h);
+    if (layer_no > n) layer_no = n;
+    if (layer_no < 1) layer_no = 1;
+    if (show_layer) gl_cut(&shown, layer_h, layer_no, &walls);
+    else gl_walls_free(&walls);
+}
+
 static void refresh(olui *ui)
 {
     char status[180];
+    recut();
+    if (show_layer) {
+        gl_status(status, (int)sizeof status, &shown, layer_h, layer_no, &walls);
+        say(ui, status);
+        face_line(ui);
+        olui_repaint(ui, olui_find(ui, "view"), NULL);
+        return;
+    }
     snprintf(status, sizeof status, "%s, %d triangles%s. %s",
              (has_added && on_added) ? "added part" : "stock",
              work()->n,
@@ -267,10 +303,10 @@ static void forget(void)
     if (hist && ge_hist_pop_scene(hist, &sc) == 0) scene_in(&sc);
 }
 
-static void verts_fit(void)
+static void verts_fit(int extra)
 {
     int need = hole.n + (has_added ? added.n : 0);
-    need *= 3;
+    need = need * 3 + extra;
     uint32_t *p;
     ULONG bytes;
     if (!verts || need <= vert_cap) return;
@@ -319,7 +355,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
             picked = -1;
             strncpy(stl_path, path, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
-            verts_fit();
+            verts_fit(0);
             refresh(ui);
         }
     }
@@ -365,7 +401,7 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
     }
     scene_in(&sc);
     picked = -1;
-    verts_fit();
+    verts_fit(0);
     refresh(ui);
 }
 
@@ -433,6 +469,50 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     picked = face;
+    refresh(ui);
+}
+
+/* The slider is 1 to 100 along the part's layers; Prev and Next step one. */
+static void slider_to_layer(olui *ui)
+{
+    int n = gl_layers(&shown, layer_h);
+    olui_set_slider(ui, olui_find(ui, "layer"), n > 1 ? 1 + (layer_no - 1) * 99 / (n - 1) : 1);
+}
+
+static void on_height(olui *ui, const olui_event *ev, void *userdata)
+{
+    olui_el *lh = olui_find(ui, "lh");
+    (void)ev;
+    (void)userdata;
+    layer_h = (float)olui_number_value(lh) / 100.f;
+    if (layer_h < GL_MIN_H) layer_h = GL_MIN_H;
+    if (layer_h > GL_MAX_H) layer_h = GL_MAX_H;
+    refresh(ui);
+    slider_to_layer(ui);
+}
+
+static void on_show(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)userdata;
+    show_layer = ev->checked;
+    refresh(ui);
+}
+
+static void on_step(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    layer_no += (int)(intptr_t)userdata;
+    if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
+    refresh(ui);
+    slider_to_layer(ui);
+}
+
+static void on_slide(olui *ui, const olui_event *ev, void *userdata)
+{
+    int n = gl_layers(&shown, layer_h);
+    (void)userdata;
+    layer_no = n > 1 ? 1 + ((ev->index - 1) * (n - 1) + 49) / 99 : 1;
+    if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
     refresh(ui);
 }
 
@@ -517,7 +597,7 @@ static void take_added(olui *ui, gs_mesh box)
     has_added = 1;
     on_added = 1;
     picked = -1;
-    verts_fit();
+    verts_fit(0);
     refresh(ui);
 }
 
@@ -571,7 +651,7 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     picked = -1;
-    verts_fit();
+    verts_fit(0);
     refresh(ui);
 }
 
@@ -650,6 +730,11 @@ int main(int argc, char **argv)
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);
+    olui_on(ui, "lh", OLUI_CHANGE, on_height, NULL);
+    olui_on(ui, "show", OLUI_CHANGE, on_show, NULL);
+    olui_on(ui, "prev", OLUI_CLICK, on_step, (void *)(intptr_t)-1);
+    olui_on(ui, "next", OLUI_CLICK, on_step, (void *)(intptr_t)1);
+    olui_on(ui, "layer", OLUI_CHANGE, on_slide, NULL);
     gs_cam_home(&cam);
     w = OpenWindowTags(NULL,
         WA_Title, (ULONG)"GFOpenMake",
@@ -762,6 +847,7 @@ done:
     gs_mesh_free(&hole);
     gs_mesh_free(&added);
     gs_mesh_free(&shown);
+    gl_walls_free(&walls);
     olui_free(ui);
     gpu_free();
     if (OpenGPUBase) CloseLibrary(OpenGPUBase);
