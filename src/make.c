@@ -10,6 +10,7 @@
 #include "gs_edit.h"
 #include "gs_gpu.h"
 #include "gs_model.h"
+#include "make_ui.h"
 
 #include <devices/inputevent.h>
 #include <proto/asl.h>
@@ -35,41 +36,6 @@
 #include <string.h>
 
 static const char version[] = "$VER: GFOpenMake 0.1.0 (8.11.2026) AmiCradle Team";
-
-static const char markup[] =
-    "<window>"
-    "<row><h2>GFOpenMake</h2><spacer></spacer><span id=\"ver\">0.1.0</span></row>"
-    "<row>"
-    "<button id=\"open\">Open</button>"
-    "<button id=\"save\">Save</button>"
-    "<button id=\"undo\">Undo</button>"
-    "<spacer></spacer>"
-    "<button id=\"orbit\">Orbit</button>"
-    "<button id=\"move\">Move</button>"
-    "<button id=\"rot\">Rotate</button>"
-    "<button id=\"scale\">Scale</button>"
-    "</row>"
-    "<row>"
-    "<button id=\"addcube\">Cube</button>"
-    "<button id=\"addcyl\">Cylinder</button>"
-    "<button id=\"join\">Join</button>"
-    "<button id=\"cut\">Cut</button>"
-    "<button id=\"meet\">Intersect</button>"
-    "</row>"
-    "<row>"
-    "<button id=\"drop\">Drop</button>"
-    "<button id=\"centre\">Centre</button>"
-    "<button id=\"lay\">Lay flat</button>"
-    "<spacer></spacer>"
-    "<span id=\"face\">no face</span>"
-    "</row>"
-    "<div id=\"view\" style=\"flex:1\"></div>"
-    "<span id=\"status\">A 20 mm cube, with a hole.</span>"
-    "</window>";
-
-static const char css[] =
-    "window{height:100%}"
-    "#view{flex:1;background-color:#14161c}";
 
 static gs_mesh hole;
 static gs_mesh added;
@@ -649,7 +615,7 @@ int main(int argc, char **argv)
         if (!gpu_on) gpu_free();
     }
     ui = olui_new();
-    if (!ui || !olui_load(ui, markup, css, err, sizeof err)) {
+    if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err)) {
         if (ui) olui_free(ui);
         ge_hist_free(hist);
         gs_mesh_free(&hole);

@@ -106,4 +106,6 @@ m68k-amigaos-gcc -O2 -std=c99 -noixemul -Iinclude -o GFOpenSlicer \
 
 The pictures above are the real GFOpenLayout draw list, painted on the host.
 `make preview` rebuilds that tool when GFOpenLayout is checked out beside
-this tree (`LAYOUT=` if it is not).
+this tree (`LAYOUT=` if it is not). `make test` needs it too, with
+`make build/libopenlayout.a` run there: `test_make_ui` lays GFOpenMake's
+window out with it.
