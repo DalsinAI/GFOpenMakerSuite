@@ -23,7 +23,8 @@ typedef struct {
 float gl_height(float h);
 /* Layers in the part at height h, at least 1 for a part with any height. */
 int gl_layers(const gs_mesh *m, float h);
-/* Layer 1 is the first. Layer n cuts at n layer heights above the floor. */
+/* Layer 1 is the first. Layer n cuts mid-layer, (n - 0.5) heights above
+ * the floor, as the bench does. */
 float gl_layer_z(const gs_mesh *m, float h, int layer);
 /* Replaces w with the walls of that layer. 0, or -1. */
 int gl_cut(const gs_mesh *m, float h, int layer, gl_walls *w);
