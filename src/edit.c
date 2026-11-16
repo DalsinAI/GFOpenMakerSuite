@@ -12,7 +12,7 @@
 #define HIST 32
 
 struct ge_hist {
-    gs_mesh slot[HIST];
+    ge_scene slot[HIST];
     int n;
 };
 
@@ -272,6 +272,14 @@ int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y)
     return best;
 }
 
+void ge_scene_free(ge_scene *s)
+{
+    if (!s) return;
+    gs_mesh_free(&s->stock);
+    gs_mesh_free(&s->added);
+    s->has_added = s->on_added = 0;
+}
+
 ge_hist *ge_hist_new(void)
 {
     ge_hist *h = (ge_hist *)calloc(1, sizeof *h);
@@ -282,37 +290,94 @@ void ge_hist_free(ge_hist *h)
 {
     int i;
     if (!h) return;
-    for (i = 0; i < h->n; i++) gs_mesh_free(&h->slot[i]);
+    for (i = 0; i < h->n; i++) ge_scene_free(&h->slot[i]);
     free(h);
 }
 
-int ge_hist_push(ge_hist *h, const gs_mesh *m)
+int ge_hist_push_scene(ge_hist *h, const ge_scene *s)
 {
-    if (!h || !m) return -1;
+    ge_scene *d;
+    if (!h || !s) return -1;
     if (h->n == HIST) {
-        gs_mesh_free(&h->slot[0]);
+        ge_scene_free(&h->slot[0]);
         memmove(&h->slot[0], &h->slot[1], (size_t)(HIST - 1) * sizeof h->slot[0]);
         memset(&h->slot[HIST - 1], 0, sizeof h->slot[0]);
         h->n = HIST - 1;
     }
-    if (ge_copy(&h->slot[h->n], m)) return -1;
+    d = &h->slot[h->n];
+    memset(d, 0, sizeof *d);
+    if (ge_copy(&d->stock, &s->stock) || (s->has_added && ge_copy(&d->added, &s->added))) {
+        ge_scene_free(d);
+        return -1;
+    }
+    d->has_added = s->has_added;
+    d->on_added = s->on_added;
     h->n++;
     return 0;
 }
 
+int ge_hist_pop_scene(ge_hist *h, ge_scene *s)
+{
+    if (!h || !s || h->n < 1) return -1;
+    h->n--;
+    ge_scene_free(s);
+    *s = h->slot[h->n];
+    memset(&h->slot[h->n], 0, sizeof h->slot[h->n]);
+    return 0;
+}
+
+int ge_hist_push(ge_hist *h, const gs_mesh *m)
+{
+    ge_scene t;
+    if (!m) return -1;
+    memset(&t, 0, sizeof t);
+    t.stock = *m;
+    return ge_hist_push_scene(h, &t);
+}
+
 int ge_hist_pop(ge_hist *h, gs_mesh *m)
 {
-    if (!h || !m || h->n < 1) return -1;
-    h->n--;
+    ge_scene t;
+    if (!m) return -1;
+    memset(&t, 0, sizeof t);
+    if (ge_hist_pop_scene(h, &t)) return -1;
     gs_mesh_free(m);
-    *m = h->slot[h->n];
-    memset(&h->slot[h->n], 0, sizeof h->slot[h->n]);
+    *m = t.stock;
+    gs_mesh_free(&t.added);
     return 0;
 }
 
 int ge_hist_depth(const ge_hist *h)
 {
     return h ? h->n : 0;
+}
+
+int ge_bool(ge_scene *s, int op, ge_hist *h)
+{
+    gs_mesh out;
+    const gs_mesh *a, *b;
+    int rc;
+    if (!s || !s->has_added) return -1;
+    a = &s->stock;
+    b = &s->added;
+    if (op == 1 && !s->on_added) {
+        a = &s->added;
+        b = &s->stock;
+    }
+    if (h && ge_hist_push_scene(h, s)) return -2;
+    memset(&out, 0, sizeof out);
+    rc = op == 0 ? gm_union(&out, a, b) : op == 1 ? gm_subtract(&out, a, b) : gm_intersect(&out, a, b);
+    if (rc || out.n < 1) {
+        gs_mesh_free(&out);
+        if (h) {
+            h->n--;
+            ge_scene_free(&h->slot[h->n]);
+        }
+        return -2;
+    }
+    ge_scene_free(s);
+    s->stock = out;
+    return 0;
 }
 
 int ge_start(gs_mesh *m, const char *path, char *err, int errlen)

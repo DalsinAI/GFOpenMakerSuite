@@ -38,7 +38,16 @@ int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y);
  * file is written only by Save. 0, or -1 with why in err. */
 int ge_start(gs_mesh *m, const char *path, char *err, int errlen);
 
-/* Up to 32 copies. */
+/* The editor's two parts: the stock, and an added part to combine with it.
+ * on_added: the added part is the one selected. */
+typedef struct {
+    gs_mesh stock, added;
+    int has_added, on_added;
+} ge_scene;
+
+void ge_scene_free(ge_scene *s);
+
+/* Up to 32 steps. Each step keeps both parts. */
 typedef struct ge_hist ge_hist;
 
 ge_hist *ge_hist_new(void);
@@ -46,5 +55,14 @@ void ge_hist_free(ge_hist *h);
 int ge_hist_push(ge_hist *h, const gs_mesh *m);
 int ge_hist_pop(ge_hist *h, gs_mesh *m);
 int ge_hist_depth(const ge_hist *h);
+/* The whole scene, so undo after Join puts both parts back. 0, or -1. */
+int ge_hist_push_scene(ge_hist *h, const ge_scene *s);
+int ge_hist_pop_scene(ge_hist *h, ge_scene *s);
+
+/* 0 join, 1 cut (the selected part out of the other), 2 intersect. The
+ * result is the stock and the added part is gone. The scene before is one
+ * step in h. 0; -1 with no second part; -2 when they do not meet or memory
+ * ran out, and then the scene and h are as they were. */
+int ge_bool(ge_scene *s, int op, ge_hist *h);
 
 #endif

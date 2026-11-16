@@ -122,6 +122,44 @@ int main(void)
         gs_mesh_free(&start);
         gs_mesh_free(&part);
     }
+    {
+        /* Join, cut and intersect keep both parts for undo. */
+        static const int ops[3] = {0, 1, 2};
+        int k;
+        for (k = 0; k < 3; k++) {
+            ge_scene sc;
+            ge_hist *hh = ge_hist_new();
+            char what[64];
+            memset(&sc, 0, sizeof sc);
+            expect(gm_cube(&sc.stock, 0.f, 0.f, 0.f, 20.f, 20.f, 20.f) == 0 &&
+                       gm_cube(&sc.added, 10.f, 5.f, 5.f, 20.f, 10.f, 10.f) == 0, "two cubes");
+            sc.has_added = sc.on_added = 1;
+            snprintf(what, sizeof what, "op %d combines the two", ops[k]);
+            expect(ge_bool(&sc, ops[k], hh) == 0 && !sc.has_added && sc.stock.n > 0 && sc.added.n == 0, what);
+            expect(ge_hist_depth(hh) == 1, "one step to undo");
+            snprintf(what, sizeof what, "undo after op %d brings both parts back", ops[k]);
+            expect(ge_hist_pop_scene(hh, &sc) == 0 && sc.has_added && sc.on_added && sc.stock.n == 12 &&
+                       sc.added.n == 12 && near(sc.stock.max.x, 20.f) && near(sc.added.min.x, 10.f) &&
+                       near(sc.added.max.x, 30.f), what);
+            ge_scene_free(&sc);
+            ge_hist_free(hh);
+        }
+    }
+    {
+        /* Two parts that do not meet: nothing changes, nothing to undo. */
+        ge_scene sc;
+        ge_hist *hh = ge_hist_new();
+        memset(&sc, 0, sizeof sc);
+        gm_cube(&sc.stock, 0.f, 0.f, 0.f, 5.f, 5.f, 5.f);
+        gm_cube(&sc.added, 40.f, 40.f, 0.f, 5.f, 5.f, 5.f);
+        sc.has_added = 1;
+        expect(ge_bool(&sc, 2, hh) != 0 && sc.has_added && sc.stock.n == 12 && sc.added.n == 12 &&
+                   ge_hist_depth(hh) == 0, "a miss leaves both parts and no step");
+        sc.has_added = 0;
+        expect(ge_bool(&sc, 0, hh) == -1, "join wants a second part");
+        ge_scene_free(&sc);
+        ge_hist_free(hh);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);
