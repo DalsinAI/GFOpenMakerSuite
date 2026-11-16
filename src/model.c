@@ -81,6 +81,31 @@ static int bag_add(bag *b, const poly *p)
     return 0;
 }
 
+/* A split can leave a piece with more corners than a poly holds; it is
+ * convex, so it is cut in two along a diagonal from its first corner.
+ * Both halves keep that diagonal's exact points, so no crack opens. */
+static int bag_add_long(bag *b, const mv *v, int n)
+{
+    poly p;
+    int i;
+    if (n < 3) return 0;
+    if (n <= VMAX) {
+        p.n = n;
+        for (i = 0; i < n; i++) p.v[i] = v[i];
+        return bag_add(b, &p);
+    }
+    p.n = VMAX;
+    for (i = 0; i < VMAX; i++) p.v[i] = v[i];
+    if (bag_add(b, &p)) return -1;
+    {
+        mv rest[VMAX + 2];
+        int k = 0;
+        rest[k++] = v[0];
+        for (i = VMAX - 1; i < n; i++) rest[k++] = v[i];
+        return bag_add_long(b, rest, k);
+    }
+}
+
 /* Newell's normal: every edge counts, so a sliver whose first three points
  * are nearly in a line still gets the plane of all its points. */
 static int plane_of(const poly *p, mv *nrm, float *w)
@@ -108,6 +133,13 @@ static float side(const node *n, mv v)
     return n->nrm.x * v.x + n->nrm.y * v.y + n->nrm.z * v.z - n->w;
 }
 
+static int less(mv a, mv b)
+{
+    if (a.x != b.x) return a.x < b.x;
+    if (a.y != b.y) return a.y < b.y;
+    return a.z < b.z;
+}
+
 static void flip_poly(poly *p)
 {
     int i, h = p->n / 2;
@@ -124,7 +156,7 @@ static int split_poly(const node *nd, const poly *in, bag *front, bag *back)
     int i, nf = 0, nb = 0;
     float d[VMAX];
     int c[VMAX];
-    poly f, b;
+    mv f[VMAX + 2], b[VMAX + 2];
     mv pn;
     float pw;
     for (i = 0; i < in->n; i++) {
@@ -146,22 +178,28 @@ static int split_poly(const node *nd, const poly *in, bag *front, bag *back)
     }
     if (!nb) return bag_add(front, in);
     if (!nf) return bag_add(back, in);
-    f.n = b.n = 0;
+    nf = nb = 0;
     for (i = 0; i < in->n; i++) {
         int j = (i + 1) % in->n;
-        if (c[i] != -1 && f.n < VMAX) f.v[f.n++] = in->v[i];
-        if (c[i] != 1 && b.n < VMAX) b.v[b.n++] = in->v[i];
+        if (c[i] != -1) f[nf++] = in->v[i];
+        if (c[i] != 1) b[nb++] = in->v[i];
         if ((c[i] == 1 && c[j] == -1) || (c[i] == -1 && c[j] == 1)) {
-            float t = d[i] / (d[i] - d[j]);
+            /* From the lower corner to the higher, whichever way this
+             * polygon goes round: the neighbour across the edge goes the
+             * other way and must land on the same bits. When the plane
+             * runs nearly along the edge, t is touchy and any other
+             * order would open a crack. */
+            int lo = less(in->v[i], in->v[j]) ? i : j, hi = lo == i ? j : i;
+            float t = d[lo] / (d[lo] - d[hi]);
             mv p;
-            p.x = in->v[i].x + (in->v[j].x - in->v[i].x) * t;
-            p.y = in->v[i].y + (in->v[j].y - in->v[i].y) * t;
-            p.z = in->v[i].z + (in->v[j].z - in->v[i].z) * t;
-            if (f.n < VMAX) f.v[f.n++] = p;
-            if (b.n < VMAX) b.v[b.n++] = p;
+            p.x = in->v[lo].x + (in->v[hi].x - in->v[lo].x) * t;
+            p.y = in->v[lo].y + (in->v[hi].y - in->v[lo].y) * t;
+            p.z = in->v[lo].z + (in->v[hi].z - in->v[lo].z) * t;
+            f[nf++] = p;
+            b[nb++] = p;
         }
     }
-    if (bag_add(front, &f) || bag_add(back, &b)) return -1;
+    if (bag_add_long(front, f, nf) || bag_add_long(back, b, nb)) return -1;
     return 0;
 }
 
@@ -474,8 +512,11 @@ int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg
 
 /* Welding: corners closer than WELD on every axis are one vertex. A cut
  * reaches the same point from two polygons by different sums, so the two
- * copies can differ in the last bits. */
+ * copies can differ in the last bits. A vertex counts as on an edge
+ * within ONEDGE, ten times tighter, so two welded-apart neighbours can't
+ * each lie on the other's edges and split each other for ever. */
 #define WELD 1e-3f
+#define ONEDGE 1e-4f
 
 typedef struct {
     float x, y, z;
@@ -591,6 +632,142 @@ int gm_open_edges(const gs_mesh *m)
     return open;
 }
 
+/* The first vertex strictly inside edge a-b, nearest a, or -1. pts is in
+ * x order, so only the run between the ends' x is looked at. */
+static int on_edge(const wv *pts, int nv, int a, int b)
+{
+    const wv *A = &pts[a], *B = &pts[b];
+    float x0 = (A->x < B->x ? A->x : B->x) - WELD, x1 = (A->x < B->x ? B->x : A->x) + WELD;
+    float vx = B->x - A->x, vy = B->y - A->y, vz = B->z - A->z;
+    float L2 = vx * vx + vy * vy + vz * vz, best = 2.f;
+    int lo = 0, hi = nv, k, got = -1;
+    if (L2 <= WELD * WELD) return -1;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (pts[mid].x < x0) lo = mid + 1;
+        else hi = mid;
+    }
+    for (k = lo; k < nv && pts[k].x <= x1; k++) {
+        float px, py, pz, t, dx, dy, dz;
+        if (k == a || k == b) continue;
+        px = pts[k].x - A->x;
+        py = pts[k].y - A->y;
+        pz = pts[k].z - A->z;
+        t = (px * vx + py * vy + pz * vz) / L2;
+        if (t <= 0.f || t >= 1.f || t >= best) continue;
+        dx = px - t * vx;
+        dy = py - t * vy;
+        dz = pz - t * vz;
+        if (dx * dx + dy * dy + dz * dz <= ONEDGE * ONEDGE) {
+            best = t;
+            got = k;
+        }
+    }
+    return got;
+}
+
+typedef struct {
+    int v[3];
+} itri;
+
+/* Closes the cracks a BSP leaves: corners are welded, and a triangle
+ * whose edge passes through another vertex is split there (a T-junction),
+ * so every edge is met by one going the other way. 0, or -1. */
+static int seal(gs_mesh *m)
+{
+    int *idx, nv, i, n = 0, cap, scap, top = 0;
+    long splits = 0, most;
+    wv *pts = NULL;
+    itri *stack = NULL, *out = NULL;
+    if (!m->n) return 0;
+    idx = (int *)malloc((size_t)m->n * 3 * sizeof *idx);
+    if (!idx || (nv = weld(m, idx, &pts)) < 0) {
+        free(idx);
+        return -1;
+    }
+    cap = scap = m->n * 2 + 16;
+    most = (long)m->n * 16 + 1024; /* a guard: past it, the mesh is left as the BSP made it */
+    stack = (itri *)malloc((size_t)scap * sizeof *stack);
+    out = (itri *)malloc((size_t)cap * sizeof *out);
+    if (!stack || !out) goto fail;
+    for (i = 0; i < m->n; i++) {
+        itri t;
+        t.v[0] = idx[i * 3];
+        t.v[1] = idx[i * 3 + 1];
+        t.v[2] = idx[i * 3 + 2];
+        if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
+        stack[top++] = t;
+    }
+    while (top) {
+        itri t = stack[--top];
+        int e, k = -1;
+        if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
+        for (e = 0; e < 3 && k < 0; e++) k = on_edge(pts, nv, t.v[e], t.v[(e + 1) % 3]);
+        if (k < 0) {
+            if (n >= cap) {
+                itri *g = (itri *)realloc(out, (size_t)cap * 2 * sizeof *g);
+                if (!g) goto fail;
+                out = g;
+                cap *= 2;
+            }
+            out[n++] = t;
+            continue;
+        }
+        e--;
+        if (++splits > most) {
+            /* Give up and keep the BSP's mesh: open edges, but a solid. */
+            free(idx);
+            free(pts);
+            free(stack);
+            free(out);
+            return 1;
+        }
+        if (top + 2 > scap) {
+            itri *g = (itri *)realloc(stack, (size_t)scap * 2 * sizeof *g);
+            if (!g) goto fail;
+            stack = g;
+            scap *= 2;
+        }
+        {
+            int a = t.v[e], b = t.v[(e + 1) % 3], c = t.v[(e + 2) % 3];
+            stack[top].v[0] = a;
+            stack[top].v[1] = k;
+            stack[top].v[2] = c;
+            top++;
+            stack[top].v[0] = k;
+            stack[top].v[1] = b;
+            stack[top].v[2] = c;
+            top++;
+        }
+    }
+    {
+        gs_mesh fresh;
+        memset(&fresh, 0, sizeof fresh);
+        fresh.min.x = fresh.min.y = fresh.min.z = 1e30f;
+        fresh.max.x = fresh.max.y = fresh.max.z = -1e30f;
+        for (i = 0; i < n; i++) {
+            const wv *a = &pts[out[i].v[0]], *b = &pts[out[i].v[1]], *c = &pts[out[i].v[2]];
+            if (tri(&fresh, a->x, a->y, a->z, b->x, b->y, b->z, c->x, c->y, c->z)) {
+                free(fresh.t);
+                goto fail;
+            }
+        }
+        free(m->t);
+        *m = fresh;
+    }
+    free(idx);
+    free(pts);
+    free(stack);
+    free(out);
+    return 0;
+fail:
+    free(idx);
+    free(pts);
+    free(stack);
+    free(out);
+    return -1;
+}
+
 /* Join 0, cut 1, overlap 2. The same clips; only the turns of the
  * surface change, which is what picks inside from outside. */
 static int gm_csg(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b, int op)
@@ -646,6 +823,7 @@ static int gm_csg(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b, int op)
     mesh_clear(dst);
     rc = mesh_from(dst, &all);
     bag_free(&all);
+    if (!rc && seal(dst) < 0) rc = -1;
     return rc;
 }
 

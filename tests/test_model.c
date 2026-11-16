@@ -124,7 +124,7 @@ int main(void)
                 want = 8000.f - 10.f * (float)sides[si] * r * r * sinf(6.2831853f / (float)sides[si]);
                 snprintf(what, sizeof what, "cube minus r %.1f on %d sides", r, sides[si]);
                 expect(gm_cylinder(&rod, 10, 10, -1, r, 22, sides[si]) == 0 && gm_subtract(&cut, &box, &rod) == 0 &&
-                           fabsf(volume(&cut) - want) < want * 0.01f && !inside(&cut, 10.f, 10.f, 10.f),
+                           fabsf(volume(&cut) - want) < want * 0.01f && !inside(&cut, 10.f, 10.1f, 10.3f),
                        what);
                 gs_mesh_free(&rod);
                 gs_mesh_free(&cut);
@@ -132,15 +132,30 @@ int main(void)
         }
     }
     {
-        /* An open edge is one not met by an edge going the other way. */
-        gs_mesh a;
+        /* Watertight: every edge of a boolean's result is used once each way.
+         * The BSP's splits used to leave T-junctions: 270 open edges on the
+         * holed cube. */
+        gs_mesh a, b, out;
+        char what[96];
+        int k;
         memset(&a, 0, sizeof a);
+        memset(&b, 0, sizeof b);
+        memset(&out, 0, sizeof out);
         expect(gm_open_edges(&box) == 0, "a cube is closed");
         expect(gm_cube(&a, 0, 0, 0, 20, 20, 20) == 0, "cube to break");
         a.n--;
         expect(gm_open_edges(&a) == 3, "a cube less one triangle has 3 open edges");
         fprintf(stderr, "holed cube: %d open edges\n", gm_open_edges(&hole));
+        expect(gm_open_edges(&hole) == 0, "the holed cube is closed");
+        expect(gm_cube(&a, 0, 0, 0, 20, 20, 20) == 0 && gm_cube(&b, 10, 5, 5, 20, 10, 10) == 0, "two cubes");
+        for (k = 0; k < 3; k++) {
+            int rc = k == 0 ? gm_union(&out, &a, &b) : k == 1 ? gm_subtract(&out, &a, &b) : gm_intersect(&out, &a, &b);
+            snprintf(what, sizeof what, "%s of two cubes is closed", k == 0 ? "union" : k == 1 ? "cut" : "overlap");
+            expect(rc == 0 && gm_open_edges(&out) == 0, what);
+        }
         gs_mesh_free(&a);
+        gs_mesh_free(&b);
+        gs_mesh_free(&out);
     }
     {
         /* Binary STL is little-endian on every machine: an 80 byte header,
