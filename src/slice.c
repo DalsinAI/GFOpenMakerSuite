@@ -13,6 +13,7 @@ void gs_cfg_default(gs_cfg *c)
     c->hotend = 200.f;
     c->bed = 60.f;
     c->skirt = 1;
+    c->walls = 2;
 }
 
 typedef struct {
@@ -255,10 +256,62 @@ static int emit_infill(FILE *o, float *e, float *ex, float *ey, loop *ls, int nl
     return 0;
 }
 
+static float loop_area(const loop *L)
+{
+    float a = 0.f;
+    int i;
+    for (i = 0; i < L->n; i++) {
+        p2 p = L->p[i], q = L->p[(i + 1) % L->n];
+        a += p.x * q.y - q.x * p.y;
+    }
+    return a * 0.5f;
+}
+
+/* Even-odd: is q inside the closed loop L? */
+static int loop_holds(const loop *L, p2 q)
+{
+    int i, in = 0;
+    for (i = 0; i < L->n; i++) {
+        p2 p = L->p[i], r = L->p[(i + 1) % L->n];
+        if ((p.y > q.y) != (r.y > q.y) && q.x < p.x + (q.y - p.y) * (r.x - p.x) / (r.y - p.y)) in = !in;
+    }
+    return in;
+}
+
+/* Moves a closed loop d mm into the material, mitred at each corner. A hole
+ * grows, an outside shrinks. 0, 1 when the loop has closed up, or -1. */
+static int inset(const loop *L, int hole, float d, loop *o)
+{
+    float a = loop_area(L), b, s = ((a > 0.f) == !hole) ? d : -d;
+    int i;
+    memset(o, 0, sizeof *o);
+    o->p = (p2 *)malloc((size_t)L->n * sizeof *o->p);
+    if (!o->p) return -1;
+    o->n = o->cap = L->n;
+    o->closed = 1;
+    for (i = 0; i < L->n; i++) {
+        p2 p = L->p[(i + L->n - 1) % L->n], c = L->p[i], q = L->p[(i + 1) % L->n];
+        float ux = c.x - p.x, uy = c.y - p.y, vx = q.x - c.x, vy = q.y - c.y;
+        float lu = sqrtf(ux * ux + uy * uy) + 1e-9f, lv = sqrtf(vx * vx + vy * vy) + 1e-9f;
+        float nx = -uy / lu - vy / lv, ny = ux / lu + vx / lv;
+        float k = 1.f + (-uy / lu) * (-vy / lv) + (ux / lu) * (vx / lv);
+        if (k < 0.25f) k = 0.25f; /* a spike is cut short */
+        o->p[i].x = c.x + s * nx / k;
+        o->p[i].y = c.y + s * ny / k;
+    }
+    b = loop_area(o);
+    if ((b > 0.f) != (a > 0.f) || (!hole && fabsf(b) >= fabsf(a)) || fabsf(b) < 1e-4f) {
+        free(o->p);
+        memset(o, 0, sizeof *o);
+        return 1;
+    }
+    return 0;
+}
+
 int gs_slice(const gs_mesh *m, const gs_cfg *c, FILE *out, char *err, int errlen)
 {
     float z, fpm, e = 0, ex = 0, ey = 0;
-    int layer = 0, any = 0;
+    int layer = 0, any = 0, nw = c->walls < 1 ? 1 : c->walls > 8 ? 8 : c->walls;
     if (!m->n) {
         snprintf(err, (size_t)errlen, "nothing to slice");
         return -1;
@@ -281,7 +334,8 @@ int gs_slice(const gs_mesh *m, const gs_cfg *c, FILE *out, char *err, int errlen
     for (z = m->min.z + c->layer_h * 0.5f; z < m->max.z - 1e-4f; z += c->layer_h) {
         seg *ss = NULL;
         int ns = 0, scap = 0, ti, nl = 0, li;
-        loop *ls = NULL;
+        loop *ls = NULL, *fill = NULL;
+        int *deep = NULL, bad = 0;
         fprintf(out, "; LAYER %d Z%.3f\n", layer, z);
         fprintf(out, "G0 Z%.3f F300\n", z);
         for (ti = 0; ti < m->n; ti++) {
@@ -339,12 +393,52 @@ int gs_slice(const gs_mesh *m, const gs_cfg *c, FILE *out, char *err, int errlen
                 emit_loop(out, &e, &ex, &ey, &sk, fpm);
             }
         }
-        for (li = 0; li < nl; li++) {
-            if (ls[li].n >= 2) any = 1;
-            emit_loop(out, &e, &ex, &ey, &ls[li], fpm);
+        fill = (loop *)calloc((size_t)nl + 1, sizeof *fill);
+        deep = (int *)calloc((size_t)nl + 1, sizeof *deep);
+        if (!fill || !deep) bad = -1;
+        for (li = 0; li < nl && !bad; li++) {
+            const loop *L = &ls[li];
+            int w, j, r;
+            if (L->n >= 2) any = 1;
+            if (!L->closed || L->n < 3) {
+                emit_loop(out, &e, &ex, &ey, L, fpm);
+                continue;
+            }
+            for (j = 0; j < nl; j++)
+                if (j != li && ls[j].closed && ls[j].n >= 3 && loop_holds(&ls[j], L->p[0])) deep[li]++;
+            for (w = 0; w < nw; w++) {
+                loop t;
+                r = inset(L, deep[li] & 1, c->line_w * ((float)w + 0.5f), &t);
+                if (r < 0) bad = -1;
+                if (r == 1 && w == 0) emit_loop(out, &e, &ex, &ey, L, fpm); /* thinner than a line */
+                if (r) break;
+                fprintf(out, "; WALL %d\n", w + 1);
+                emit_loop(out, &e, &ex, &ey, &t, fpm);
+                free(t.p);
+            }
+            if (!bad && inset(L, deep[li] & 1, c->line_w * (float)nw, &fill[li]) < 0) bad = -1;
         }
-        emit_infill(out, &e, &ex, &ey, ls, nl, c, fpm);
-        for (li = 0; li < nl; li++) free(ls[li].p);
+        /* a hole inside an outside that closed up has no infill round it */
+        for (li = 0; li < nl && !bad; li++) {
+            int j;
+            for (j = 0; j < nl && (deep[li] & 1) && fill[li].n; j++)
+                if (!(deep[j] & 1) && !fill[j].n && ls[j].closed && ls[j].n >= 3 && loop_holds(&ls[j], ls[li].p[0])) {
+                    free(fill[li].p);
+                    memset(&fill[li], 0, sizeof fill[li]);
+                }
+        }
+        if (!bad) emit_infill(out, &e, &ex, &ey, fill, nl, c, fpm);
+        for (li = 0; li < nl; li++) {
+            free(ls[li].p);
+            if (fill) free(fill[li].p);
+        }
+        free(fill);
+        free(deep);
+        if (bad) {
+            free(ls);
+            snprintf(err, (size_t)errlen, "out of memory");
+            return -1;
+        }
         free(ls);
         layer++;
     }

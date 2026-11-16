@@ -1,6 +1,6 @@
 /* GFOpenSlicer, from the shell.
  *   gfopenslicer in.stl out.gcode [LAYER=0.2] [INFILL=20] [LINE=0.4]
- *       [FILAMENT=1.75] [HOTEND=200] [BED=60] [SKIRT=1]
+ *       [FILAMENT=1.75] [HOTEND=200] [BED=60] [SKIRT=1] [WALLS=2]
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs.h"
 
@@ -29,11 +29,11 @@ int main(int argc, char **argv)
     gs_cfg cfg;
     FILE *out;
     char err[160];
-    float skirt = 1.f;
+    float skirt = 1.f, walls = 2.f;
     (void)version;
     if (argc < 3) {
         fprintf(stderr, "GFOpenSlicer %s (%s)\n", GS_VERSION, GS_DATE);
-        fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [LAYER=0.2] [INFILL=20] [LINE=0.4] [FILAMENT=1.75] [HOTEND=200] [BED=60] [SKIRT=1]\n");
+        fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [LAYER=0.2] [INFILL=20] [LINE=0.4] [FILAMENT=1.75] [HOTEND=200] [BED=60] [SKIRT=1] [WALLS=2]\n");
         return 1;
     }
     gs_cfg_default(&cfg);
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
     opt(argc, argv, "HOTEND", &cfg.hotend);
     opt(argc, argv, "BED", &cfg.bed);
     if (opt(argc, argv, "SKIRT", &skirt)) cfg.skirt = (int)skirt;
+    if (opt(argc, argv, "WALLS", &walls)) cfg.walls = (int)walls;
     if (gs_stl_load(&mesh, argv[1], err, (int)sizeof err)) {
         fprintf(stderr, "GFOpenSlicer: %s\n", err);
         return 1;

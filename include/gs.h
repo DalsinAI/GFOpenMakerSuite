@@ -31,6 +31,7 @@ typedef struct {
     float hotend;      /* degrees, 0: no heat commands */
     float bed;
     int skirt;         /* loops of a rectangle around the first layer */
+    int walls;         /* 1 to 8 walls, each a line inside the last */
 } gs_cfg;
 
 /* 0, or -1 with why in err. */
