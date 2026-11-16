@@ -35,8 +35,8 @@ $(BUILD)/preview: slicer/tools/preview.c slicer/src/job.c core/src/stl.c slicer/
 $(BUILD)/test_edit: cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c cad/include/gs_edit.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
-$(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # GFOpenMake's window, laid out by GFOpenLayout (LAYOUT, built with make there).
 $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
