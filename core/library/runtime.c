@@ -80,6 +80,15 @@ void *RT(memmove)(void *dst, const void *src, size_t n)
     return dst;
 }
 
+#ifndef OM_RT_HOST
+/* libnix's <string.h> turns memmove into a call to __bcopz(src, dst, n). */
+void __bcopz(const void *src, void *dst, size_t n);
+void __bcopz(const void *src, void *dst, size_t n)
+{
+    RT(memmove)(dst, src, n);
+}
+#endif
+
 void *RT(memset)(void *dst, int c, size_t n)
 {
     unsigned char *d = (unsigned char *)dst;
