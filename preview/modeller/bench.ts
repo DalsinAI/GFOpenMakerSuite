@@ -163,6 +163,8 @@ export class Bench {
   private sectionOn = false;
   private sectionZ = 12;
   private readonly clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 12);
+  /** With a layer shown, the selected part is hidden above it, so the walls read. */
+  private readonly layerClip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   private readonly sectionSheet: THREE.Mesh;
 
   constructor(canvas: HTMLCanvasElement, onChange: (s: BenchSnapshot) => void) {
@@ -225,6 +227,8 @@ export class Bench {
     this.orbit.mouseButtons.RIGHT = THREE.MOUSE.PAN;
     this.orbit.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
     this.orbit.addEventListener("start", () => {
+      this.camera.up.set(0, 0, 1);
+      this.orbit.minPolarAngle = 0.04;
       this.userMoved = true;
     });
 
@@ -754,12 +758,14 @@ export class Bench {
     }
     const box = new THREE.Box3().setFromObject(part.mesh);
     const span = Math.max(0, box.max.z - box.min.z);
-    const count = Math.max(1, Math.ceil(span / this.layerH));
+    // A hair under, so float noise in the box does not add an empty layer.
+    const count = Math.max(1, Math.ceil(span / this.layerH - 1e-4));
     this.layerCount = count;
     if (this.layerIndex >= count) this.layerIndex = count - 1;
     const z = box.min.z + (this.layerIndex + 0.5) * this.layerH;
     const cut = contoursAt(this.worldTris(part.mesh), z);
     this.layerMm = cut.length;
+    this.layerClip.constant = z + 0.1;
     const geom = this.layerLines.geometry;
     geom.dispose();
     this.layerLines.geometry = new THREE.BufferGeometry();
@@ -795,7 +801,7 @@ export class Bench {
     this.sectionOn = true;
     this.sectionZ = Math.max(0, Math.min(this.sectionLimit(), z));
     this.syncSection();
-    this.emit();
+    this.setStatus(`Section at ${round1(this.sectionZ)} mm. Everything above the plane is hidden.`);
   }
 
   nudgeSection(dz: number) {
@@ -804,7 +810,6 @@ export class Bench {
       return;
     }
     this.setSectionZ(this.sectionZ + dz);
-    this.setStatus(`Section at ${round1(this.sectionZ)} mm.`);
   }
 
   fitExtent(axis: 0 | 1 | 2, mm: number) {
@@ -1383,6 +1388,8 @@ export class Bench {
   }
 
   frame(all: boolean) {
+    this.camera.up.set(0, 0, 1);
+    this.orbit.minPolarAngle = 0.04;
     const list = all ? this.parts.filter((p) => p.mesh.visible) : this.current() ? [this.current()!] : [];
     const box = new THREE.Box3();
     for (const p of list) box.expandByObject(p.mesh);
@@ -1414,11 +1421,13 @@ export class Bench {
     const dist = Math.max(size.x, size.y, size.z, 40) * 1.7;
     const pos =
       which === "top"
-        ? new THREE.Vector3(center.x + dist * 0.01, center.y - dist * 0.04, center.z + dist)
+        ? new THREE.Vector3(center.x, center.y, center.z + dist)
         : which === "front"
           ? new THREE.Vector3(center.x, center.y - dist, center.z + dist * 0.15)
           : new THREE.Vector3(center.x + dist, center.y, center.z + dist * 0.15);
-    this.camera.up.set(0, 0, 1);
+    // Straight down, +Y up the screen. The orbit's Z-up comes back on the next drag.
+    this.camera.up.set(0, which === "top" ? 1 : 0, which === "top" ? 0 : 1);
+    this.orbit.minPolarAngle = which === "top" ? 0 : 0.04;
     this.camera.position.copy(pos);
     this.orbit.target.copy(center);
     this.camera.lookAt(center);
@@ -1771,9 +1780,14 @@ export class Bench {
     mat.envMapIntensity = this.shade === "metal" ? 0.55 : 0.3;
     mat.emissive.set(selected ? "#0067c0" : "#000000");
     mat.emissiveIntensity = selected ? 0.16 : 0;
-    mat.clippingPlanes = this.sectionOn ? [this.clipPlane] : null;
-    mat.clipShadows = this.sectionOn;
+    const planes: THREE.Plane[] = [];
+    if (this.sectionOn) planes.push(this.clipPlane);
+    if (selected && this.layerOn && this.layerLines.visible) planes.push(this.layerClip);
+    mat.clippingPlanes = planes.length ? planes : null;
+    mat.clipShadows = planes.length > 0;
+    if (planes.length) this.renderer.localClippingEnabled = true;
     if (part.edges) {
+      (part.edges.material as THREE.LineBasicMaterial).clippingPlanes = mat.clippingPlanes;
       part.edges.visible = part.mesh.visible && this.shade !== "wire";
       const line = part.edges.material as THREE.LineBasicMaterial;
       line.color.set(selected ? "#0067c0" : "#1a140c");
@@ -2459,7 +2473,7 @@ export class Bench {
     this.clipPlane.constant = this.sectionZ;
     this.sectionSheet.position.z = this.sectionZ + 0.05;
     this.sectionSheet.visible = this.sectionOn;
-    this.renderer.localClippingEnabled = this.sectionOn;
+    this.renderer.localClippingEnabled = this.sectionOn || this.layerOn;
   }
 
   private setStatus(status: string) {
