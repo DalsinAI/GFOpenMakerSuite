@@ -1,0 +1,27 @@
+# Marlin, a printer's firmware. Written from Marlin's public G-code
+# reference (marlinfw.org/meta/gcode), no firmware source.
+#
+# G28 homes. M140/M190 set the bed and wait for it; M104/M109 the hotend.
+# M82 measures E from the start. G92 E0 sets E to 0. M107 stops the fan.
+# M84 lets the motors go. G29 levels the bed, when there is a probe.
+family = printer
+dialect = marlin
+send = file serial
+features = heated-bed homing
+extruders = 1
+start = G21 ; mm
+start += G90 ; absolute moves
+start += M82 ; absolute extrusion
+start += M140 S{bed}
+start += M104 S{hotend}
+start += G28 ; home
+start += M190 S{bed}
+start += M109 S{hotend}
+start += G92 E0
+end = M104 S0
+end += M140 S0
+end += M107
+end += G91
+end += G1 Z5 F600 ; lift clear of the part
+end += G90
+end += M84
