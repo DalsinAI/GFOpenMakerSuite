@@ -604,29 +604,23 @@ int main(int argc, char **argv)
     olui_amiga *a;
     struct Window *w;
     struct IntuiMessage *m;
-    gs_mesh box, peg;
     char err[160];
     (void)version;
-    memset(&box, 0, sizeof box);
-    memset(&peg, 0, sizeof peg);
     memset(&hole, 0, sizeof hole);
+    /* A file named at launch is opened, never written. Only Save writes. */
     if (argc > 1 && argv[1] && argv[1][0]) {
-        strncpy(stl_path, argv[1], sizeof stl_path - 1);
-        stl_path[sizeof stl_path - 1] = 0;
+        if (ge_start(&hole, argv[1], err, (int)sizeof err) == 0) {
+            strncpy(stl_path, argv[1], sizeof stl_path - 1);
+            stl_path[sizeof stl_path - 1] = 0;
+        } else {
+            fprintf(stderr, "GFOpenMake: %s\n", err);
+        }
     }
-    if (gm_cube(&box, 0, 0, 0, 20, 20, 20) || gm_cylinder(&peg, 10, 10, -1, 6, 22, 32) ||
-        gm_subtract(&hole, &box, &peg)) {
-        fprintf(stderr, "GFOpenMake: the solid did not build\n");
+    if (!hole.n && ge_start(&hole, NULL, err, (int)sizeof err)) {
+        fprintf(stderr, "GFOpenMake: %s\n", err);
         return 20;
     }
-    gs_mesh_free(&box);
-    gs_mesh_free(&peg);
-    /* Off the plate, so Drop is a visible move. The cut itself sits on z = 0. */
-    ge_move(&hole, 0.f, 0.f, 8.f);
     hist = ge_hist_new();
-    if (gm_stl_write(&hole, stl_path)) {
-        fprintf(stderr, "GFOpenMake: could not write %s\n", stl_path);
-    }
     OpenGPUBase = OpenLibrary((CONST_STRPTR)OPENGPU_NAME, OPENGPU_VERSION);
     gpu_on = 0;
     on_chip = 0;

@@ -2,8 +2,10 @@
  * ours. No other editor's source is in here.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
+#include "gs_model.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -311,4 +313,25 @@ int ge_hist_pop(ge_hist *h, gs_mesh *m)
 int ge_hist_depth(const ge_hist *h)
 {
     return h ? h->n : 0;
+}
+
+int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
+{
+    gs_mesh box, peg;
+    int rc;
+    gs_mesh_free(m);
+    if (path && path[0]) return gs_stl_load(m, path, err, errlen) ? -1 : 0;
+    memset(&box, 0, sizeof box);
+    memset(&peg, 0, sizeof peg);
+    rc = gm_cube(&box, 0, 0, 0, 20, 20, 20) || gm_cylinder(&peg, 10, 10, -1, 6, 22, 32) ||
+         gm_subtract(m, &box, &peg);
+    gs_mesh_free(&box);
+    gs_mesh_free(&peg);
+    if (rc) {
+        snprintf(err, (size_t)errlen, "the solid did not build");
+        return -1;
+    }
+    /* Off the plate, so Drop is a visible move. */
+    ge_move(m, 0.f, 0.f, 8.f);
+    return 0;
 }
