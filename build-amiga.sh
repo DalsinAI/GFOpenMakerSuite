@@ -33,10 +33,10 @@ build() {
     mkdir -p "$dir"
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
-    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/loops.c \
+    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
         $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
-    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/loops.c $CORE -lm
+    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm

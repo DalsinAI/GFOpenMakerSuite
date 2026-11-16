@@ -16,7 +16,7 @@ NM=${NM:-$BIN/m68k-amigaos-nm}
 SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 OUT=${OUT:-"$HERE/build-amiga/libs"}
 cd "$HERE"
-python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd --check
+python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -48,6 +48,11 @@ lib() {
         echo "build-libraries: soft/$name has $n FPU instructions" >&2
         exit 1
     fi
+    t=$("$OBJDUMP" -m m68k:68040 -d "$dir/$name" | awk -F'\t' 'NF >= 3 && $3 ~ /^f(sin|cos|tan|atan|asin|acos|etox|twotox|tentox|log|sinh|cosh|tanh|getexp|getman|rem|mod|scale)/' | wc -l | tr -d ' ')
+    if [ "$t" != 0 ]; then
+        echo "build-libraries: $v/$name has $t FPU instructions a 68040 traps" >&2
+        exit 1
+    fi
     echo "$dir/$name: $(wc -c < "$dir/$name") bytes, $n FPU instructions"
 }
 
@@ -62,5 +67,13 @@ for v in fpu soft; do
         machines/library/openmakemachine_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeMachineBase '-DLINK_NAME="openmakemachine.library"' -lm
     echo "$OUT/$v/TestMachineLib: $(wc -c < "$OUT/$v/TestMachineLib") bytes"
+    lib "$v" "$flags" openmakepath.library core/include \
+        core/library/openmakepath_lib.c core/src/layer.c core/src/loops.c
+    # core/tests/test_layer.c, the cut and the loops through the library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestLayerLib" core/tests/test_layer.c \
+        core/src/layer_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c \
+        core/library/openmakepath_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakePathBase '-DLINK_NAME="openmakepath.library"' -lm
+    echo "$OUT/$v/TestLayerLib: $(wc -c < "$OUT/$v/TestLayerLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"
