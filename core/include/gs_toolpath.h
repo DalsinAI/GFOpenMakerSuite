@@ -54,4 +54,16 @@ float gt_length(const gt_path *p, int kind);
 /* The box round every move but travels. 0, or -1 when there are none. */
 int gt_bounds(const gt_path *p, float min[3], float max[3]);
 
+/* Lines across the region in (its loops' insides, even-odd), one line
+ * width w apart on a grid fixed to the bed, so a layer's lines sit on the
+ * one's below. Along x, or along y when cross. Each run is laid back and
+ * forth, with a travel between.
+ *   solid: the layers that decide what is skin, nsolid of them (those
+ *   above and below). Where all of them have material the line is sparse
+ *   (GT_INFILL, every every-th line only); elsewhere it is GT_SKIN. A NULL
+ *   is a layer past the part's end: everything is skin. nsolid 0: no skin.
+ * 0, or -1 out of memory. */
+int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
+            int every, int cross);
+
 #endif
