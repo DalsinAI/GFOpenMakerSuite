@@ -44,4 +44,14 @@ void gc_job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job
  * could not be written. */
 int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err, int errlen);
 
+/* Where gc_write_to puts the G-code: n bytes at s, ud as given. It returns
+ * how many it took; fewer than n and the writing stops. */
+typedef long (*gc_put)(const char *s, long n, void *ud);
+
+/* gc_write to put instead of a file: the same text, the same answers. A
+ * program uses this one through openmakegcode.library, whose files are
+ * not the program's. */
+int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err,
+                int errlen);
+
 #endif

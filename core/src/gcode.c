@@ -34,7 +34,8 @@ static float held(const om_machine *m, int axis, float v)
 }
 
 typedef struct {
-    FILE *out;                  /* NULL: only counting */
+    gc_put put;                 /* NULL: only counting */
+    void *ud;
     const om_machine *m;
     const gc_opts *o;
     gc_stats *st;
@@ -44,8 +45,8 @@ typedef struct {
 
 static void say(writer *w, const char *line)
 {
-    size_t n = strlen(line);
-    if (w->out && fwrite(line, 1, n, w->out) != n) w->bad = 1;
+    long n = (long)strlen(line);
+    if (w->put && !w->bad && w->put(line, n, w->ud) != n) w->bad = 1;
 }
 
 /* A pull back (sign -1) or its return (+1). */
@@ -148,7 +149,18 @@ void gc_job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job
     job->needs = o->bed > 0.f ? OM_HEATED_BED : 0u;
 }
 
+static long to_file(const char *s, long n, void *ud)
+{
+    return (long)fwrite(s, 1, (size_t)n, (FILE *)ud);
+}
+
 int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err, int errlen)
+{
+    return gc_write_to(to_file, out, p, m, o, st, err, errlen);
+}
+
+int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err,
+                int errlen)
 {
     char code[OM_CODE + 256];
     gc_stats mine;
@@ -158,7 +170,8 @@ int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o,
         return -1;
     }
     memset(&w, 0, sizeof w);
-    w.out = out;
+    w.put = put;
+    w.ud = ud;
     w.m = m;
     w.o = o;
     w.st = st ? st : &mine;

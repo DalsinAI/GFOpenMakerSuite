@@ -20,6 +20,25 @@ static int near(float a, float b, float tol) { return fabsf(a - b) < tol; }
 
 static char text[16384];
 
+/* A sink into memory, as a program would give openmakegcode.library. */
+typedef struct {
+    char buf[16384];
+    long n, room;               /* room: what it takes before it fails */
+} sink;
+
+static long into(const char *s, long n, void *ud)
+{
+    sink *k = ud;
+    long take = n;
+    if (take > k->room) take = k->room;
+    if (k->n + take > (long)sizeof k->buf - 1) take = (long)sizeof k->buf - 1 - k->n;
+    memcpy(k->buf + k->n, s, (size_t)take);
+    k->n += take;
+    k->room -= take;
+    k->buf[k->n] = 0;
+    return take;
+}
+
 static int count(const char *what)
 {
     int n = 0;
@@ -87,6 +106,21 @@ int main(void)
     expect(est.seconds == st.seconds && est.filament == st.filament && est.moves == st.moves && st.moves > 6,
            "the estimate is what was written");
     printf("%d moves, %.1f s, %.3f mm of filament\n", st.moves, st.seconds, st.filament);
+
+    {
+        static sink k;
+        gc_stats ks;
+        k.room = 1L << 30;
+        expect(gc_write_to(into, &k, &p, &m, &o, &ks, err, (int)sizeof err) == 0 && k.n == (long)got &&
+                   strcmp(k.buf, text) == 0 && ks.moves == st.moves && ks.seconds == st.seconds,
+               "gc_write_to gives a sink what gc_write gives a file");
+        k.n = 0;
+        k.room = 100;
+        err[0] = 0;
+        expect(gc_write_to(into, &k, &p, &m, &o, NULL, err, (int)sizeof err) == -1 && strstr(err, "written") &&
+                   k.n == 100,
+               "a sink that takes no more is said so");
+    }
 
     {
         om_job job;
