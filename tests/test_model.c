@@ -161,7 +161,7 @@ int main(void)
                "the file reads back the same triangles");
         gs_mesh_free(&again);
     }
-    expect(gm_stl_write(&hole, "/tmp/gfopenslicer/build/hole.stl") == 0, "stl");
+    expect(gm_stl_write(&hole, "build/hole.stl") == 0, "stl");
     rgb = (unsigned char *)malloc(480 * 360 * 3);
     expect(rgb != NULL, "picture");
     if (rgb) {
@@ -171,7 +171,7 @@ int main(void)
             if (rgb[i] > 40 || rgb[i + 2] > 40) coloured++;
         expect(coloured > 2000, "the solid covers the picture");
         {
-            FILE *f = fopen("/tmp/gfopenslicer/build/hole.ppm", "wb");
+            FILE *f = fopen("build/hole.ppm", "wb");
             expect(f != NULL, "ppm");
             if (f) {
                 fprintf(f, "P6\n480 360\n255\n");

@@ -179,7 +179,7 @@ int main(void)
             (void)cpu_n;
         }
         {
-            FILE *f = fopen("/workspace/public/hole.json", "w");
+            FILE *f = fopen("build/hole.json", "w");
             expect(f != NULL, "hole.json");
             if (f) {
                 fprintf(f, "{\"n\":%d,\"tris\":[", hole.n);
@@ -191,7 +191,7 @@ int main(void)
                 fprintf(f, "]}");
                 fclose(f);
             }
-            expect(gm_stl_write(&hole, "/workspace/public/hole.stl") == 0, "public stl");
+            expect(gm_stl_write(&hole, "build/hole.stl") == 0, "public stl");
         }
     }
     free(verts);

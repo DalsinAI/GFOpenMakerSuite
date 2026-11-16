@@ -7,4 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: make test
+      # OpenGPU stream headers for test_gpu (DalsinAI/gfopensdk, MIT), pinned.
+      - uses: actions/checkout@v4
+        with:
+          repository: DalsinAI/gfopensdk
+          ref: 79e8d48151082ef2ee3cfe97998ebb80eec2aa86
+          path: gfopensdk
+          sparse-checkout: Include/gfopengpu
+      - run: make test SDK=$GITHUB_WORKSPACE/gfopensdk/Include
