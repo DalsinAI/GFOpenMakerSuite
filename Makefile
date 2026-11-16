@@ -24,8 +24,8 @@ $(BUILD)/test_slice: slicer/tests/test_slice.c core/src/stl.c slicer/src/slice.c
 $(BUILD)/test_model: core/tests/test_model.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_model.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_model.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
-$(BUILD)/test_gpu: core/tests/test_gpu.c core/src/gpu.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_gpu.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -I$(SDK) -o $@ core/tests/test_gpu.c core/src/gpu.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_gpu: core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_gpu.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -I$(SDK) -o $@ core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 $(BUILD)/preview: slicer/tools/preview.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c slicer/src/markup.h core/include/gs.h slicer/include/gs_job.h core/include/gs_view.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Islicer/include -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tools/preview.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c \

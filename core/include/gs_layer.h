@@ -4,6 +4,7 @@
 #define GS_LAYER_H
 
 #include "gs.h"
+#include "gs_view.h"
 
 #define GL_MIN_H 0.08f
 #define GL_MAX_H 0.8f
@@ -29,5 +30,13 @@ float gl_layer_z(const gs_mesh *m, float h, int layer);
 /* Replaces w with the walls of that layer. 0, or -1. */
 int gl_cut(const gs_mesh *m, float h, int layer, gl_walls *w);
 void gl_walls_free(gl_walls *w);
+
+/* "Layer n of N, X mm of wall. No infill." for the window's status. */
+void gl_status(char *buf, int len, const gs_mesh *m, float h, int layer, const gl_walls *w);
+
+/* The walls in Clear's blue (#0067c0), over a gs_view_bed picture of m
+ * (the plate's frame). The pen drawer's picture; OpenGPU draws them with
+ * gs_gpu_walls_plate. 0, or -1. */
+int gl_paint(const gl_walls *w, const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int width, int height);
 
 #endif
