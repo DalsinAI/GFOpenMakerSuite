@@ -2,6 +2,9 @@
  * close and expunge, the jump table, and the bases the runtime uses. A
  * library's own file sets LIB_NAME, LIB_VERSION, LIB_REVISION, LIB_DATE,
  * LIB_VECTORS and LIB_LAST_BIAS, includes its vectors.h, then this.
+ * A library that uses another may also set LIB_OPEN_MORE(), which opens
+ * it at init (0 when it cannot: the library then does not open either),
+ * and LIB_CLOSE_MORE(), which closes whatever it opened.
  *
  * Built with the FPU (__HAVE_68881__), it will not open on a machine
  * without one: init fails and OpenLibrary() returns NULL, where the code
@@ -43,6 +46,9 @@ static BPTR lib_expunge(REG(a6, struct OMLibBase *base));
 
 static void lib_free(struct OMLibBase *base)
 {
+#ifdef LIB_CLOSE_MORE
+    LIB_CLOSE_MORE();
+#endif
 #ifndef __HAVE_68881__
     if (MathIeeeSingBasBase) CloseLibrary(MathIeeeSingBasBase);
     if (MathIeeeDoubBasBase) CloseLibrary(MathIeeeDoubBasBase);
@@ -75,6 +81,12 @@ static struct Library *lib_init(REG(d0, struct OMLibBase *base), REG(a0, BPTR se
         lib_free(base);
         return NULL;
     }
+#ifdef LIB_OPEN_MORE
+    if (!LIB_OPEN_MORE()) {
+        lib_free(base);
+        return NULL;
+    }
+#endif
     base->seglist = seglist;
     base->lib.lib_Revision = LIB_REVISION;
     return &base->lib;
