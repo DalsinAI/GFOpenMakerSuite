@@ -343,7 +343,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
         path_join(path, (int)sizeof path, fr->fr_Drawer, fr->fr_File);
         memset(&next, 0, sizeof next);
-        if (gs_stl_load(&next, path, err, (int)sizeof err)) {
+        if (ge_open(&next, path, err, (int)sizeof err)) {
             say(ui, err[0] ? err : "Could not open that STL");
         } else {
             remember();

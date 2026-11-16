@@ -38,6 +38,18 @@ static void one(gs_mesh *m, float x, float y, float z)
     if (m->t[0].c.y > m->max.y) m->max.y = m->t[0].c.y;
 }
 
+static float signed_volume(const gs_mesh *m)
+{
+    double s = 0;
+    int i;
+    for (i = 0; i < m->n; i++) {
+        gs_v a = m->t[i].a, b = m->t[i].b, c = m->t[i].c;
+        s += (double)a.x * ((double)b.y * c.z - (double)c.y * b.z) + (double)b.x * ((double)c.y * a.z - (double)a.y * c.z) +
+             (double)c.x * ((double)a.y * b.z - (double)b.y * a.z);
+    }
+    return (float)(s / 6.0);
+}
+
 int main(void)
 {
     gs_mesh m, box;
@@ -106,7 +118,7 @@ int main(void)
             fclose(f);
         }
         expect(ge_start(&start, "build/start.stl", err, (int)sizeof err) == 0, "start with that file");
-        expect(start.n == 12 && near(start.min.x, 1.f) && near(start.max.z, 9.f), "the window shows that file");
+        expect(start.n == 12 && near(start.min.x, 1.f) && near(start.min.z, 0.f) && near(start.max.z, 6.f), "the window shows that file, on the plate");
         if ((f = fopen("build/start.stl", "rb"))) {
             fseek(f, 0, SEEK_END);
             after = ftell(f);
@@ -159,6 +171,29 @@ int main(void)
         expect(ge_bool(&sc, 0, hh) == -1, "join wants a second part");
         ge_scene_free(&sc);
         ge_hist_free(hh);
+    }
+    {
+        /* Open welds, turns the outside out, and drops the part on the
+         * plate. It does not close cracks a boolean left. */
+        gs_mesh part, got;
+        char err[160];
+        int i;
+        memset(&part, 0, sizeof part);
+        memset(&got, 0, sizeof got);
+        expect(gm_cube(&part, 2.f, 2.f, 5.f, 10.f, 10.f, 10.f) == 0, "a cube 5 mm up");
+        for (i = 0; i < part.n; i++) {
+            gs_v t = part.t[i].b;
+            part.t[i].b = part.t[i].c;
+            part.t[i].c = t;
+        }
+        expect(signed_volume(&part) < 0.f, "saved inside out");
+        expect(gm_stl_write(&part, "build/flip.stl") == 0, "write flip.stl");
+        expect(ge_open(&got, "build/flip.stl", err, (int)sizeof err) == 0 && got.n == 12, "open flip.stl");
+        expect(near(got.min.z, 0.f) && near(got.max.z, 10.f) && near(got.min.x, 2.f), "an opened part sits on the plate");
+        expect(signed_volume(&got) > 999.f, "an opened part has its outside out");
+        expect(ge_open(&got, "build/none.stl", err, (int)sizeof err) == -1 && got.n == 0, "a missing file opens nothing");
+        gs_mesh_free(&part);
+        gs_mesh_free(&got);
     }
     ge_hist_free(h);
     gs_mesh_free(&m);
