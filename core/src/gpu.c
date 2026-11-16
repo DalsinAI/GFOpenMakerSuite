@@ -10,6 +10,7 @@
 #include "gs_gpu.h"
 
 #include <math.h>
+#include <string.h>
 
 #include <gfopengpu/stream.h>
 #include <gfopengpu/stream3d.h>
@@ -89,6 +90,16 @@ int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h, uin
     return verts_frame(m, cam, &f, verts, cap);
 }
 
+static void corner(uint32_t *v, float x, float y, uint32_t colour, uint32_t z)
+{
+    v[0] = fix16(x);
+    v[1] = fix16(y);
+    v[2] = colour;
+    v[3] = 0;
+    v[4] = 0;
+    v[5] = z;
+}
+
 static void vert(uint32_t *v, float x, float y)
 {
     v[0] = fix16(x);
@@ -133,6 +144,47 @@ int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, 
         vert(v + 24, bx - nx, by - ny);
         vert(v + 30, ax - nx, ay - ny);
         n += 6;
+    }
+    return n;
+}
+
+int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)
+{
+    gs_frame f;
+    float was[3], at[3], top = 0.f;
+    int i, n = 0, end;
+    if (!p || !verts || !cam || gt_frame(p, cam, part, w, h, &f)) return -1;
+    end = gt_end(p, upto);
+    for (i = 0; i < end; i++)
+        if (p->m[i].z > top) top = p->m[i].z;
+    for (i = 0; i < end; i++) {
+        const gt_move *m = &p->m[i];
+        gs_v v;
+        v.x = m->x;
+        v.y = m->y;
+        v.z = m->z;
+        gs_view_map(&f, cam, v, &at[0], &at[1], &at[2]);
+        if (i && m->kind != GT_TRAVEL) {
+            unsigned long c = gt_shade(m->kind, m->z, top);
+            uint32_t colour = argb((int)(c >> 16) & 255, (int)(c >> 8) & 255, (int)c & 255);
+            uint32_t za = depth_of(&f, was[2]), zb = depth_of(&f, at[2]);
+            float dx = at[0] - was[0], dy = at[1] - was[1], len = sqrtf(dx * dx + dy * dy), nx = 1.f, ny = 0.f;
+            uint32_t *q = verts + n * 6;
+            if (n + 6 > cap) return -1;
+            if (len >= 1e-3f) {
+                nx = -dy / len;
+                ny = dx / len;
+            }
+            /* one pixel either side, as the walls are drawn */
+            corner(q, was[0] + nx, was[1] + ny, colour, za);
+            corner(q + 6, at[0] + nx, at[1] + ny, colour, zb);
+            corner(q + 12, at[0] - nx, at[1] - ny, colour, zb);
+            corner(q + 18, was[0] + nx, was[1] + ny, colour, za);
+            corner(q + 24, at[0] - nx, at[1] - ny, colour, zb);
+            corner(q + 30, was[0] - nx, was[1] - ny, colour, za);
+            n += 6;
+        }
+        memcpy(was, at, sizeof at);
     }
     return n;
 }

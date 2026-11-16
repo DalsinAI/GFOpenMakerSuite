@@ -6,6 +6,7 @@
 #define GS_GPU_H
 
 #include "gs_layer.h"
+#include "gs_toolpath.h"
 #include "gs_view.h"
 
 #include <stdint.h>
@@ -25,6 +26,13 @@ int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h,
  * plate's frame of m. Returns how many vertices, or -1. */
 int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, int w, int h,
                        uint32_t *verts, int cap);
+
+/* The toolpath's moves (layers 1 to upto, 0: all; no travels) as
+ * triangles, two a move and two pixels wide, each in gt_shade's colour
+ * with its own depth, in gt_frame's frame (part: fitted to the part,
+ * else the plate). The same picture gt_paint draws, for a chip. Draw them
+ * with no grid when part. Returns how many vertices, or -1 (cap too small). */
+int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap);
 
 /* The stream that clears an ARGB32 picture and a Z32 depth, draws the bed
  * grid (grid != 0), then the vertices. picture_bpr is the picture's row

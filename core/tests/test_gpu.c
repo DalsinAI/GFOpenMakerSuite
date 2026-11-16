@@ -5,6 +5,7 @@
 #include "gs_gpu.h"
 #include "gs_model.h"
 #include "gs_layer.h"
+#include "gs_plan.h"
 
 #include <gfopengpu/stream.h>
 #include <gfopengpu/stream3d.h>
@@ -86,6 +87,56 @@ static int sample(const unsigned char *rgb, int w, int h, float x, float y)
     if (ix < 0 || iy < 0 || ix >= w || iy >= h) return 0;
     p = rgb + ((size_t)iy * (size_t)w + (size_t)ix) * 3;
     return p[0] > 40 || p[1] > 40 || p[2] > 50;
+}
+
+/* The toolpath batch drawn as the chip would, against gt_paint_part's
+ * picture of the same slice. */
+static void toolpath_case(void)
+{
+    enum { W = 320, H = 240 };
+    static unsigned char batch[W * H * 3], cpu[W * H * 3];
+    static uint32_t zbuf[W * H];
+    gs_mesh box;
+    gs_cam cam;
+    gp_opts o;
+    gt_path p;
+    uint32_t *v;
+    int n, cap, moves = 0, i, both = 0, drawn = 0, top = 0, lit = 0;
+    memset(&box, 0, sizeof box);
+    gs_cam_home(&cam);
+    gp_defaults(&o);
+    gt_init(&p);
+    expect(gm_cube(&box, 0, 0, 0, 30, 30, 10) == 0 && (gp_place(&box, 220.f, 220.f), gp_part(&p, &box, &o)) == 0, "a box sliced");
+    for (i = 1; i < p.n; i++) moves += p.m[i].kind != GT_TRAVEL;
+    cap = moves * 6;
+    v = (uint32_t *)malloc((size_t)cap * 6 * sizeof *v);
+    expect(v != NULL, "room");
+    if (!v) return;
+    expect(gs_gpu_toolpath(&p, &cam, 0, 1, W, H, v, cap - 1) == -1, "too little room is refused");
+    n = gs_gpu_toolpath(&p, &cam, 0, 1, W, H, v, cap);
+    expect(n == moves * 6, "six vertices a move, no travels");
+    expect(gs_gpu_toolpath(&p, &cam, 1, 1, W, H, v, cap) < n / 10, "layer 1 alone is a few of them");
+    n = gs_gpu_toolpath(&p, &cam, 0, 1, W, H, v, cap);
+    memset(zbuf, 0, sizeof zbuf);
+    for (i = 0; i < W * H; i++) batch[i * 3] = 20, batch[i * 3 + 1] = 22, batch[i * 3 + 2] = 28;
+    for (i = 0; i + 2 < n; i += 3)
+        fill(batch, zbuf, W, H, (float)(int32_t)v[i * 6] / 65536.f, (float)(int32_t)v[i * 6 + 1] / 65536.f, v[i * 6 + 5],
+             (float)(int32_t)v[i * 6 + 6] / 65536.f, (float)(int32_t)v[i * 6 + 7] / 65536.f, v[i * 6 + 11],
+             (float)(int32_t)v[i * 6 + 12] / 65536.f, (float)(int32_t)v[i * 6 + 13] / 65536.f, v[i * 6 + 17], v[i * 6 + 2]);
+    expect(gt_paint_part(&p, &cam, 0, cpu, W, H) == 0, "the CPU's picture");
+    for (i = 0; i < W * H; i++) {
+        const unsigned char *a = batch + i * 3, *c = cpu + i * 3;
+        int on = a[0] != 20 || a[1] != 22 || a[2] != 28;
+        if (c[0] > 60) drawn++, both += on;
+        if (on) lit++;
+        if (on && a[0] > 190 && a[1] < 70 && a[2] < 80) top++;
+    }
+    printf("toolpath batch: %d vertices; covers %d of the CPU's %d pixels; %d of %d the top's skin\n", n, both, drawn, top, lit);
+    expect(both > drawn * 95 / 100, "the batch covers what the CPU draws");
+    expect(top > lit / 4, "the top in front, as on the CPU");
+    free(v);
+    gt_free(&p);
+    gs_mesh_free(&box);
 }
 
 int main(void)
@@ -266,6 +317,11 @@ int main(void)
     gs_mesh_free(&box);
     gs_mesh_free(&peg);
     gs_mesh_free(&hole);
+    if (fails) {
+        fprintf(stderr, "%d failed\n", fails);
+        return 1;
+    }
+    toolpath_case();
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);
         return 1;
