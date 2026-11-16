@@ -7,6 +7,7 @@
 #include "gs_model.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,15 +35,6 @@ typedef struct node {
     bag co;
     struct node *front, *back;
 } node;
-
-static mv sub(mv a, mv b)
-{
-    mv r;
-    r.x = a.x - b.x;
-    r.y = a.y - b.y;
-    r.z = a.z - b.z;
-    return r;
-}
 
 static mv cross(mv a, mv b)
 {
@@ -89,16 +81,25 @@ static int bag_add(bag *b, const poly *p)
     return 0;
 }
 
+/* Newell's normal: every edge counts, so a sliver whose first three points
+ * are nearly in a line still gets the plane of all its points. */
 static int plane_of(const poly *p, mv *nrm, float *w)
 {
-    mv e1, e2, n;
+    mv n = {0.f, 0.f, 0.f}, c = {0.f, 0.f, 0.f};
+    int i;
     if (p->n < 3) return 0;
-    e1 = sub(p->v[1], p->v[0]);
-    e2 = sub(p->v[2], p->v[0]);
-    n = cross(e1, e2);
+    for (i = 0; i < p->n; i++) {
+        mv a = p->v[i], b = p->v[(i + 1) % p->n];
+        n.x += (a.y - b.y) * (a.z + b.z);
+        n.y += (a.z - b.z) * (a.x + b.x);
+        n.z += (a.x - b.x) * (a.y + b.y);
+        c.x += a.x;
+        c.y += a.y;
+        c.z += a.z;
+    }
     if (!unit(&n)) return 0;
     *nrm = n;
-    *w = dot(n, p->v[0]);
+    *w = (n.x * c.x + n.y * c.y + n.z * c.z) / (float)p->n;
     return 1;
 }
 
@@ -176,17 +177,24 @@ static void node_free(node *n)
 static int node_build(node *n, const bag *src)
 {
     bag front, back;
-    int i;
+    int i, made = 0;
     memset(&front, 0, sizeof front);
     memset(&back, 0, sizeof back);
     if (!src->n) return 0;
     if (!n->has) {
         if (!plane_of(&src->p[0], &n->nrm, &n->w)) return 0;
         n->has = 1;
+        made = 1;
     }
     for (i = 0; i < src->n; i++) {
         const poly *p = &src->p[i];
         int vi, on = 1, out = 0, inn = 0;
+        /* The polygon that gave this plane lies on it. Splitting it again
+         * would hand the same polygon down for ever. */
+        if (made && i == 0) {
+            if (bag_add(&n->co, p)) goto fail;
+            continue;
+        }
         float d;
         for (vi = 0; vi < p->n; vi++) {
             d = side(n, p->v[vi]);
@@ -537,29 +545,39 @@ int gm_intersect(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b)
     return gm_csg(dst, a, b, 2);
 }
 
+/* Little-endian on every machine, so a 68k file loads on a desktop. */
+static void put_le32(unsigned char *p, unsigned long u)
+{
+    p[0] = (unsigned char)(u & 0xffu);
+    p[1] = (unsigned char)((u >> 8) & 0xffu);
+    p[2] = (unsigned char)((u >> 16) & 0xffu);
+    p[3] = (unsigned char)((u >> 24) & 0xffu);
+}
+
+static void put_lef32(unsigned char *p, float x)
+{
+    uint32_t u;
+    memcpy(&u, &x, 4);
+    put_le32(p, (unsigned long)u);
+}
+
 int gm_stl_write(const gs_mesh *m, const char *path)
 {
     FILE *f;
-    unsigned char hdr[80];
-    unsigned long n;
-    int i;
+    unsigned char hdr[84], rec[50];
+    int i, k;
     if (!m || !path) return -1;
     f = fopen(path, "wb");
     if (!f) return -1;
     memset(hdr, 0, sizeof hdr);
     memcpy(hdr, "GFOpenMake hole", 15);
-    if (fwrite(hdr, 1, 80, f) != 80) {
-        fclose(f);
-        return -1;
-    }
-    n = (unsigned long)m->n;
-    if (fwrite(&n, 4, 1, f) != 1) {
+    put_le32(hdr + 80, (unsigned long)m->n);
+    if (fwrite(hdr, 1, 84, f) != 84) {
         fclose(f);
         return -1;
     }
     for (i = 0; i < m->n; i++) {
         float v[12];
-        unsigned short attr = 0;
         mv e1, e2, nn;
         e1.x = m->t[i].b.x - m->t[i].a.x;
         e1.y = m->t[i].b.y - m->t[i].a.y;
@@ -581,11 +599,13 @@ int gm_stl_write(const gs_mesh *m, const char *path)
         v[9] = m->t[i].c.x;
         v[10] = m->t[i].c.y;
         v[11] = m->t[i].c.z;
-        if (fwrite(v, 4, 12, f) != 12 || fwrite(&attr, 2, 1, f) != 1) {
+        for (k = 0; k < 12; k++) put_lef32(rec + 4 * k, v[k]);
+        rec[48] = rec[49] = 0;
+        if (fwrite(rec, 1, 50, f) != 50) {
             fclose(f);
             return -1;
         }
     }
-    fclose(f);
+    if (fclose(f)) return -1;
     return 0;
 }
