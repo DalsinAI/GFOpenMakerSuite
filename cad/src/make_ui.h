@@ -30,6 +30,11 @@ static const char gm_markup[] =
     "<row><button id=\"drop\">Drop</button><button id=\"centre\">Centre</button><button id=\"lay\">Lay flat</button></row>"
     "<row><label for=\"face\">Face</label><span id=\"face\">no face</span></row>"
     "</fieldset>"
+    "<fieldset><legend>Layers</legend>"
+    "<row><label for=\"lh\">Height</label><spinner id=\"lh\" value=\"0.20\" min=\"0.08\" max=\"0.80\" step=\"0.01\"></row>"
+    "<checkbox id=\"show\">Show layer</checkbox>"
+    "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
+    "</fieldset>"
     "</column>"
     "<div id=\"view\"></div>"
     "</row>"
@@ -49,6 +54,8 @@ static const char gm_css[] =
     "button:selected,button.primary{background:#0067c0;border-color:#0067c0;color:#ffffff}"
     "button.primary:active{background:#005ba1}"
     "label{width:40px;color:#616161}"
+    "spinner{flex:1}"
+    "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
     "hr{background:#d0d0d0}";
 
