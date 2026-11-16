@@ -106,6 +106,61 @@ int main(void)
      * once, not once for each triangle beside it. */
     expect(near(w.length, 441.2f, 0.05f), "441.2 mm of wall on layer 1");
 
+    {
+        /* Welded into loops: every wrench piece closes. */
+        gl_loops L = {0};
+        int k, closed = 0;
+        float per = 0.f;
+        expect(gl_weld(&w, 1e-3f, &L) == 0, "weld the wrench's layer 1");
+        for (k = 0; k < L.n; k++) {
+            closed += L.l[k].closed;
+            per += gl_loop_length(&L.l[k]);
+        }
+        printf("wrench layer 1: %d loops, %d open pieces, %.1f mm round them\n", L.n, L.open, per);
+        expect(L.n > 0 && closed == L.n && L.open == 0, "the wrench's loops all close");
+        expect(near(per, w.length, 0.05f), "and go round all its wall");
+        {
+            int layer, open = 0, bad = 0, n = gl_layers(&wrench, 0.2f);
+            for (layer = 1; layer <= n; layer++) {
+                if (gl_cut(&wrench, 0.2f, layer, &w) || gl_weld(&w, 1e-3f, &L)) bad++;
+                open += L.open;
+            }
+            printf("wrench: %d open pieces over %d layers\n", open, n);
+            expect(!bad && open == 0, "every wrench layer closes");
+        }
+        gl_loops_free(&L);
+    }
+    {
+        /* A square, its pieces out of order, some backwards, the ends a
+         * little apart: one loop, anticlockwise. Three sides: one open piece. */
+        gl_walls sq = {0};
+        gl_loops L = {0};
+        gl_seg s[4] = {{10.f, 0.f, 10.f, 10.f}, {0.f, 0.f, 10.f, 0.00001f}, {0.f, 10.f, 0.f, 0.f}, {0.f, 10.f, 10.00002f, 10.f}};
+        sq.s = s;
+        sq.n = 4;
+        expect(gl_weld(&sq, 1e-3f, &L) == 0 && L.n == 1 && L.open == 0, "a square is one loop");
+        expect(L.n == 1 && L.l[0].n == 4 && L.l[0].closed, "of four corners, closed");
+        expect(L.n == 1 && near(gl_loop_area(&L.l[0]), 100.f, 1e-3f), "anticlockwise, 100 mm2");
+        sq.n = 3;
+        expect(gl_weld(&sq, 1e-3f, &L) == 0 && L.n == 1 && L.open == 1 && !L.l[0].closed && L.l[0].n == 4,
+               "three sides are one open piece");
+        sq.n = 0;
+        expect(gl_weld(&sq, 1e-3f, &L) == 0 && L.n == 0 && L.open == 0, "nothing welds to nothing");
+        gl_loops_free(&L);
+    }
+    {
+        /* The holed cube: the outside anticlockwise, the hole clockwise. */
+        gl_loops L = {0};
+        float a0, a1, hole = 0.5f * 32.f * 36.f * sinf(2.f * 3.14159265f / 32.f);
+        expect(gl_cut(&holed, 0.5f, 20, &w) == 0 && gl_weld(&w, 1e-3f, &L) == 0 && L.n == 2 && L.open == 0,
+               "the holed cube is two loops");
+        a0 = L.n == 2 ? gl_loop_area(&L.l[0]) : 0.f;
+        a1 = L.n == 2 ? gl_loop_area(&L.l[1]) : 0.f;
+        printf("holed cube: areas %.2f and %.2f\n", a0, a1);
+        expect((near(a0, 400.f, 0.01f) && near(a1, -hole, 0.05f)) || (near(a1, 400.f, 0.01f) && near(a0, -hole, 0.05f)),
+               "the outside anticlockwise and the hole clockwise");
+        gl_loops_free(&L);
+    }
     gl_walls_free(&w);
     gs_mesh_free(&box);
     gs_mesh_free(&rod);
