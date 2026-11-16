@@ -28,7 +28,8 @@ float gl_layer_z(const gs_mesh *m, float h, int layer)
     int n = gl_layers(m, h);
     if (layer > n) layer = n;
     if (layer < 1) layer = 1;
-    return m->min.z + gl_height(h) * ((float)layer - 0.5f);
+    float z = m->min.z + gl_height(h) * (float)layer;
+    return z > m->max.z ? m->max.z : z; /* the top layer stops at the top */
 }
 
 /* An edge is crossed when its ends are on two sides. A point on the plane

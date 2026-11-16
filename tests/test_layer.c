@@ -36,10 +36,10 @@ int main(void)
     expect(gl_layers(&box, 0.01f) == 125, "a tiny height is clamped to 0.08");
     expect(gl_layers(&empty, 0.2f) == 0, "nothing has no layers");
     expect(gl_cut(&box, 0.2f, 1, &w) == 0, "cut layer 1");
-    expect(near(w.z, 0.1f, 1e-4f), "layer 1 cuts at 0.1");
+    expect(near(w.z, 0.2f, 1e-4f), "layer 1 cuts at 0.2");
     expect(near(w.length, 40.f, 0.01f), "a 10 mm square is 40 mm of wall");
     expect(w.n >= 4, "four sides at least");
-    expect(gl_cut(&box, 0.2f, 999, &w) == 0 && near(w.z, 9.9f, 1e-3f), "past the top is the last layer");
+    expect(gl_cut(&box, 0.2f, 999, &w) == 0 && near(w.z, 10.f, 1e-4f) && near(w.length, 40.f, 0.01f), "past the top is the last layer, at the top");
     expect(gl_cut(&empty, 0.2f, 1, &w) == 0 && w.n == 0 && w.length == 0.f, "nothing cuts to nothing");
 
     expect(gm_cube(&box, 0.f, 0.f, 0.f, 20.f, 20.f, 20.f) == 0, "20 mm cube");
@@ -53,7 +53,8 @@ int main(void)
     expect(gl_layers(&wrench, 0.2f) == 130, "the wrench is 130 layers at 0.2");
     expect(gl_cut(&wrench, 0.2f, 1, &w) == 0, "cut the wrench");
     printf("wrench layer 1 of %d: %d pieces, %.1f mm of wall\n", gl_layers(&wrench, 0.2f), w.n, w.length);
-    expect(w.length > 430.f && w.length < 450.f, "about 440 mm of wall on layer 1");
+    expect(near(w.z, 0.2f, 1e-4f), "wrench layer 1 cuts at 0.2");
+    expect(near(w.length, 443.2f, 0.05f), "about 443 mm of wall on layer 1");
 
     gl_walls_free(&w);
     gs_mesh_free(&box);
