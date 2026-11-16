@@ -2,7 +2,8 @@
  * anticlockwise and holes clockwise, so the material is always on the
  * left: each edge moves left by d and each corner goes where its two
  * edges' lines meet (a mitre). A very sharp corner's mitre is cut short.
- * An edge the move turns round has closed up and goes.
+ * An edge the move turns round has closed up and goes. A d below 0 moves
+ * out of the material instead, as a brim does.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_layer.h"
 
@@ -108,8 +109,9 @@ int gl_inset(const gl_loops *in, float d, gl_loops *out)
         }
         a = gl_loop_area(l);
         b = r ? 0.f : gl_loop_area(o);
-        /* No room: it turned inside out, or an outside did not shrink. */
-        if (r || (a > 0.f) != (b > 0.f) || (a > 0.f && b >= a) || fabsf(b) < GAP) {
+        /* No room: it turned inside out, or moved the wrong way (in, the
+         * area to the left falls; out, it rises). */
+        if (r || (a > 0.f) != (b > 0.f) || (d > 0.f ? b >= a : b <= a) || fabsf(b) < GAP) {
             free(o->xy);
             memset(o, 0, sizeof *o);
             continue;
