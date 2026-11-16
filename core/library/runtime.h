@@ -33,4 +33,10 @@ size_t RT(strcspn)(const char *s, const char *reject);
 
 void RT(qsort)(void *base, size_t n, size_t size, int (*cmp)(const void *, const void *));
 
+/* %d %i %u %c %s %% and %f, %.Nf and %.*f; l before d, i or u. */
+int RT(vsnprintf)(char *buf, size_t len, const char *fmt, va_list ap);
+int RT(snprintf)(char *buf, size_t len, const char *fmt, ...);
+double RT(strtod)(const char *s, char **end);
+float RT(strtof)(const char *s, char **end);
+
 #endif

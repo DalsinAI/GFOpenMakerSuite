@@ -176,3 +176,250 @@ void RT(qsort)(void *base, size_t n, size_t size, int (*cmp)(const void *, const
         sift(b, 0, i, size, cmp);
     }
 }
+
+/* ---- snprintf */
+
+typedef struct {
+    char *buf;
+    size_t len, at;
+} out_t;
+
+static void put(out_t *o, char c)
+{
+    if (o->buf && o->at + 1 < o->len) o->buf[o->at] = c;
+    o->at++;
+}
+
+static void put_u64(out_t *o, uint64_t v)
+{
+    char d[24];
+    int n = 0;
+    do {
+        d[n++] = (char)('0' + (int)(v % 10u));
+        v /= 10u;
+    } while (v);
+    while (n) put(o, d[--n]);
+}
+
+/* A double to prec places, rounded as the host rounds: on its exact binary
+ * value, a tie to even. Integer arithmetic only, so the same on every CPU. */
+static void put_fixed(out_t *o, double v, int prec)
+{
+    union {
+        double d;
+        uint64_t u;
+    } b;
+    uint64_t m, ip, frac = 0;
+    int e2, e = 0, sticky = 0, i;
+    char dig[40];
+    if (prec > 30) prec = 30;
+    b.d = v;
+    e2 = (int)((b.u >> 52) & 0x7ff);
+    m = b.u & 0xfffffffffffffull;
+    if (b.u >> 63) put(o, '-');
+    if (e2 == 0x7ff) {
+        put(o, m ? 'n' : 'i');
+        put(o, m ? 'a' : 'n');
+        put(o, m ? 'n' : 'f');
+        return;
+    }
+    if (e2) m |= 1ull << 52;
+    else e2 = 1;
+    e2 -= 1075; /* v = m * 2^e2 */
+    if (e2 >= 0) {
+        ip = e2 < 11 ? m << e2 : 0xffffffffffffffffull; /* beyond 2^63: not ours to print */
+    } else if (e2 > -64) {
+        e = -e2;
+        ip = m >> e;
+        frac = m & ((1ull << e) - 1);
+    } else {
+        ip = 0;
+        e = 64;
+        frac = m;
+    }
+    /* Keep the fraction in 60 bits, so ten times it fits; what falls off
+     * only tells a tie from just above one. */
+    if (e > 60) {
+        int drop = e - 60;
+        if (drop >= 64) {
+            sticky = frac != 0;
+            frac = 0;
+        } else {
+            sticky = (frac & ((1ull << drop) - 1)) != 0;
+            frac >>= drop;
+        }
+        e = 60;
+    }
+    for (i = 0; i < prec; i++) {
+        if (e) {
+            frac *= 10u;
+            dig[i] = (char)(frac >> e);
+            frac &= (1ull << e) - 1;
+        } else {
+            dig[i] = 0;
+        }
+    }
+    if (e) {
+        uint64_t half = 1ull << (e - 1);
+        int last = prec ? dig[prec - 1] : (int)(ip & 1u);
+        if (frac > half || (frac == half && (sticky || (last & 1)))) {
+            for (i = prec - 1; i >= 0; i--) {
+                if (++dig[i] < 10) break;
+                dig[i] = 0;
+            }
+            if (i < 0) ip++;
+        }
+    }
+    put_u64(o, ip);
+    if (prec) put(o, '.');
+    for (i = 0; i < prec; i++) put(o, (char)('0' + dig[i]));
+}
+
+int RT(vsnprintf)(char *buf, size_t len, const char *fmt, va_list ap)
+{
+    out_t o;
+    o.buf = buf;
+    o.len = len;
+    o.at = 0;
+    for (; *fmt; fmt++) {
+        int prec = -1, lng = 0;
+        if (*fmt != '%') {
+            put(&o, *fmt);
+            continue;
+        }
+        fmt++;
+        if (*fmt == '.') {
+            fmt++;
+            if (*fmt == '*') {
+                prec = va_arg(ap, int);
+                fmt++;
+            } else {
+                prec = 0;
+                while (*fmt >= '0' && *fmt <= '9') prec = prec * 10 + (*fmt++ - '0');
+            }
+        }
+        while (*fmt == 'l') {
+            lng = 1;
+            fmt++;
+        }
+        switch (*fmt) {
+        case 'd':
+        case 'i': {
+            long v = lng ? va_arg(ap, long) : va_arg(ap, int);
+            if (v < 0) {
+                put(&o, '-');
+                put_u64(&o, (uint64_t)0 - (uint64_t)(int64_t)v);
+            } else {
+                put_u64(&o, (uint64_t)v);
+            }
+            break;
+        }
+        case 'u':
+            put_u64(&o, lng ? va_arg(ap, unsigned long) : va_arg(ap, unsigned));
+            break;
+        case 'c':
+            put(&o, (char)va_arg(ap, int));
+            break;
+        case 's': {
+            const char *s = va_arg(ap, const char *);
+            if (!s) s = "(null)";
+            while (*s && prec--) put(&o, *s++);
+            break;
+        }
+        case 'f':
+            put_fixed(&o, va_arg(ap, double), prec < 0 ? 6 : prec);
+            break;
+        case '%':
+            put(&o, '%');
+            break;
+        case 0:
+            fmt--;
+            break;
+        default:
+            put(&o, '%');
+            put(&o, *fmt);
+            break;
+        }
+    }
+    if (buf && len) buf[o.at < len ? o.at : len - 1] = 0;
+    return (int)o.at;
+}
+
+int RT(snprintf)(char *buf, size_t len, const char *fmt, ...)
+{
+    va_list ap;
+    int n;
+    va_start(ap, fmt);
+    n = RT(vsnprintf)(buf, len, fmt, ap);
+    va_end(ap);
+    return n;
+}
+
+/* ---- Numbers from text */
+
+static double ten_to(int n)
+{
+    double r = 1.0, p = 10.0;
+    int neg = n < 0;
+    if (neg) n = -n;
+    for (; n; n >>= 1, p *= p)
+        if (n & 1) r *= p;
+    return neg ? 1.0 / r : r;
+}
+
+double RT(strtod)(const char *s, char **end)
+{
+    const char *p = s;
+    uint64_t m = 0;
+    int digits = 0, ex = 0, neg = 0, any = 0;
+    double v;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '\f' || *p == '\v') p++;
+    if (*p == '+' || *p == '-') neg = *p++ == '-';
+    for (; *p >= '0' && *p <= '9'; p++, any = 1) {
+        if (digits < 19) {
+            m = m * 10u + (uint64_t)(*p - '0');
+            if (m) digits++;
+        } else {
+            ex++;
+        }
+    }
+    if (*p == '.') {
+        const char *q = p + 1;
+        for (; *q >= '0' && *q <= '9'; q++, any = 1) {
+            if (digits < 19) {
+                m = m * 10u + (uint64_t)(*q - '0');
+                if (m) digits++;
+                ex--;
+            }
+        }
+        if (any) p = q;
+    }
+    if (!any) {
+        if (end) *end = (char *)s;
+        return 0.0;
+    }
+    if (*p == 'e' || *p == 'E') {
+        const char *q = p + 1;
+        int eneg = 0, en = 0, edig = 0;
+        if (*q == '+' || *q == '-') eneg = *q++ == '-';
+        for (; *q >= '0' && *q <= '9'; q++, edig = 1)
+            if (en < 10000) en = en * 10 + (*q - '0');
+        if (edig) {
+            ex += eneg ? -en : en;
+            p = q;
+        }
+    }
+    if (end) *end = (char *)p;
+    /* Exact when the digits and the power of ten both are (up to 2^53 and
+     * 1e22): one rounding, as the host's. */
+    v = (double)m;
+    if (ex < 0 && ex >= -22) v /= ten_to(-ex);
+    else if (ex < -22) v = v / ten_to(22) / ten_to(-ex - 22);
+    else if (ex) v *= ten_to(ex);
+    return neg ? -v : v;
+}
+
+float RT(strtof)(const char *s, char **end)
+{
+    return (float)RT(strtod)(s, end);
+}
