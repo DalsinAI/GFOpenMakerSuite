@@ -100,8 +100,8 @@ The Amiga program is `src/amiga.c`. It needs `gfopenlayout.library` and the
 link library that goes with it:
 
 ```
-m68k-amigaos-gcc -O2 -std=c99 -noixemul -Iinclude -o GFOpenSlicer \
-    src/amiga.c src/job.c src/stl.c src/slice.c -lgfopenlayout -lm
+m68k-amigaos-gcc -O2 -std=c99 -noixemul -Icore/include -Iinclude -o GFOpenSlicer \
+    src/amiga.c src/job.c core/src/stl.c src/slice.c -lgfopenlayout -lm
 ```
 
 The pictures above are the real GFOpenLayout draw list, painted on the host.
