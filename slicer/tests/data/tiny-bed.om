@@ -1,0 +1,6 @@
+# A printer too small for the wrench, for the slicer's machine check.
+name = Tiny 50
+area = 50 50 50
+speed = 100 100 5 25
+hotend = 260
+bed = 100

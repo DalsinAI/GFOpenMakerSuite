@@ -92,6 +92,14 @@ static void move(writer *w, const gt_move *a, const gt_move *b)
     if (travel && w->o->retract > 0.f && len >= w->o->retract_min) retract(w, 1);
 }
 
+/* The machine's code, ending its last line once. */
+static void code_line(writer *w, const char *code)
+{
+    size_t n = strlen(code);
+    say(w, code);
+    if (n && code[n - 1] != '\n') say(w, "\n");
+}
+
 static void run(writer *w, const gt_path *p)
 {
     int i, layer = 0;
@@ -159,15 +167,13 @@ int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o,
         return -1;
     }
     say(&w, "; GFOpenMake\n");
-    say(&w, code);
-    say(&w, "\n");
+    code_line(&w, code);
     run(&w, p);
     if (om_code(m->end, o->hotend, o->bed, code, (int)sizeof code)) {
         snprintf(err, (size_t)errlen, "the machine's end code is too long");
         return -1;
     }
-    say(&w, code);
-    say(&w, "\n");
+    code_line(&w, code);
     if (w.bad) {
         snprintf(err, (size_t)errlen, "the G-code could not be written");
         return -1;
