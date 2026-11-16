@@ -1,5 +1,21 @@
 # GFOpenSlicer
 
+This repository holds the **GFOpenMake suite** for GFOS on AmigaOS 3.2:
+one shared core and the apps on top of it. Every app's window is
+GFOpenLayout (Clear look) and draws through OpenGPU, with the pen drawer
+as the fallback.
+
+| Folder | What | Name |
+| --- | --- | --- |
+| `core/` | Meshes and booleans, STL, the layer cut, the plate, the view and the OpenGPU batch | OpenMakeCore |
+| `cad/` | The solid editor, and its browser bench in `cad/bench/` | OpenMakeCad |
+| `slicer/` | STL to G-code for printers | OpenMakeSlicer |
+| `burn/` | A laser app, not started | OpenMakeBurn |
+| `cnc/` | A CNC app, not started | OpenMakeCNC |
+
+The binaries keep their names (GFOpenSlicer, GFOpenMake). `make test` builds
+and runs every host test.
+
 GFOpenSlicer 0.1.0-rc1 slices an STL to G-code on AmigaOS 3.2. v0.2.0-rc1 adds the solid editor on OpenGPU, and the browser bench in `cad/bench/`. The window is
 GFOpenLayout. The same engine runs from the shell, and the host tests run it
 with no Amiga.
@@ -96,12 +112,12 @@ The host check:
 make test
 ```
 
-The Amiga program is `src/amiga.c`. It needs `gfopenlayout.library` and the
+The Amiga program is `slicer/src/amiga.c`. It needs `gfopenlayout.library` and the
 link library that goes with it:
 
 ```
-m68k-amigaos-gcc -O2 -std=c99 -noixemul -Icore/include -Iinclude -o GFOpenSlicer \
-    src/amiga.c src/job.c core/src/stl.c src/slice.c -lgfopenlayout -lm
+m68k-amigaos-gcc -O2 -std=c99 -noixemul -Icore/include -Islicer/include -o GFOpenSlicer \
+    slicer/src/amiga.c slicer/src/job.c core/src/stl.c slicer/src/slice.c -lgfopenlayout -lm
 ```
 
 The pictures above are the real GFOpenLayout draw list, painted on the host.
