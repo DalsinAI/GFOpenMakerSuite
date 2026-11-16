@@ -22,6 +22,8 @@ OUT=${OUT:-"$HERE/build-amiga"}
 cd "$HERE"
 
 CORE="core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c"
+# The slice as a toolpath, and its picture (gpu.c draws it for a chip).
+PLAN="core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/toolpath_paint.c"
 WARN="-Wall -Wextra -Werror"
 INC="-Icore/include -Icad/include -Icad/src -Imachines/include -I$LAYOUT/include -I$SDK/Include"
 
@@ -34,10 +36,10 @@ build() {
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
     "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
-        $CORE "$OLUI" -lm
+        $PLAN $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
-    "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c $CORE -lm
+    "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
     for f in "$dir"/*; do
