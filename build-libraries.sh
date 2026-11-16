@@ -17,7 +17,7 @@ SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 OUT=${OUT:-"$HERE/build-amiga/libs"}
 cd "$HERE"
 python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
-    core/library/openmakemesh_lib.sfd --check
+    core/library/openmakemesh_lib.sfd core/library/openmakegcode_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -96,5 +96,8 @@ for v in fpu soft; do
         core/library/openmakemesh_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeMeshBase '-DLINK_NAME="openmakemesh.library"' -lm
     echo "$OUT/$v/TestModelLib: $(wc -c < "$OUT/$v/TestModelLib") bytes"
+    # The G-code, its start and end code through openmakemachine.library
+    lib "$v" "$flags" openmakegcode.library core/include -Imachines/include \
+        core/library/openmakegcode_lib.c core/src/gcode.c machines/library/openmakemachine_link.c
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"
