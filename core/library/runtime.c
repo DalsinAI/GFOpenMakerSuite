@@ -423,3 +423,103 @@ float RT(strtof)(const char *s, char **end)
 {
     return (float)RT(strtod)(s, end);
 }
+
+/* ---- Maths, in double inside so a float result is right to the last bit
+ * or nearly */
+
+float RT(fabsf)(float x)
+{
+    return x < 0.f ? -x : x;
+}
+
+float RT(sqrtf)(float x)
+{
+#if defined(__HAVE_68881__) && !defined(OM_RT_HOST)
+    float r;
+    __asm__("fsqrt.x %1,%0" : "=f"(r) : "f"(x));
+    return r;
+#else
+    union {
+        float f;
+        uint32_t u;
+    } b;
+    double r;
+    int i;
+    if (!(x > 0.f)) return x == 0.f ? x : (x - x) / (x - x);
+    b.f = x;
+    b.u = (b.u >> 1) + 0x1fc00000u; /* about half the exponent */
+    r = b.f;
+    for (i = 0; i < 5; i++) r = 0.5 * (r + (double)x / r);
+    return (float)r;
+#endif
+}
+
+/* sin or cos of r in [-pi/4, pi/4], by Taylor's series to 1e-17 */
+static double sin_near(double r)
+{
+    double r2 = r * r;
+    return r * (1.0 - r2 / 6.0 * (1.0 - r2 / 20.0 * (1.0 - r2 / 42.0 * (1.0 - r2 / 72.0 * (1.0 - r2 / 110.0 * (1.0 - r2 / 156.0))))));
+}
+
+static double cos_near(double r)
+{
+    double r2 = r * r;
+    return 1.0 - r2 / 2.0 * (1.0 - r2 / 12.0 * (1.0 - r2 / 30.0 * (1.0 - r2 / 56.0 * (1.0 - r2 / 90.0 * (1.0 - r2 / 132.0 * (1.0 - r2 / 182.0))))));
+}
+
+/* x as k quarter turns and the rest; pi/2 in two parts, so the rest is
+ * right for x up to thousands */
+static double quarter(float x, long *k)
+{
+    const double two_pi = 0.63661977236758134308, p1 = 1.57079632673412561417, p2 = 6.07710050650619224932e-11;
+    double d = (double)x, q = d * two_pi;
+    long n = (long)(q < 0.0 ? q - 0.5 : q + 0.5);
+    *k = n;
+    return (d - (double)n * p1) - (double)n * p2;
+}
+
+float RT(sinf)(float x)
+{
+    long k;
+    double r = quarter(x, &k);
+    switch (k & 3) {
+    case 0: return (float)sin_near(r);
+    case 1: return (float)cos_near(r);
+    case 2: return (float)-sin_near(r);
+    default: return (float)-cos_near(r);
+    }
+}
+
+float RT(cosf)(float x)
+{
+    long k;
+    double r = quarter(x, &k);
+    switch (k & 3) {
+    case 0: return (float)cos_near(r);
+    case 1: return (float)-sin_near(r);
+    case 2: return (float)-cos_near(r);
+    default: return (float)sin_near(r);
+    }
+}
+
+float RT(floorf)(float x)
+{
+    float t;
+    if (!(x > -8388608.f && x < 8388608.f)) return x; /* whole already, or not a number */
+    t = (float)(long)x;
+    return t > x ? t - 1.f : t;
+}
+
+float RT(ceilf)(float x)
+{
+    float t;
+    if (!(x > -8388608.f && x < 8388608.f)) return x;
+    t = (float)(long)x;
+    return t < x ? t + 1.f : t;
+}
+
+long RT(lroundf)(float x)
+{
+    double d = (double)x;
+    return d < 0.0 ? -(long)(-d + 0.5) : (long)(d + 0.5);
+}
