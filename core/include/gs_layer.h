@@ -52,6 +52,11 @@ void gl_loops_free(gl_loops *out);
 float gl_loop_area(const gl_loop *l);
 float gl_loop_length(const gl_loop *l);
 
+/* Replaces out with every closed loop of in moved d mm into the material:
+ * an outside shrinks and a hole grows, each corner mitred. A loop with no
+ * room left is dropped; open pieces are left out. 0, or -1. */
+int gl_inset(const gl_loops *in, float d, gl_loops *out);
+
 /* "Layer n of N, X mm of wall. No infill." for the window's status. */
 void gl_status(char *buf, int len, const gs_mesh *m, float h, int layer, const gl_walls *w);
 
