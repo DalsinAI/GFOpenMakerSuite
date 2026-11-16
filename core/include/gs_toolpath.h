@@ -68,6 +68,13 @@ int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, in
 
 /* The colour each kind is drawn in: 0xRRGGBB. A travel is not drawn. */
 unsigned long gt_colour(int kind);
+/* Its colour at height z, top the highest drawn: darker the lower. */
+unsigned long gt_shade(int kind, float z, float top);
+/* Where layers 1 to upto end (0: all): the moves drawn are those before. */
+int gt_end(const gt_path *p, int upto);
+/* The frame a picture of p is drawn in: the plate's (part 0), or fitted
+ * to what the moves lay down (part 1). cam is not NULL. 0, or -1. */
+int gt_frame(const gt_path *p, const gs_cam *cam, int part, int w, int h, gs_frame *f);
 
 /* The toolpath over the plate, framed as gs_view_bed frames it (cam NULL:
  * the home view), into rgb, w*h*3. Layers 1 to upto (0: all), each line

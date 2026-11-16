@@ -49,7 +49,13 @@ int main(void)
     for (k = 1; k < GT_KINDS; k++) expect(gt_colour(k) != 0 && gt_colour(k) != gt_colour(k - 1), "a colour each");
     expect(gt_colour(GT_BRIM) == 0x30a060 && gt_colour(GT_SKIN) == 0xd03040, "brim green, skin red");
 
+    expect(gt_shade(GT_SKIN, 10.f, 10.f) == gt_colour(GT_SKIN) && gt_shade(GT_SKIN, 5.f, 0.f) == gt_colour(GT_SKIN),
+           "at the top, or with no height, a kind's own colour");
+    expect(gt_shade(GT_SKIN, 0.f, 10.f) == ((0xd0ul * 120 / 256) << 16 | (0x30ul * 120 / 256) << 8 | (0x40ul * 120 / 256)),
+           "at the bottom, 120/256 of it");
+
     gt_init(&p);
+    expect(gt_end(&p, 0) == 0 && gt_end(&p, 3) == 0, "nothing drawn of nothing");
     expect(gs_view_bed(&empty, NULL, plate, W, H) == 0 && gt_paint(&p, NULL, 0, one, W, H) == 0, "painted");
     expect(!memcmp(plate, one, sizeof plate), "nothing to draw: the plate alone");
 
@@ -57,6 +63,16 @@ int main(void)
     expect(gm_cube(&box, 0, 0, 0, 30, 30, 10) == 0, "a box");
     gp_place(&box, 220.f, 220.f);
     expect(gp_part(&p, &box, &o) == 0 && p.nlayers == 50, "sliced");
+    expect(gt_end(&p, 0) == p.n && gt_end(&p, 1) == p.layer[1] && gt_end(&p, 50) == p.n && gt_end(&p, 99) == p.n,
+           "where the layers asked for end");
+    {
+        gs_frame plate, part;
+        gs_cam cam;
+        gs_cam_home(&cam);
+        expect(gt_frame(&p, &cam, 0, W, H, &plate) == 0 && gt_frame(&p, &cam, 1, W, H, &part) == 0 &&
+                   part.s > 4.f * plate.s,
+               "framed to the part, it is drawn more than 4 times bigger than on the plate");
+    }
     expect(gt_paint(&p, NULL, 1, one, W, H) == 0 && gt_paint(&p, NULL, 0, all, W, H) == 0, "painted again");
     n1 = drawn(one, plate, &g1, &r1);
     nall = drawn(all, plate, &gall, &rall);

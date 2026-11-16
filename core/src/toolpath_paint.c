@@ -20,8 +20,20 @@ unsigned long gt_colour(int kind)
     return kind >= 0 && kind < GT_KINDS ? c[kind] : 0;
 }
 
-/* From (ax, ay, az) to (bx, by, bz) in colour c, scaled by shade (0 to 256). */
-static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, const float *b, unsigned long c, int shade)
+unsigned long gt_shade(int kind, float z, float top)
+{
+    unsigned long c = gt_colour(kind), s = top > 0.f ? 120ul + (unsigned long)(136.f * z / top) : 256ul;
+    if (s > 256ul) s = 256ul;
+    return (((c >> 16) & 255) * s / 256) << 16 | (((c >> 8) & 255) * s / 256) << 8 | ((c & 255) * s / 256);
+}
+
+int gt_end(const gt_path *p, int upto)
+{
+    return upto > 0 && upto < p->nlayers ? p->layer[upto] : p->n;
+}
+
+/* From (ax, ay, az) to (bx, by, bz) in colour c. */
+static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, const float *b, unsigned long c)
 {
     float dx = b[0] - a[0], dy = b[1] - a[1];
     int n = (int)((dx < 0 ? -dx : dx) > (dy < 0 ? -dy : dy) ? (dx < 0 ? -dx : dx) : (dy < 0 ? -dy : dy)) + 1, i;
@@ -34,9 +46,9 @@ static void line(unsigned char *rgb, float *zb, int w, int h, const float *a, co
         if (z < zb[k]) continue; /* nearer is larger */
         zb[k] = z;
         p = rgb + k * 3;
-        p[0] = (unsigned char)(((c >> 16) & 255) * (unsigned long)shade / 256);
-        p[1] = (unsigned char)(((c >> 8) & 255) * (unsigned long)shade / 256);
-        p[2] = (unsigned char)((c & 255) * (unsigned long)shade / 256);
+        p[0] = (unsigned char)((c >> 16) & 255);
+        p[1] = (unsigned char)((c >> 8) & 255);
+        p[2] = (unsigned char)(c & 255);
     }
 }
 
@@ -70,33 +82,40 @@ static void fit_moves(const gt_path *p, const gs_cam *cam, gs_frame *f)
     f->s = s;
 }
 
-/* fit: framed to the moves' box over a plain background, else the plate. */
-static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h, int fit)
+int gt_frame(const gt_path *p, const gs_cam *cam, int part, int w, int h, gs_frame *f)
+{
+    gs_mesh none;
+    float lo[3], hi[3];
+    memset(&none, 0, sizeof none);
+    if (part && gt_bounds(p, lo, hi) == 0) {
+        if (gs_view_frame_bed(&none, cam, w, h, lo[0], lo[1], hi[0], hi[1], f)) return -1;
+        fit_moves(p, cam, f);
+        return 0;
+    }
+    return gs_view_frame_bed(&none, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, f);
+}
+
+/* part: framed to the moves over a plain background, else the plate. */
+static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h, int part)
 {
     gs_mesh none;
     gs_cam home;
     gs_frame f;
     float *zb, top = 0.f, at[3], was[3], lo[3], hi[3];
-    int i, end = p->n;
+    int i, end = gt_end(p, upto);
     if (!rgb || w < 4 || h < 4) return -1;
     if (!cam) {
         gs_cam_home(&home);
         cam = &home;
     }
     memset(&none, 0, sizeof none);
-    if (gs_view_bed(&none, cam, rgb, w, h)) return -1;
-    if (fit && gt_bounds(p, lo, hi) == 0) {
+    if (gs_view_bed(&none, cam, rgb, w, h) || gt_frame(p, cam, part, w, h, &f)) return -1;
+    if (part && gt_bounds(p, lo, hi) == 0)
         for (i = 0; i < w * h * 3; i += 3) {
             rgb[i] = 20;
             rgb[i + 1] = 22;
             rgb[i + 2] = 28;
         }
-        if (gs_view_frame_bed(&none, cam, w, h, lo[0], lo[1], hi[0], hi[1], &f)) return -1;
-        fit_moves(p, cam, &f);
-    } else if (gs_view_frame_bed(&none, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) {
-        return -1;
-    }
-    if (upto > 0 && upto < p->nlayers) end = p->layer[upto];
     for (i = 0; i < end; i++)
         if (p->m[i].z > top) top = p->m[i].z;
     zb = (float *)malloc((size_t)w * (size_t)h * sizeof *zb);
@@ -109,8 +128,7 @@ static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *r
         v.y = m->y;
         v.z = m->z;
         gs_view_map(&f, cam, v, &at[0], &at[1], &at[2]);
-        if (i && m->kind != GT_TRAVEL)
-            line(rgb, zb, w, h, was, at, gt_colour(m->kind), top > 0.f ? 120 + (int)(136.f * m->z / top) : 256);
+        if (i && m->kind != GT_TRAVEL) line(rgb, zb, w, h, was, at, gt_shade(m->kind, m->z, top));
         memcpy(was, at, sizeof at);
     }
     free(zb);
