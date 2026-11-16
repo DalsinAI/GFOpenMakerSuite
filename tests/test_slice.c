@@ -242,6 +242,24 @@ int main(void)
         gs_mesh_free(&m);
     }
 
+    {
+        /* Some exporters start a binary header with "solid". The size
+         * 84 + 50 a triangle says it is binary all the same. */
+        FILE *f = fopen("/tmp/gs-cube.stl", "r+b");
+        gs_mesh m;
+        char err[160];
+        if (f) {
+            fwrite("solid part, facet normals", 1, 25, f);
+            fclose(f);
+        }
+        expect(gs_stl_load(&m, "/tmp/gs-cube.stl", err, (int)sizeof err) == 0 && m.n == 12,
+               "a binary file whose header says solid loads as binary");
+        gs_mesh_free(&m);
+        expect(gs_stl_load(&m, "/tmp/gs-pyr.stl", err, (int)sizeof err) == 0 && m.n == 6, "ASCII still loads");
+        gs_mesh_free(&m);
+        cube_stl("/tmp/gs-cube.stl");
+    }
+
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);
         return 1;
