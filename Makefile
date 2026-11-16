@@ -10,7 +10,7 @@ LAYOUT ?= ../gfopenlayout
 
 .PHONY: all test preview clean
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -70,6 +70,9 @@ $(BUILD)/test_inset: core/tests/test_inset.c core/src/inset.c core/src/layer.c c
 $(BUILD)/test_fill: core/tests/test_fill.c core/src/fill.c core/src/toolpath.c core/include/gs_toolpath.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_fill.c core/src/fill.c core/src/toolpath.c -lm
 
+$(BUILD)/test_gcode: core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c core/include/gs_gcode.h core/include/gs_toolpath.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c -lm
+
 # openmakemesh.library's calls, the same way.
 MESH_LIB = core/library/openmakemesh_lib.sfd
 $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl.c $(MESH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
@@ -80,7 +83,7 @@ $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -95,6 +98,7 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_toolpath
 	$(BUILD)/test_inset
 	$(BUILD)/test_fill
+	$(BUILD)/test_gcode
 
 preview: $(BUILD)/preview
 
