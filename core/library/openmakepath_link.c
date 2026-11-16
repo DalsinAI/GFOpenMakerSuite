@@ -102,3 +102,28 @@ int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, in
 {
     return GT_Fill(p, region, solid, nsolid, z, w, every, cross);
 }
+
+void gp_defaults(gp_opts *o)
+{
+    GP_Defaults(o);
+}
+
+int gp_layers(const gs_mesh *m, const gp_opts *o)
+{
+    return GP_Layers(m, o);
+}
+
+int gp_layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)
+{
+    return GP_Layer(p, m, o, n);
+}
+
+void gp_place(gs_mesh *m, float bed_x, float bed_y)
+{
+    GP_Place(m, bed_x, bed_y);
+}
+
+int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o)
+{
+    return GP_Part(p, m, o);
+}

@@ -3,6 +3,7 @@
 #include "omlib.h"
 #include <gs_layer.h>
 #include <gs_toolpath.h>
+#include <gs_plan.h>
 
 static ULONG LIB_GL_Height(REG(d0, ULONG h), REG(a6, struct Library *base))
 {
@@ -124,7 +125,37 @@ static int LIB_GT_Fill(REG(a0, gt_path *p), REG(a1, const gl_loops *region), REG
     return gt_fill(p, region, solid, nsolid, om_lib_float(z), om_lib_float(w), every, cross);
 }
 
-#define OPENMAKEPATH_LAST_BIAS 144
+static void LIB_GP_Defaults(REG(a0, gp_opts *o), REG(a6, struct Library *base))
+{
+    (void)base;
+    gp_defaults(o);
+}
+
+static int LIB_GP_Layers(REG(a0, const gs_mesh *m), REG(a1, const gp_opts *o), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gp_layers(m, o);
+}
+
+static int LIB_GP_Layer(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, const gp_opts *o), REG(d0, int n), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gp_layer(p, m, o, n);
+}
+
+static void LIB_GP_Place(REG(a0, gs_mesh *m), REG(d0, ULONG bed_x), REG(d1, ULONG bed_y), REG(a6, struct Library *base))
+{
+    (void)base;
+    gp_place(m, om_lib_float(bed_x), om_lib_float(bed_y));
+}
+
+static int LIB_GP_Part(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, const gp_opts *o), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gp_part(p, m, o);
+}
+
+#define OPENMAKEPATH_LAST_BIAS 174
 #define OPENMAKEPATH_VECTORS \
     (APTR)LIB_GL_Height, \
     (APTR)LIB_GL_Layers, \
@@ -145,4 +176,9 @@ static int LIB_GT_Fill(REG(a0, gt_path *p), REG(a1, const gl_loops *region), REG
     (APTR)LIB_GT_Append, \
     (APTR)LIB_GT_Length, \
     (APTR)LIB_GT_Bounds, \
-    (APTR)LIB_GT_Fill
+    (APTR)LIB_GT_Fill, \
+    (APTR)LIB_GP_Defaults, \
+    (APTR)LIB_GP_Layers, \
+    (APTR)LIB_GP_Layer, \
+    (APTR)LIB_GP_Place, \
+    (APTR)LIB_GP_Part

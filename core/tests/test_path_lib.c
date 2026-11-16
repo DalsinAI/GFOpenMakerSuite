@@ -106,6 +106,43 @@ static int toolpath_case(const gl_loops *walls)
     return 14 + i;
 }
 
+/* The holed cube placed on a bed and sliced: the GP_ calls against the C
+ * functions. The calls it makes. */
+static int plan_case(const gs_mesh *part)
+{
+    gs_mesh ca, cb;
+    gp_opts oa, ob;
+    gt_path pa, pb;
+    int n;
+    memset(&ca, 0, sizeof ca);
+    memset(&cb, 0, sizeof cb);
+    expect(gm_cube(&ca, 0, 0, 0, 20, 20, 20) == 0 && gm_cube(&cb, 0, 0, 0, 20, 20, 20) == 0, "two cubes");
+    gp_place(&ca, 220.f, 180.f);
+    GP_Place(&cb, 220.f, 180.f);
+    expect(ca.n == cb.n && !memcmp(ca.t, cb.t, (size_t)ca.n * sizeof *ca.t) && cb.min.z == 0 && cb.min.x == 100,
+           "GP_Place, two floats");
+    gp_defaults(&oa);
+    memset(&ob, 0xff, sizeof ob);
+    GP_Defaults(&ob);
+    expect(!memcmp(&oa, &ob, sizeof oa), "GP_Defaults");
+    oa.layer_h = ob.layer_h = 0.5f;
+    n = GP_Layers(part, &ob);
+    expect(n == gp_layers(part, &oa) && n == 40, "GP_Layers");
+    gt_init(&pa);
+    gt_init(&pb);
+    expect(gp_layer(&pa, part, &oa, 2) == 0 && GP_Layer(&pb, part, &ob, 2) == 0 && same_path(&pa, &pb) &&
+               pb.nlayers == 1,
+           "GP_Layer");
+    expect(gp_part(&pa, part, &oa) == 0 && GP_Part(&pb, part, &ob) == 0 && same_path(&pa, &pb) && pb.nlayers == n,
+           "GP_Part");
+    printf("through the library: %d layers, %d moves\n", pb.nlayers, pb.n);
+    gt_free(&pa);
+    gt_free(&pb);
+    gs_mesh_free(&ca);
+    gs_mesh_free(&cb);
+    return 5;
+}
+
 /* Two sets of walls, piece for piece the same. */
 static int same_walls(const gl_walls *a, const gl_walls *b)
 {
@@ -154,7 +191,7 @@ int main(void)
             same = 0;
     }
     expect(same, "point for point, and GL_LoopArea and GL_LoopLength agree");
-    toolpath_calls = toolpath_case(&lb);
+    toolpath_calls = toolpath_case(&lb) + plan_case(&holed);
     GL_LoopsFree(&lb);
     GL_WallsFree(&b);
     expect(lb.n == 0 && lb.l == NULL && b.n == 0 && b.s == NULL, "GL_LoopsFree and GL_WallsFree");

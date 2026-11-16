@@ -11,7 +11,7 @@ and shared by every app: `openmakemachine.library` first, then
 | `libshell.c`, `libstart.c` | The library around the calls: romtag, init, open, close, expunge, the jump table (checked against the last bias when it builds). The FPU build's init fails on a machine without an FPU; the build without one opens the mathieee libraries, through which libnix's soft float works (and which use an FPU themselves when there is one). |
 | `runtime_dos.c` | `fopen` and the rest over dos.library, for the calls that read files. |
 | `link_base.c` | A link library's base, opened before `main()`; without the library the program says so and stops. |
-| `openmakepath_lib.*` | openmakepath.library: a part cut into layers, the walls welded into loops and inset (`core/src/layer.c`, `loops.c`, `inset.c`), and the toolpath and its fill (`toolpath.c`, `fill.c`). |
+| `openmakepath_lib.*` | openmakepath.library: a part cut into layers, the walls welded into loops and inset (`core/src/layer.c`, `loops.c`, `inset.c`), the toolpath and its fill (`toolpath.c`, `fill.c`), and a printer's layers planned (`plan.c`). |
 | `openmakemesh_lib.*` | openmakemesh.library: STL in and out, repair, and the solids and booleans (`core/src/model.c`, `stl.c`). |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 

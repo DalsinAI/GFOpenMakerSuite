@@ -5,6 +5,7 @@
 #include "omlib.h"
 #include <gs_layer.h>
 #include <gs_toolpath.h>
+#include <gs_plan.h>
 
 extern struct Library *OpenMakePathBase;
 
@@ -283,6 +284,75 @@ static __inline__ int GT_Fill(gt_path *p, const gl_loops *region, const gl_loops
     register ULONG _d3 __asm("d3") = (ULONG)(every);
     register ULONG _d4 __asm("d4") = (ULONG)(cross);
     __asm__ volatile("jsr a6@(-144:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_d2), "r"(_d3), "r"(_d4) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ void GP_Defaults(gp_opts *o)
+{
+#ifdef OM_LIB_HOST
+    ((void (*)(gp_opts *, struct Library *))om_host_vector(OpenMakePathBase, 150))(o, OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(o);
+    __asm__ volatile("jsr a6@(-150:W)" : "=r"(_d0), "+r"(_a0) : "r"(_a6) : "d1", "a1", "fp0", "fp1", "cc", "memory");
+#endif
+}
+
+static __inline__ int GP_Layers(const gs_mesh *m, const gp_opts *o)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, const gp_opts *, struct Library *))om_host_vector(OpenMakePathBase, 156))(m, o, OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(o);
+    __asm__ volatile("jsr a6@(-156:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GP_Layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gt_path *, const gs_mesh *, const gp_opts *, int, struct Library *))om_host_vector(OpenMakePathBase, 162))(p, m, o, n, OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(o);
+    register ULONG _d0 __asm("d0") = (ULONG)(n);
+    __asm__ volatile("jsr a6@(-162:W)" : "+r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ void GP_Place(gs_mesh *m, float bed_x, float bed_y)
+{
+#ifdef OM_LIB_HOST
+    ((void (*)(gs_mesh *, ULONG, ULONG, struct Library *))om_host_vector(OpenMakePathBase, 168))(m, om_lib_bits(bed_x), om_lib_bits(bed_y), OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = om_lib_bits(bed_x);
+    register ULONG _d1 __asm("d1") = om_lib_bits(bed_y);
+    __asm__ volatile("jsr a6@(-168:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0) : "r"(_a6) : "a1", "fp0", "fp1", "cc", "memory");
+#endif
+}
+
+static __inline__ int GP_Part(gt_path *p, const gs_mesh *m, const gp_opts *o)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gt_path *, const gs_mesh *, const gp_opts *, struct Library *))om_host_vector(OpenMakePathBase, 174))(p, m, o, OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(o);
+    __asm__ volatile("jsr a6@(-174:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "d1", "fp0", "fp1", "cc", "memory");
     return (int)_d0;
 #endif
 }
