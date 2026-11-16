@@ -64,6 +64,19 @@ int main(void)
     expect(n1 > 150 && g1 > 30 && r1 > 100, "layer 1: the brim and the bottom");
     expect(nall > n1 && gall < g1, "all of it: more drawn, the brim hidden in part behind the box");
     expect(gt_paint(&p, NULL, 0, NULL, W, H) == -1, "no picture to paint in");
+    {
+        static unsigned char close[W * H * 3];
+        int i, lit = 0, top = 0;
+        expect(gt_paint_part(&p, NULL, 0, close, W, H) == 0, "framed to the part");
+        for (i = 0; i < W * H; i++) {
+            const unsigned char *q = close + i * 3;
+            if (q[0] > 60) lit++;
+            if (q[0] > 190 && q[1] < 70 && q[2] < 80) top++; /* the top skin, lit as the highest */
+        }
+        printf("framed to the part: %d pixels, %d of them the top's skin\n", lit, top);
+        expect(lit > 10 * nall, "the part fills the picture");
+        expect(top > lit / 4, "the top layer in front of the ones below it");
+    }
     gt_free(&p);
     gs_mesh_free(&box);
     if (fails) {

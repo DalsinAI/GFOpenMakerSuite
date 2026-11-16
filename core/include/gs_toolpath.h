@@ -74,5 +74,8 @@ unsigned long gt_colour(int kind);
  * in its kind's colour, darker the lower it is, nearer lines in front.
  * The pen drawer's picture of a slice. 0, or -1. */
 int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h);
+/* The same, framed to the part (what the moves lay down) over a plain
+ * background instead of the plate, for a close look. */
+int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h);
 
 #endif
