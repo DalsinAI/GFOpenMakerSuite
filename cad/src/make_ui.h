@@ -19,8 +19,10 @@
  * and the groups are a row shorter where they can be. The side is two
  * tabs, Model (File to Place), Print (Layers, and Slice with core/ui's
  * print settings panel, omview_settings.h, put in "settings" by make.c),
- * and Holes (the bench's bolt circle, hole row and counterbore, cut through
- * the picked part about its middle), as wide as that panel. Place's Size and At, a row for each axis, are the
+ * Holes (the bench's bolt circle, hole row and counterbore, cut through
+ * the picked part about its middle) and Extrude (the bench's block, round
+ * or slot: added on the bed, stood on the picked part's top, or cut down
+ * from it), as wide as that panel. Place's Size and At, a row for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
 static const char gm_markup[] =
     "<row id=\"body\">"
@@ -70,6 +72,16 @@ static const char gm_markup[] =
     "<row><label for=\"hcb\">Bore</label><spinner id=\"hcb\" min=\"1.0\" max=\"80.0\" step=\"0.1\" value=\"16.0\"><span class=\"unit\">mm</span></row>"
     "<row><label for=\"hdeep\">Deep</label><spinner id=\"hdeep\" min=\"0.4\" max=\"40.0\" step=\"0.1\" value=\"4.0\"><span class=\"unit\">mm</span></row>"
     "<row><button id=\"cbore\">Counterbore</button></row>"
+    "</fieldset>"
+    "</tab><tab title=\"Extrude\">"
+    "<fieldset><legend>Sketch</legend>"
+    "<row><label for=\"xkind\">Shape</label><select id=\"xkind\"></select></row>"
+    "<row><label for=\"xw\">Width</label><spinner id=\"xw\" min=\"1.0\" max=\"200.0\" step=\"0.1\" value=\"20.0\"><span class=\"unit\">mm</span></row>"
+    "<row><label for=\"xd\">Depth</label><spinner id=\"xd\" min=\"1.0\" max=\"200.0\" step=\"0.1\" value=\"10.0\"><span class=\"unit\">mm</span></row>"
+    "<row><label for=\"xh\">Height</label><spinner id=\"xh\" min=\"0.4\" max=\"120.0\" step=\"0.1\" value=\"8.0\"><span class=\"unit\">mm</span></row>"
+    "</fieldset>"
+    "<fieldset><legend>Extrude</legend>"
+    "<row><button id=\"xadd\">Add</button><button id=\"xon\">On top</button><button id=\"xcut\">Cut</button></row>"
     "</fieldset>"
     "</tab></tabs>"
     "</column>"

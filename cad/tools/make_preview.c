@@ -17,6 +17,7 @@
  * OPEN: a select's id, shown open (the side on Model for "shape").
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
+#include "gs_model.h"
 #include "gs_gcode.h"
 #include "gs_plan.h"
 #include "gs_settings.h"
@@ -95,6 +96,32 @@ static int paint_marks(unsigned char *rgb, int w, int h, const gs_mesh *m, const
     return 0;
 }
 
+/* The stock and Extrude's Add together, as make.c's view shows them. */
+static int both(gs_mesh *part, const gs_mesh *add)
+{
+    gs_tri *t = (gs_tri *)realloc(part->t, (size_t)(part->n + add->n) * sizeof *t);
+    int i;
+    if (!t) return -1;
+    memcpy(t + part->n, add->t, (size_t)add->n * sizeof *t);
+    part->t = t;
+    part->n += add->n;
+    part->cap = part->n;
+    for (i = 0; i < add->n; i++) {
+        const gs_v *v[3];
+        int k;
+        v[0] = &add->t[i].a, v[1] = &add->t[i].b, v[2] = &add->t[i].c;
+        for (k = 0; k < 3; k++) {
+            if (v[k]->x < part->min.x) part->min.x = v[k]->x;
+            if (v[k]->y < part->min.y) part->min.y = v[k]->y;
+            if (v[k]->z < part->min.z) part->min.z = v[k]->z;
+            if (v[k]->x > part->max.x) part->max.x = v[k]->x;
+            if (v[k]->y > part->max.y) part->max.y = v[k]->y;
+            if (v[k]->z > part->max.z) part->max.z = v[k]->z;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     olui *ui;
@@ -110,7 +137,7 @@ int main(int argc, char **argv)
     int have, how;
     gc_stats st;
     gt_path path;
-    char err[160], status[180], ppm[256];
+    char err[160], status[180], ppm[256], said[96] = "";
     gs_v mark[2];
     int nmark = 0;
     unsigned char *rgb;
@@ -170,6 +197,23 @@ int main(int argc, char **argv)
         }
         printf("holes cut: %d triangles\n", part.n);
     }
+    if (getenv("EXTRUDE")) { /* as make.c's Extrude: op:kind:w:d:h */
+        int op, kind;
+        float ew, ed, eh;
+        gs_mesh out;
+        memset(&out, 0, sizeof out);
+        if (sscanf(getenv("EXTRUDE"), "%d:%d:%f:%f:%f", &op, &kind, &ew, &ed, &eh) != 5) return 2;
+        if (ge_extrude(&part, kind, op, ew, ed, eh, &out, said, (int)sizeof said)) {
+            fprintf(stderr, "EXTRUDE: %s\n", said);
+            return 1;
+        }
+        if (op == GM_ON_BED && both(&part, &out)) return 1; /* the view shows the two */
+        if (op != GM_ON_BED) {
+            gs_mesh_free(&part);
+            part = out;
+        }
+        printf("%s\n", said);
+    }
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
     if (!olui_load(ui, gm_markup, gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
@@ -212,6 +256,9 @@ int main(int argc, char **argv)
     {
         int k; /* as make.c fills Parts' list, showing the shape added */
         for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
+        olui_select_add(ui, olui_find(ui, "xkind"), "Block", "Block");
+        olui_select_add(ui, olui_find(ui, "xkind"), "Round", "Round");
+        olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
         olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
     }
     {
@@ -243,6 +290,18 @@ int main(int argc, char **argv)
         if (!olui_layout(ui, w, h)) return 1;
     }
     gs_cam_home(&cam);
+    if (getenv("EXTRUDE")) { /* the tab as the click left it, and what it said */
+        static const char *const ids[3] = {"xw", "xd", "xh"};
+        float v[5];
+        int k;
+        if (sscanf(getenv("EXTRUDE"), "%f:%f:%f:%f:%f", &v[0], &v[1], &v[2], &v[3], &v[4]) == 5) {
+            olui_select_set(ui, olui_find(ui, "xkind"), (int)v[1]);
+            for (k = 0; k < 3; k++)
+                if (k != 1 || (int)v[1] != GM_ROUND) olui_set_number(ui, olui_find(ui, ids[k]), (int)(v[2 + k] * 10.f + 0.5f));
+        }
+        snprintf(status, sizeof status, "%s", said);
+        omv_say(ui, status);
+    }
     if (getenv("MEASURE")) { /* as make.c's Measure: the tool lit, then each click */
         const char *q = getenv("MEASURE");
         olui_set_selected(ui, olui_find(ui, "orbit"), 0);
@@ -274,7 +333,7 @@ int main(int argc, char **argv)
     olui_draw(ui, NULL, draw, NULL);
     if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
         rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
-        if (rgb && (getenv("MEASURE") ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
+        if (rgb && (getenv("MEASURE") || getenv("EXTRUDE") ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
                                       : !gt_paint_part(&path, &cam, upto, rgb, box.w, box.h))) {
             snprintf(ppm, sizeof ppm, "%s.ppm", argv[1]);
             pf = fopen(ppm, "wb");
