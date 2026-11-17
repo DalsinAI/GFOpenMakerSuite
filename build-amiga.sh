@@ -42,7 +42,7 @@ fi
 # by name, not at the link.
 MISSING=""
 DEFINED=$("$NM" "$OLUI" 2>/dev/null | awk '$2 == "T" { print $3 }')
-for f in $(grep -ho 'olui_[a-z_0-9]*(' cad/src/*.c slicer/src/*.c core/ui/*.c | tr -d '(' | sort -u); do
+for f in $(grep -ho 'olui_[a-z_0-9]*(' cad/src/*.c slicer/src/*.c burn/src/*.c core/ui/*.c | tr -d '(' | sort -u); do
     echo "$DEFINED" | grep -qx "_$f" || MISSING="$MISSING $f"
 done
 if [ -n "$MISSING" ]; then
@@ -84,6 +84,12 @@ build() {
         core/ui/view_gpu.c core/ui/view_gpu_amiga.c core/src/gpu.c core/src/plan_par.c \
         core/src/par_exec.c core/src/gcode.c core/src/settings.c machines/src/machine.c $PLAN core/src/layer.c \
         core/src/loops.c $CORE "$OLUI" -lm
+    # OpenMakeBurn's window (burn/src/amiga.c): SVG to Grbl laser G-code,
+    # core/ui's helpers, the laser picker and the OpenGPU view
+    "$CC" $cf -Iburn/include -Iburn/src -s -o "$dir/GFOpenBurn" burn/src/amiga.c burn/src/burn_job.c burn/src/burn_ui.c \
+        core/src/vec.c core/src/gcode.c core/src/toolpath.c core/src/toolpath_paint.c core/src/gpu.c \
+        core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c core/ui/view_gpu.c core/ui/view_gpu_amiga.c \
+        machines/src/machine.c $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
