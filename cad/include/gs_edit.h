@@ -153,6 +153,16 @@ int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
  * moved, line saying so; or -1 with line saying why, the part kept. */
 int ge_pull(gs_mesh *m, int face, float mm, char *line, int len);
 
+/* Drag to pull, as the bench's Pull mode. The screen's pixels per mm
+ * along face's outward normal, in sx and sy, as the view frames scene
+ * (the parts shown) at w by h; m is the face's part. 0, or -1 with no
+ * face or the normal seen too nearly end on (within about 12 degrees of
+ * the line of sight: turn the view). */
+int ge_face_axis(const gs_mesh *scene, const gs_mesh *m, int face, const gs_cam *cam, int w, int h, float *sx,
+                 float *sy);
+/* A drag of dx, dy pixels as mm along that axis, to the nearest 0.1. */
+float ge_drag_mm(float sx, float sy, float dx, float dy);
+
 /* The bench's Chamfer: face's plane (as Pull's) moved in by mm (0.2 to
  * 20; its size if less than 0), its edge points in along the walls by as
  * much, with the points of other faces on them. 0, line saying so; or -1

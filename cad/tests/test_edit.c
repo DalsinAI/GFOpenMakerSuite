@@ -552,6 +552,39 @@ int main(void)
         gs_mesh_free(&c);
     }
     {
+        /* Drag to pull, as the bench's Pull mode: a drag on the screen is so
+         * many mm along the picked face's normal, the way the normal shows. */
+        gs_mesh c;
+        gs_cam cam;
+        gs_v mid = {110.f, 110.f, 20.f}, up = {110.f, 110.f, 27.f};
+        float sx, sy, x0, y0, x1, y1;
+        int top = -1, front = -1, k;
+        memset(&c, 0, sizeof c);
+        expect(gm_cube(&c, 100.f, 100.f, 0.f, 20.f, 20.f, 20.f) == 0, "a cube to drag");
+        for (k = 0; k < c.n; k++) {
+            if (top < 0 && near(c.t[k].a.z, 20.f) && near(c.t[k].b.z, 20.f) && near(c.t[k].c.z, 20.f)) top = k;
+            if (front < 0 && near(c.t[k].a.y, 100.f) && near(c.t[k].b.y, 100.f) && near(c.t[k].c.y, 100.f)) front = k;
+        }
+        gs_cam_home(&cam);
+        expect(ge_face_axis(&c, &c, top, &cam, 320, 240, &sx, &sy) == 0 && sx * sx + sy * sy > 0.1f,
+               "the top's normal shows on the screen");
+        expect(ge_project(&c, &cam, 320, 240, mid, &x0, &y0) == 0 && ge_project(&c, &cam, 320, 240, up, &x1, &y1) == 0,
+               "the top's middle, and 7 mm above it");
+        expect(near(ge_drag_mm(sx, sy, x1 - x0, y1 - y0), 7.f), "dragged to 7 mm above: 7 mm");
+        expect(near(ge_drag_mm(sx, sy, x0 - x1, y0 - y1), -7.f), "dragged the other way: pushed in 7 mm");
+        expect(ge_drag_mm(sx, sy, -sy * 40.f, sx * 40.f) == 0.f, "across the normal: no pull");
+        k = (int)(ge_drag_mm(sx, sy, (x1 - x0) * 0.4321f, (y1 - y0) * 0.4321f) * 1000.f + 0.5f);
+        expect(k == 3000, "a tenth of a mm at a time");
+        expect(ge_face_axis(&c, &c, -1, &cam, 320, 240, &sx, &sy) == -1, "no face, no axis");
+        cam.pitch = 1.4f;
+        expect(ge_face_axis(&c, &c, top, &cam, 320, 240, &sx, &sy) == -1, "the top seen from above: refused");
+        cam.pitch = 0.f;
+        cam.yaw = 0.f;
+        expect(ge_face_axis(&c, &c, front, &cam, 320, 240, &sx, &sy) == -1, "a side seen end on: refused");
+        expect(ge_face_axis(&c, &c, top, &cam, 320, 240, &sx, &sy) == 0, "while the top shows");
+        gs_mesh_free(&c);
+    }
+    {
         /* A joined part's top, cut up by the join, with the walls' points on
          * its edges (not at its corners): pushed in, still closed. */
         ge_scene sc;
@@ -653,6 +686,10 @@ int main(void)
                    signed_volume(&c) > v0 - 200.f,
                "closed, as tall, the walls cut, about the bevels' volume taken");
         gs_mesh_free(&c);
+    }
+    if (fails) { /* the checks after the first count too */
+        fprintf(stderr, "%d failed\n", fails);
+        return 1;
     }
     printf("edit ok\n");
     return 0;

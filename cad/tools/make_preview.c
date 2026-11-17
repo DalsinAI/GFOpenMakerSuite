@@ -21,6 +21,8 @@
  * PULL=mm: then the top face pulled by mm (Face's distance; less than 0
  * pushes it in), as make.c's Pull on a face clicked at the top.
  * CHAMFER=mm: then the top face chamfered by mm, as make.c's Chamfer.
+ * DRAG=dx,dy: then the top face dragged to pull it, the pointer moved that
+ * many pixels in the view, as make.c's Drag.
  * KEYS: then, in turn, d (Delete the picked part), z (Amiga-Z, Undo), and
  * Z or y (Amiga-Shift-Z or Amiga-Y, Redo), as make.c's steps.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -377,6 +379,29 @@ int main(int argc, char **argv)
         if (!olui_layout(ui, w, h)) return 1;
     }
     gs_cam_home(&cam);
+    if (getenv("DRAG")) { /* as make.c's Drag (drag to pull): the top face, the pointer moved dx,dy in the view */
+        olui_rect vb;
+        float dx = 0.f, dy = 0.f, sx, sy, mm;
+        int k, top = -1;
+        for (k = 0; k < part.n && top < 0; k++)
+            if (part.t[k].a.z > part.max.z - 1e-3f && part.t[k].b.z > part.max.z - 1e-3f && part.t[k].c.z > part.max.z - 1e-3f)
+                top = k;
+        if (sscanf(getenv("DRAG"), "%f,%f", &dx, &dy) != 2 || !olui_box(ui, olui_find(ui, "view"), &vb) ||
+            ge_face_axis(&part, &part, top, &cam, vb.w, vb.h, &sx, &sy)) {
+            fprintf(stderr, "DRAG: dx,dy, with the top face in view\n");
+            return 2;
+        }
+        mm = ge_drag_mm(sx, sy, dx, dy);
+        if (ge_pull(&part, top, mm, said, (int)sizeof said) < 0) {
+            fprintf(stderr, "DRAG: %s\n", said);
+            return 1;
+        }
+        olui_set_selected(ui, olui_find(ui, "orbit"), 0);
+        olui_set_selected(ui, olui_find(ui, "fdrag"), 1);
+        ge_where(&part, wpos, wsize);
+        model = 1;
+        printf("%s\n", said);
+    }
     if (model && !getenv("EXTRUDE")) {
         snprintf(status, sizeof status, "%s", said);
         omv_say(ui, status);

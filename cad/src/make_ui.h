@@ -28,17 +28,19 @@
  * counterbore, cut through the picked part about its middle), Shape (the
  * bench's Extrude: a block, round or slot added on the bed, stood on the
  * picked part's top, or cut down from it; and Face: the picked face
- * pulled by a distance, or chamfered by it) and Print (Layers, and Slice
+ * pulled by a distance, or chamfered by it, or dragged to pull it) and Print (Layers, and Slice
  * with core/ui's print settings panel, omview_settings.h, put in
  * "settings" by make.c), as wide as that panel. Place's Size and At, a row
  * for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
-/* A key with Amiga held (command): Amiga-Z undoes, Amiga-Shift-Z and
- * Amiga-Y redo, as the Amiga's programs; 0 for any other. */
-enum { GM_KEY_UNDO = 1, GM_KEY_REDO };
+/* A key no field took. With Amiga held (command): Amiga-Z undoes,
+ * Amiga-Shift-Z and Amiga-Y redo, as the Amiga's programs. Without: P
+ * drags the picked face to pull it, Escape leaves that, as the bench's.
+ * 0 for any other. */
+enum { GM_KEY_UNDO = 1, GM_KEY_REDO, GM_KEY_PULL, GM_KEY_LEAVE };
 static int gm_command_key(unsigned code, int command, int shift)
 {
-    if (!command) return 0;
+    if (!command) return code == 'p' || code == 'P' ? GM_KEY_PULL : code == 27 ? GM_KEY_LEAVE : 0;
     if (code == 'y' || code == 'Y' || ((code == 'z' || code == 'Z') && shift)) return GM_KEY_REDO;
     return code == 'z' || code == 'Z' ? GM_KEY_UNDO : 0;
 }
@@ -110,7 +112,8 @@ static const char gm_markup_b[] =
     "<fieldset><legend>Face</legend>"
     "<row><label for=\"fmm\">By</label><spinner id=\"fmm\" min=\"-99.9\" max=\"99.9\" step=\"0.1\" value=\"5.0\"><span class=\"unit\">mm</span></row>"
     "<row><button id=\"pull\" title=\"The picked face along its normal\">Pull</button>"
-    "<button id=\"chamfer\" title=\"The picked face's edges cut in\">Chamfer</button></row>"
+    "<button id=\"chamfer\" title=\"The picked face's edges cut in\">Chamfer</button>"
+    "<button id=\"fdrag\" title=\"Drag the picked face along its normal (P); Escape leaves\">Drag</button></row>"
     "</fieldset>"
     "</tab><tab title=\"Print\">"
     "<fieldset><legend>Layers</legend>"
