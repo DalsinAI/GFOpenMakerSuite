@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Labels a host preview (openmake-slice PREVIEW=...ppm) as a host render, with the
 colour key, as a PNG for a report. Needs Pillow and DejaVu fonts.
-  label_preview.py in.ppm out.png "what it shows" [solid]
+  label_preview.py in.ppm out.png "what it shows" [solid|batch]
 solid: the view is the shaded part, not a toolpath, so no toolpath key.
+batch: the view is the OpenGPU batch's triangles filled on the host.
 MIT, Copyright (c) 2026 AmiCradle Team."""
 import sys
 from PIL import Image, ImageDraw, ImageFont
@@ -14,7 +15,9 @@ out = Image.new('RGB', (W, H + 118), (245, 245, 245)); out.paste(im, (0, 118))
 d = ImageDraw.Draw(out)
 f = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 24)
 g = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 17)
-d.text((14, 10), "HOST RENDER (Linux, CPU drawer) - not Amiga, not OpenGPU", font=f, fill=(180, 20, 20))
+batch = len(sys.argv) > 4 and sys.argv[4] == "batch"
+d.text((14, 10), "HOST RENDER (Linux): OpenGPU batch, host-filled - not Amiga or a chip" if batch
+       else "HOST RENDER (Linux, CPU drawer) - not Amiga, not OpenGPU", font=f, fill=(180, 20, 20))
 d.text((14, 50), line2, font=g, fill=(20, 20, 20))
 solid = len(sys.argv) > 4 and sys.argv[4] == "solid"
 x = 14
