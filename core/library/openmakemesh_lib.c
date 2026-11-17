@@ -3,7 +3,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #define LIB_NAME "openmakemesh.library"
 #define LIB_VERSION 1
-#define LIB_REVISION 4
+#define LIB_REVISION 5
 #define LIB_DATE "17.11.2026"
 
 #include "openmakemesh_vectors.h"

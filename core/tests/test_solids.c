@@ -121,6 +121,22 @@ int main(void)
         gs_mesh_free(&blk);
         gs_mesh_free(&cut);
     }
+    {
+        /* A part's facts, for Measure: volume, surface, size, triangles. */
+        gs_facts f;
+        gs_mesh c = {0};
+        expect(gm_cube(&c, 100, 100, 8, 20, 10, 5) == 0 && gm_facts(&c, &f) == 0, "a block's facts");
+        expect(near(f.volume, 1000.f, 0.01f) && near(f.area, 700.f, 0.01f) && near(f.sx, 20.f, 1e-4f) &&
+                   near(f.sy, 10.f, 1e-4f) && near(f.sz, 5.f, 1e-4f) && f.tris == 12,
+               "block: 1000 mm3, 700 mm2, 20 x 10 x 5, 12 triangles, far from the origin");
+        expect(gm_cylinder(&c, 0, 0, 0, 5, 10, 32) == 0 && gm_facts(&c, &f) == 0 &&
+                   near(f.volume, 16.f * 25.f * sinf(2.f * pi / 32.f) * 10.f, 0.05f),
+               "cylinder: its polygon's volume");
+        gs_mesh_free(&c);
+        expect(gm_facts(&c, &f) == 0 && f.volume == 0.f && f.area == 0.f && f.sx == 0.f && f.tris == 0,
+               "no part: all nought");
+        expect(gm_facts(NULL, &f) == -1 && gm_facts(&c, NULL) == -1, "no mesh or no facts: refused");
+    }
     gs_mesh_free(&m);
     if (failed) {
         printf("%d failed\n", failed);

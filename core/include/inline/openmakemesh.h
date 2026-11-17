@@ -303,4 +303,18 @@ static __inline__ int GM_Counterbore(gs_mesh *m, float x, float y, float z, floa
 #endif
 }
 
+static __inline__ int GM_Facts(const gs_mesh *m, gs_facts *f)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, gs_facts *, struct Library *))om_host_vector(OpenMakeMeshBase, 138))(m, f, OpenMakeMeshBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeMeshBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(f);
+    __asm__ volatile("jsr a6@(-138:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif
