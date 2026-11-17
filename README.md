@@ -122,11 +122,16 @@ and `build-amiga/soft` (no FPU: `-msoft-float` with the SDK's
 
 ```
 CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
-OLUI=.../libolui.a ./build-amiga.sh
+OGT_ROOT=.../amicradle-guest/libraries/opengadtools ./build-amiga.sh
 ```
 
-`OLUI` is GFOpenLayout's 68040 UI link library, from its `build-ui-amiga.sh`.
-It has no floating point, so the one library serves both builds.
+`LAYOUT` must be a GFOpenLayout checkout at the commit in `gfopenlayout.ref`,
+the one CI tests with (`LAYOUT_ANY=1` to take another). The script builds
+GFOpenLayout's 68040 UI link library, `libolui.a`, from it with its
+`build-ui-amiga.sh` (that needs `OGT_ROOT`), or takes a ready one as
+`OLUI=.../libolui.a`; either way it fails, naming them, if the library lacks
+any `olui_` call the apps make. It has no floating point, so the one library
+serves both builds.
 
 The pictures above are the real GFOpenLayout draw list, painted on the host.
 `make preview` rebuilds that tool when GFOpenLayout is checked out beside
