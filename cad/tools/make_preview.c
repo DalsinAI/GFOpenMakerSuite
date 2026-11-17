@@ -12,8 +12,10 @@
  * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
  * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
  * FIT=axis:mm and AT=x,y[,z]: Place's Size and At on the added shape first.
- * HOLES: 0 bolt circle, 1 hole row, 2 counterbore cut first, with HD, HN,
- * HPCD, HPITCH, HCB and HDEEP for the Holes fields (as shown).
+ * HOLES: 0 bolt circle, 1 hole row, 2 counterbore, 3 drill, 4 countersink
+ * cut first, with HD, HN, HPCD, HPITCH, HCB, HDEEP and HMOUTH for the Holes
+ * fields (as shown), HAT=x,y where the face was clicked, HFIT=mm the part
+ * sized up in X first. WASHER: then a washer added.
  * OPEN: a select's id, shown open (with SIDE=1, Parts, for "shape").
  * PARTS=n: a list of n parts (2 to 24), the holed cube and the shapes in
  * turn on a grid on the bed, each a metal in turn, the 6th and 18th
@@ -284,6 +286,10 @@ int main(int argc, char **argv)
     if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
         ge_holes hs;
         char why[96];
+        memset(&hs, 0, sizeof hs);
+        if (getenv("HFIT")) ge_fit(&part, 0, (float)atof(getenv("HFIT"))); /* the part sized up first, to see the holes */
+        hs.mouth = getenv("HMOUTH") ? (float)atof(getenv("HMOUTH")) : 8.f;
+        hs.aimed = getenv("HAT") && sscanf(getenv("HAT"), "%f,%f", &hs.ax, &hs.ay) == 2;
         hs.d = getenv("HD") ? (float)atof(getenv("HD")) : 3.f;
         hs.n = getenv("HN") ? atoi(getenv("HN")) : 4;
         hs.pcd = getenv("HPCD") ? (float)atof(getenv("HPCD")) : 16.f;
@@ -295,6 +301,28 @@ int main(int argc, char **argv)
             return 1;
         }
         printf("holes cut: %d triangles\n", part.n);
+        if (atoi(getenv("HOLES")) >= GE_DRILL) { /* the part shown, and what make.c says */
+            if (atoi(getenv("HOLES")) == GE_DRILL)
+                snprintf(said, sizeof said, "A %.1f mm hole through %s, cut.", (double)hs.d, hs.aimed ? "the clicked face" : "the middle");
+            else
+                snprintf(said, sizeof said, "A %.1f mm hole with a %.1f mm 90 degree countersink, cut.", (double)hs.d, (double)hs.mouth);
+            ge_where(&part, wpos, wsize);
+            model = 1;
+        }
+    }
+    if (getenv("WASHER")) { /* as make.c's Washer: a new part past the part */
+        gs_mesh m;
+        memset(&m, 0, sizeof m);
+        if (!listed && (!(listed = gs_parts_new()) || ge_copy(&m, &part) || gs_parts_add(listed, &m, "Holed cube") < 0)) return 1;
+        if (ge_washer(listed, said, (int)sizeof said)) {
+            fprintf(stderr, "WASHER: %s\n", said);
+            return 1;
+        }
+        gs_mesh_free(&part);
+        if (gs_parts_scene(listed, &part)) return 1;
+        ge_where(gs_parts_mesh(listed, gs_parts_picked(listed)), wpos, wsize);
+        model = 1;
+        printf("%s\n", said);
     }
     if (getenv("EXTRUDE")) { /* as make.c's Extrude: op:kind:w:d:h */
         int op, kind;
@@ -389,10 +417,10 @@ int main(int argc, char **argv)
         }
     }
     {
-        static const char *const ids[6][2] = {{"hd", "HD"}, {"hn", "HN"}, {"hpcd", "HPCD"},
-                                              {"hpitch", "HPITCH"}, {"hcb", "HCB"}, {"hdeep", "HDEEP"}};
+        static const char *const ids[7][2] = {{"hd", "HD"}, {"hn", "HN"}, {"hpcd", "HPCD"},
+                                              {"hpitch", "HPITCH"}, {"hcb", "HCB"}, {"hdeep", "HDEEP"}, {"hmouth", "HMOUTH"}};
         int k;
-        for (k = 0; k < 6; k++)
+        for (k = 0; k < 7; k++)
             if (getenv(ids[k][1]))
                 olui_set_number(ui, olui_find(ui, ids[k][0]),
                                 (int)(atof(getenv(ids[k][1])) * (k == 1 ? 1.0 : 10.0) + 0.5));

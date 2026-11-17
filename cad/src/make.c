@@ -57,6 +57,7 @@ static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift, drag_moved;
 static int gpu_on, on_chip, draw_grid, presented;
+static gs_v pick_at; /* where picked was clicked, on the part */
 static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip;
 static ge_steps *steps;
 static char stl_path[256] = "RAM:hole.stl";
@@ -771,6 +772,24 @@ static void on_part(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* Holes' Washer, as the bench's: a new part past the others, picked. */
+static void on_washer(olui *ui, const olui_event *ev, void *userdata)
+{
+    char line[96];
+    (void)ev;
+    (void)userdata;
+    remember();
+    if (ge_washer(parts, line, (int)sizeof line) < 0) {
+        forget();
+        say(ui, line);
+        return;
+    }
+    picked = -1;
+    verts_fit(0);
+    refresh(ui);
+    say(ui, line);
+}
+
 static void on_holes(olui *ui, const olui_event *ev, void *userdata)
 {
     int kind = (int)(intptr_t)userdata;
@@ -779,12 +798,17 @@ static void on_holes(olui *ui, const olui_event *ev, void *userdata)
     char why[96];
     (void)ev;
     why[0] = 0;
+    memset(&h, 0, sizeof h);
     h.d = omv_number(ui, "hd");
     h.n = (int)(omv_number(ui, "hn") + 0.5f);
     h.pcd = omv_number(ui, "hpcd");
     h.pitch = omv_number(ui, "hpitch");
     h.cb = omv_number(ui, "hcb");
     h.deep = omv_number(ui, "hdeep");
+    h.mouth = omv_number(ui, "hmouth");
+    h.aimed = picked >= 0; /* Drill and Countersink go where the face was clicked */
+    h.ax = pick_at.x;
+    h.ay = pick_at.y;
     memset(&copy, 0, sizeof copy);
     if (ge_copy(&copy, work()) || ge_drill(&copy, kind, &h, why, (int)sizeof why)) {
         gs_mesh_free(&copy);
@@ -800,6 +824,10 @@ static void on_holes(olui *ui, const olui_event *ev, void *userdata)
         snprintf(why, sizeof why, "%d holes %.1f mm on a %.1f mm circle, cut.", h.n, (double)h.d, (double)h.pcd);
     else if (kind == GE_HOLE_ROW)
         snprintf(why, sizeof why, "%d holes %.1f mm, %.1f mm apart, cut.", h.n, (double)h.d, (double)h.pitch);
+    else if (kind == GE_DRILL)
+        snprintf(why, sizeof why, "A %.1f mm hole through %s, cut.", (double)h.d, h.aimed ? "the clicked face" : "the middle");
+    else if (kind == GE_COUNTERSINK)
+        snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm 90 degree countersink, cut.", (double)h.d, (double)h.mouth);
     else
         snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm counterbore %.1f deep, cut.", (double)h.d, (double)h.cb,
                  (double)h.deep);
@@ -1126,6 +1154,9 @@ int main(int argc, char **argv)
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
     olui_on(ui, "cbore", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERBORE);
+    olui_on(ui, "csink", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERSINK);
+    olui_on(ui, "hdrill", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_DRILL);
+    olui_on(ui, "washer", OLUI_CLICK, on_washer, NULL);
     {
         int k;
         for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);
@@ -1252,7 +1283,7 @@ int main(int argc, char **argv)
                      * its part is picked, as a click on the bench. */
                     int face, k;
                     rebuild_shown();
-                    face = ge_pick(&shown, &cam, vw, vh, lx, ly);
+                    face = ge_pick_at(&shown, &cam, vw, vh, lx, ly, &pick_at);
                     for (k = 0; face >= 0 && k < gs_parts_count(parts); k++) {
                         int n = gs_parts_shown(parts, k) ? gs_parts_mesh(parts, k)->n : 0;
                         if (face < n) {

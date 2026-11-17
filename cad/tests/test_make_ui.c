@@ -273,15 +273,16 @@ int main(void)
                "and the Model tab");
     }
     {
-        /* The Holes tab: drill, holes, the patterns and the counterbore,
+        /* The Holes tab: drill, holes, Drill and Washer, the patterns, the counterbore and the countersink,
          * each field with its label and unit in the side, every button
          * clear, above the status line, at 640 by 480 and sized up. */
-        static const char *const hole_ids[] = {"hd", "hn", "hpcd", "hpitch", "hcb", "hdeep", "bolt", "row", "cbore"};
+        static const char *const hole_ids[] = {"hd", "hn", "hpcd", "hpitch", "hcb", "hdeep", "hmouth",
+                                                    "bolt", "row", "cbore", "csink", "hdrill", "washer"};
         const int nh = (int)(sizeof hole_ids / sizeof hole_ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[9];
+            olui_rect side, st, r[sizeof hole_ids / sizeof hole_ids[0]];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_HOLES);
@@ -292,8 +293,8 @@ int main(void)
                 olui_el *el = olui_find(ui, hole_ids[a]);
                 snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", hole_ids[a], at[s][0], at[s][1]);
                 expect(el && olui_box(ui, el, &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
-                           r[a].y + r[a].h <= st.y && !strcmp(olui_tag(el), a < 6 ? "spinner" : "button") &&
-                           r[a].w >= (a < 6 ? 72 : 90),
+                           r[a].y + r[a].h <= st.y && !strcmp(olui_tag(el), a < 7 ? "spinner" : "button") &&
+                           r[a].w >= (a < 7 ? 72 : 90) && r[a].h <= 24,
                        what);
                 for (b = 0; b < a; b++) {
                     snprintf(what, sizeof what, "%s is clear of %s", hole_ids[a], hole_ids[b]);
@@ -301,6 +302,8 @@ int main(void)
                 }
             }
             expect(side.w == OMV_SETTINGS_W, "the side keeps its width on the Holes tab");
+            snprintf(what, sizeof what, "the Holes tab ends above the status line, in the window, at %d by %d", at[s][0], at[s][1]);
+            expect(side.y + side.h <= st.y && st.y + st.h <= at[s][1], what);
         }
         olui_tabs_select(ui, side_tabs, 0);
         olui_layout(ui, w, h);
