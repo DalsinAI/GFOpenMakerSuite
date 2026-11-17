@@ -39,6 +39,7 @@ be `openmakemachine.library`, loaded once for every app.
 | `area` | X Y Z in mm |
 | `speed` | X Y Z E in mm/s |
 | `accel` | X Y Z E in mm/s² |
+| `jerk` | X Y Z E in mm/s: the speed change made at once, at a corner (0 or none: it stops there); with `accel`, for the time estimate |
 | `hotend`, `bed` | The most °C |
 | `laser` | The most power, % |
 | `rpm` | The most spindle speed |

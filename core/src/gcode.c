@@ -5,6 +5,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void gc_defaults(gc_opts *o)
@@ -33,6 +34,96 @@ static float held(const om_machine *m, int axis, float v)
     return m && m->speed[axis] > 0.f && v > m->speed[axis] ? m->speed[axis] : v;
 }
 
+/* The time, with acceleration: moves wait in a look-ahead of PLAN_N, as a
+ * printer's planner holds them. Each may start no faster than the corner
+ * into it allows (the jerk) and than it can still stop from by the end of
+ * what is waiting; the oldest half is timed (speed up, run, slow down)
+ * whenever the look-ahead is full, and the rest at the end. */
+#define PLAN_N 64
+
+typedef struct {
+    float len, v, a;            /* mm, mm/s, mm/s2 */
+    float ux, uy, uz;           /* along it, a unit; 0 0 0: a pull back, stopped either side */
+    float most_in;              /* the fastest it may start: the corner into it */
+} seg;
+
+typedef struct {
+    seg s[PLAN_N];
+    int n;
+    float in;                   /* the speed the first waiting move starts at */
+    float seconds;
+} planner;
+
+/* A move of len from in to out (both at most v) with a: speeding up,
+ * running at v, slowing down; or never reaching v. */
+static float trapezoid(float len, float v, float a, float in, float out)
+{
+    float up = (v * v - in * in) / (2.f * a), down = (v * v - out * out) / (2.f * a), peak;
+    if (up + down <= len) return (v - in) / a + (v - out) / a + (len - up - down) / v;
+    peak = sqrtf((2.f * a * len + in * in + out * out) * 0.5f);
+    return (peak - in) / a + (peak - out) / a;
+}
+
+/* Times the first k waiting moves; the last waiting one ends stopped. */
+static void plan_flush(planner *pl, int k)
+{
+    float end[PLAN_N], v = 0.f, in = pl->in;
+    int i;
+    for (i = pl->n - 1; i >= 0; i--) { /* backwards: each must still be able to stop */
+        const seg *g = &pl->s[i];
+        end[i] = v;
+        v = sqrtf(v * v + 2.f * g->a * g->len);
+        if (v > g->most_in) v = g->most_in;
+    }
+    for (i = 0; i < k; i++) { /* forwards: each can only speed up so much */
+        const seg *g = &pl->s[i];
+        float out;
+        if (in > g->most_in) in = g->most_in;
+        out = sqrtf(in * in + 2.f * g->a * g->len);
+        if (out > end[i]) out = end[i];
+        if (out > g->v) out = g->v;
+        pl->seconds += trapezoid(g->len, g->v, g->a, in, out);
+        in = out;
+    }
+    memmove(pl->s, pl->s + k, (size_t)(pl->n - k) * sizeof *pl->s);
+    pl->n -= k;
+    pl->in = in;
+}
+
+static float smallest(float a, float b)
+{
+    return a > 0.f && (b <= 0.f || a < b) ? a : b;
+}
+
+/* A move for the planner: the corner into it from the last one waiting. */
+static void plan_add(planner *pl, const om_machine *m, float len, float v, float dx, float dy, float dz, int pull)
+{
+    seg g;
+    const seg *last = pl->n ? &pl->s[pl->n - 1] : NULL;
+    float j = smallest(m->jerk[OM_X], m->jerk[OM_Y]);
+    if (len <= 0.f || v <= 0.f) return;
+    memset(&g, 0, sizeof g);
+    g.len = len;
+    g.v = v;
+    if (pull) g.a = m->accel[OM_E];
+    else {
+        g.a = smallest(m->accel[OM_X], m->accel[OM_Y]);
+        if (dz != 0.f) g.a = dx == 0.f && dy == 0.f ? m->accel[OM_Z] : smallest(g.a, m->accel[OM_Z]);
+        g.ux = dx / len;
+        g.uy = dy / len;
+        g.uz = dz / len;
+    }
+    if (g.a <= 0.f) g.a = 1e9f; /* no acceleration given for it: at once */
+    if (last && !pull && (last->ux != 0.f || last->uy != 0.f || last->uz != 0.f)) {
+        float c = last->ux * g.ux + last->uy * g.uy + last->uz * g.uz, most = last->v < v ? last->v : v;
+        float half = sqrtf((1.f - (c > 1.f ? 1.f : c)) * 0.5f); /* sin of half the turn */
+        if (half < 1e-4f) g.most_in = most;
+        else if (j > 0.f) g.most_in = j / (2.f * half) < most ? j / (2.f * half) : most;
+    }
+    if (pl->n == PLAN_N) plan_flush(pl, PLAN_N / 2);
+    pl->s[pl->n++] = g;
+}
+
 typedef struct {
     gc_put put;                 /* NULL: only counting */
     void *ud;
@@ -41,6 +132,7 @@ typedef struct {
     gc_stats *st;
     float e;                    /* E now, since the layer's G92 */
     int bad;
+    planner *pl;                /* NULL: no acceleration, distance over speed */
 } writer;
 
 static void say(writer *w, const char *line)
@@ -58,7 +150,8 @@ static void retract(writer *w, int sign)
     snprintf(buf, sizeof buf, "G1 E%.5f F%d\n", (double)w->e, (int)(v * 60.f + 0.5f));
     say(w, buf);
     w->st->moves++;
-    w->st->seconds += w->o->retract / v;
+    if (w->pl) plan_add(w->pl, w->m, w->o->retract, v, 0.f, 0.f, 0.f, 1);
+    else w->st->seconds += w->o->retract / v;
 }
 
 /* The move to b from a (NULL: the first, which only places the head). */
@@ -89,7 +182,8 @@ static void move(writer *w, const gt_move *a, const gt_move *b)
     }
     say(w, buf);
     w->st->moves++;
-    w->st->seconds += t;
+    if (w->pl) plan_add(w->pl, w->m, len, v, dx, dy, dz, 0);
+    else w->st->seconds += t;
     if (travel && w->o->retract > 0.f && len >= w->o->retract_min) retract(w, 1);
 }
 
@@ -105,7 +199,13 @@ static void run(writer *w, const gt_path *p)
 {
     int i, layer = 0;
     char buf[48];
+    planner *pl = NULL;
     memset(w->st, 0, sizeof *w->st);
+    /* The profile's acceleration counted when it gives X and Y theirs. */
+    if (w->m && w->m->accel[OM_X] > 0.f && w->m->accel[OM_Y] > 0.f) {
+        pl = (planner *)calloc(1, sizeof *pl);
+        w->pl = pl;
+    }
     for (i = 0; i < p->n; i++) {
         if (layer < p->nlayers && p->layer[layer] == i) {
             layer++;
@@ -114,6 +214,12 @@ static void run(writer *w, const gt_path *p)
             w->e = 0.f;
         }
         move(w, i ? &p->m[i - 1] : NULL, &p->m[i]);
+    }
+    if (pl) {
+        plan_flush(pl, pl->n);
+        w->st->seconds = pl->seconds;
+        free(pl);
+        w->pl = NULL;
     }
 }
 

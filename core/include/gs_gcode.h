@@ -22,7 +22,7 @@ typedef struct {
 } gc_opts;
 
 typedef struct {
-    float seconds;              /* moving, at the set speeds: no acceleration counted */
+    float seconds;              /* moving: with the machine's accel and jerk when its profile gives them, else distance over speed */
     float filament;             /* mm of filament */
     int moves;                  /* G0 and G1 lines */
 } gc_stats;

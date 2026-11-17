@@ -124,9 +124,9 @@ static int one(om_machine *m, const char *key, const char *val, int more, int li
         }
         return 0;
     }
-    if (!strcmp(key, "area") || !strcmp(key, "speed") || !strcmp(key, "accel")) {
+    if (!strcmp(key, "area") || !strcmp(key, "speed") || !strcmp(key, "accel") || !strcmp(key, "jerk")) {
         int want = !strcmp(key, "area") ? 3 : 4, i;
-        float *to = !strcmp(key, "area") ? m->area : !strcmp(key, "speed") ? m->speed : m->accel;
+        float *to = !strcmp(key, "area") ? m->area : !strcmp(key, "speed") ? m->speed : !strcmp(key, "accel") ? m->accel : m->jerk;
         if (numbers(val, v, want) != want) {
             say(err, errlen, line, want == 3 ? "wants X Y Z" : "wants X Y Z E", key);
             return -1;

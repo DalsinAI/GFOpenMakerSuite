@@ -82,6 +82,14 @@ int main(void)
     gt_add(&p, GT_TRAVEL, 60, 50, 0.4f, 0);               /* 0.2 mm up: does not */
     gt_add(&p, GT_SKIN, 70, 50, 0.4f, 0.4f);              /* 10 mm */
 
+    {
+        /* No acceleration in the profile: the time is distance over speed. */
+        om_machine flat = m;
+        memset(flat.accel, 0, sizeof flat.accel);
+        gc_estimate(&p, &flat, &o, &est);
+        expect(near(est.seconds, 40.f / 25 + 70.7107f / 300 + 10.f / 60 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
+               "the time: travels at the machine's 300 mm/s, the lift at its Z's 5, and the retraction");
+    }
     f = fopen("build/test.gcode", "w");
     expect(f && gc_write(f, &p, &m, &o, &st, err, (int)sizeof err) == 0, "written");
     if (f) fclose(f);
@@ -100,8 +108,7 @@ int main(void)
     expect(count(" F1200") == 2, "one retraction and its return, at 20 mm/s");
     expect(strstr(text, "Z0.400") != NULL, "the second layer's height");
     expect(near(st.filament, 60.f * per, 1e-3f), "filament: 60 mm of line 0.4 by 0.2");
-    expect(near(st.seconds, 40.f / 25 + 70.7107f / 300 + 10.f / 60 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
-           "the time: travels at the machine's 300 mm/s, the lift at its Z's 5, and the retraction");
+    expect(st.seconds > est.seconds + 0.1f, "with the profile's acceleration and jerk it takes longer");
     gc_estimate(&p, &m, &o, &est);
     expect(est.seconds == st.seconds && est.filament == st.filament && est.moves == st.moves && st.moves > 6,
            "the estimate is what was written");
@@ -138,6 +145,55 @@ int main(void)
         expect(om_check(&m, &job, why, (int)sizeof why) == (OM_TOO_BIG | OM_TOO_HOT) && strstr(why, "230"),
                "230 mm on a 220 mm bed, and too hot, said so");
         printf("om_check: %s\n", why);
+    }
+
+    {
+        /* Acceleration 1000 mm/s2: a 100 mm line at 100 mm/s speeds up for
+         * 0.1 s over 5 mm, runs 90 mm, and slows for 0.1 s: 1.1 s. 1 mm
+         * never reaches 100: up to sqrt(1000) and down, 2 sqrt(1000)/1000 s. */
+        om_machine a = m;
+        gt_path q;
+        gc_opts qo = o;
+        a.accel[OM_X] = a.accel[OM_Y] = a.accel[OM_E] = 1000.f;
+        a.accel[OM_Z] = 100.f;
+        memset(a.jerk, 0, sizeof a.jerk);
+        qo.speed[GT_INFILL] = 100.f;
+        qo.retract = 0.f;
+        gt_init(&q);
+        gt_layer(&q);
+        gt_add(&q, GT_TRAVEL, 0, 0, 0.2f, 0);
+        gt_add(&q, GT_INFILL, 100, 0, 0.2f, 0.4f);
+        gc_estimate(&q, &a, &qo, &est);
+        expect(near(est.seconds, 1.1f, 1e-4f), "100 mm at 100 mm/s with 1000 mm/s2: 1.1 s");
+        gt_free(&q);
+        gt_layer(&q);
+        gt_add(&q, GT_TRAVEL, 0, 0, 0.2f, 0);
+        gt_add(&q, GT_INFILL, 1, 0, 0.2f, 0.4f);
+        gc_estimate(&q, &a, &qo, &est);
+        expect(near(est.seconds, 2.f * sqrtf(1000.f) / 1000.f, 1e-5f), "1 mm never reaches 100 mm/s");
+
+        /* A square corner: two 10 mm lines at 50 mm/s. With no jerk it
+         * stops there (0.25 s each); with a jerk of 10 it turns at
+         * 10 / (2 sin 45) = 7.07 mm/s. */
+        qo.speed[GT_INFILL] = 50.f;
+        gt_free(&q);
+        gt_layer(&q);
+        gt_add(&q, GT_TRAVEL, 0, 0, 0.2f, 0);
+        gt_add(&q, GT_INFILL, 10, 0, 0.2f, 0.4f);
+        gt_add(&q, GT_INFILL, 10, 10, 0.2f, 0.4f);
+        gc_estimate(&q, &a, &qo, &est);
+        expect(near(est.seconds, 0.5f, 1e-4f), "no jerk: it stops at the corner");
+        a.jerk[OM_X] = a.jerk[OM_Y] = 10.f;
+        gc_estimate(&q, &a, &qo, &est);
+        {
+            float vj = 10.f / (2.f * sinf(3.14159265f / 4.f)), one = 0.05f + (50.f - vj) / 1000.f +
+                                                                     (10.f - 1.25f - (2500.f - vj * vj) / 2000.f) / 50.f;
+            expect(near(est.seconds, 2.f * one, 1e-4f), "a jerk of 10: it turns the corner at 7.07 mm/s");
+        }
+        gt_add(&q, GT_INFILL, 20, 10, 0.2f, 0.4f);
+        gc_estimate(&q, &a, &qo, &st);
+        expect(st.seconds > est.seconds + 0.2f, "one more line, more time");
+        gt_free(&q);
     }
 
     m.family = OM_LASER;

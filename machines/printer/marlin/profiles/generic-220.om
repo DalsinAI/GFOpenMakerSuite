@@ -4,5 +4,7 @@ name = Generic Marlin 220
 area = 220 220 250
 speed = 300 300 5 25
 accel = 3000 3000 100 5000
+# The speed change (mm/s) the printer makes at once, at a corner: X Y Z E.
+jerk = 10 10 0.3 5
 hotend = 260
 bed = 100
