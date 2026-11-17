@@ -180,7 +180,7 @@ int main(int argc, char **argv)
         }
         if (have_image && olui_find(ui, "layer-0-name"))
             olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
-        if (getenv("MODE") || getenv("INTERVAL")) {
+        if (getenv("MODE") || getenv("INTERVAL") || getenv("KERF")) {
             int i, n = burn_ui_count(ui);
             char id[32];
             int mode = getenv("MODE") && !strcmp(getenv("MODE"), "offset") ? 2
@@ -201,11 +201,23 @@ int main(int argc, char **argv)
                         olui_set_number(ui, olui_find(ui, id), (int)(gap * d + 0.5f));
                     }
                 }
+                snprintf(id, sizeof id, "layer-%d-kerf", i);
+                if (getenv("KERF") && olui_find(ui, id)) {
+                    float kerv = (float)atof(getenv("KERF"));
+                    dec = olui_number_decimals(olui_find(ui, id));
+                    {
+                        float d = 1.f;
+                        int k;
+                        for (k = 0; k < dec; k++) d *= 10.f;
+                        olui_set_number(ui, olui_find(ui, id), (int)(kerv * d + 0.5f));
+                    }
+                }
             }
         }
         burn_ui_read(ui, &o, store, 64);
         if (have_image) {
             if (getenv("INTERVAL")) o.interval = (float)atof(getenv("INTERVAL"));
+            if (getenv("KERF")) o.kerf = (float)atof(getenv("KERF"));
             if (burn_image_path(&path, &speeds, &im, &o) || path.n < 2) {
                 fprintf(stderr, "no paths to burn\n");
                 free(speeds);

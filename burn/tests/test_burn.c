@@ -71,7 +71,7 @@ int main(void)
     expect(load_laser(&m, err, (int)sizeof err) == 0 && m.family == OM_LASER, "Generic Diode 400");
     burn_defaults(&o);
     expect(o.size == (int)sizeof o && o.power == 50.f && o.speed == 20.f && o.passes == 1 && o.s100 == 1000.f &&
-               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1,
+               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1 && o.kerf == 0.f,
            "burn_defaults");
 
     gv_doc_init(&d);
@@ -165,6 +165,11 @@ int main(void)
                "parse an index layer, off");
         expect(burn_parse_layer("#ff0000,spped=20", &ly, err, (int)sizeof err) == -1 && strstr(err, "spped=20"),
                "a typo in a layer setting is refused");
+        expect(burn_parse_layer("#000000,kerf=0.2", &ly, err, (int)sizeof err) == 0 && ly.kerf == 0.2f &&
+                   (ly.set & BURN_SET_KERF),
+               "parse kerf");
+        expect(burn_parse_layer("1,kerf=-0.1", &ly, err, (int)sizeof err) == -1 && strstr(err, "kerf"),
+               "a negative kerf is refused");
         expect(burn_parse_layer("0,power=50", &ly, err, (int)sizeof err) == -1, "layer 0 is not a 1-based index");
         expect(burn_parse_layer("red,power=50", &ly, err, (int)sizeof err) == -1, "a name is not a colour here");
 
@@ -597,6 +602,94 @@ int main(void)
                !strcmp(burn_drawing_kind("a.PBM"), "Picture") &&
                !strcmp(burn_drawing_kind("a.ppm"), "Picture"),
            "a Netpbm picture");
+
+    {
+        float xmin, xmax, ymin, ymax, *spd = NULL;
+        int i, inside;
+        /* 10 mm square, kerf 0.2 mm: the cut sits 0.1 mm outside. */
+        burn_defaults(&o);
+        o.kerf = 0.2f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "core/tests/data/rect-10mm.svg", err, (int)sizeof err) == 0, "the square, for kerf");
+        gt_init(&p);
+        expect(burn_path(&p, &spd, &d, &o) == 0 && p.n >= 5, "kerf on the square");
+        xmin = ymin = 1e9f;
+        xmax = ymax = -1e9f;
+        for (i = 0; i < p.n; i++) {
+            if (p.m[i].kind != GT_CUT) continue;
+            if (p.m[i].x < xmin) xmin = p.m[i].x;
+            if (p.m[i].x > xmax) xmax = p.m[i].x;
+            if (p.m[i].y < ymin) ymin = p.m[i].y;
+            if (p.m[i].y > ymax) ymax = p.m[i].y;
+        }
+        expect(xmin > -0.15f && xmin < -0.05f && xmax > 10.05f && xmax < 10.15f && ymin > -0.15f && ymin < -0.05f &&
+                   ymax > 10.05f && ymax < 10.15f && spd && spd[1] == 20.f && p.m[1].w == 50.f,
+               "the square grows by half the kerf, cuts still at the job's power and speed");
+        free(spd);
+        err[0] = 0;
+        expect(burn_write("core/tests/data/rect-10mm.svg", "build/kerf-origin.gcode", &m, &o, NULL, err,
+                          (int)sizeof err) == -1 &&
+                   strstr(err, "cannot burn this") && !exists("build/kerf-origin.gcode"),
+               "a kerf that steps off the origin is refused");
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        burn_defaults(&o);
+        o.kerf = 0.2f;
+        memset(&st, 0, sizeof st);
+        g = NULL;
+        expect(burn_write("burn/tests/data/square-10mm-at-5.svg", "build/kerf-square.gcode", &m, &o, &st, err,
+                          (int)sizeof err) == 0 &&
+                   (g = slurp("build/kerf-square.gcode")) && strstr(g, "X4.900") && strstr(g, "X15.100"),
+               "wrote G-code with the kerf, on the bed");
+        free(g);
+
+        /* Holed square: the outer grows, the hole shrinks. */
+        burn_defaults(&o);
+        o.kerf = 2.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/square-hole.svg", err, (int)sizeof err) == 0, "the holed square, kerf");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n > 8, "kerf on a hole");
+        xmin = ymin = 1e9f;
+        xmax = ymax = -1e9f;
+        inside = 0;
+        for (i = 0; i < p.n; i++) {
+            if (p.m[i].kind != GT_CUT) continue;
+            if (p.m[i].x < xmin) xmin = p.m[i].x;
+            if (p.m[i].x > xmax) xmax = p.m[i].x;
+            if (p.m[i].y < ymin) ymin = p.m[i].y;
+            if (p.m[i].y > ymax) ymax = p.m[i].y;
+            /* Strictly inside the shrunk hole (walls at 7 and 13). */
+            if (p.m[i].x > 7.5f && p.m[i].x < 12.5f && p.m[i].y > 7.5f && p.m[i].y < 12.5f) inside++;
+        }
+        expect(xmin > -1.15f && xmin < -0.85f && xmax > 20.85f && xmax < 21.15f && inside == 0,
+               "outer grows by 1 mm, no cut inside the shrunk hole");
+        /* The hole's walls should sit near 7 and 13. */
+        {
+            int hole = 0;
+            for (i = 0; i < p.n; i++) {
+                if (p.m[i].kind != GT_CUT) continue;
+                if ((p.m[i].x > 6.8f && p.m[i].x < 7.2f) || (p.m[i].x > 12.8f && p.m[i].x < 13.2f)) hole++;
+            }
+            expect(hole > 0, "the hole shrinks by 1 mm");
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        /* An open stroke is not moved. */
+        burn_defaults(&o);
+        o.kerf = 2.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/open-line.svg", err, (int)sizeof err) == 0 && d.n == 1 && !d.p[0].closed,
+               "an open line");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == 2 && p.m[0].kind == GT_TRAVEL && p.m[1].kind == GT_CUT &&
+                   p.m[1].x == 10.f,
+               "kerf leaves an open path in place");
+        gv_doc_free(&d);
+        gt_free(&p);
+    }
 
     if (fails) {
         printf("%d failed\\n", fails);
