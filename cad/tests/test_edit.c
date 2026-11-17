@@ -323,6 +323,7 @@ int main(void)
         memset(&plate, 0, sizeof plate);
         memset(&tool, 0, sizeof tool);
         memset(&before, 0, sizeof before);
+        memset(&hs, 0, sizeof hs);
         hs.d = 4.f, hs.n = 4, hs.pcd = 24.f, hs.pitch = 10.f, hs.cb = 9.f, hs.deep = 3.f;
         expect(gm_cube(&plate, 80.f, 80.f, 8.f, 40.f, 40.f, 10.f) == 0, "a plate");
         v0 = signed_volume(&plate);
@@ -769,6 +770,60 @@ int main(void)
         expect(gs_parts_count(ps) == GS_PARTS_MAX && ge_duplicate(ps, line, (int)sizeof line) == -1 &&
                    strstr(line, "limit") && ge_ring(ps, 3, line, (int)sizeof line) == -1,
                "24 parts is the limit");
+        gs_parts_free(ps);
+    }
+    {
+        /* The bench's single Drill and Countersink, aimed where the face was
+         * clicked (or the part's middle), and its Washer. */
+        gs_mesh plate, tool;
+        ge_holes hs;
+        gs_parts *ps = gs_parts_new();
+        char why[120];
+        float v0, pos[3], size[3];
+        memset(&plate, 0, sizeof plate);
+        memset(&tool, 0, sizeof tool);
+        memset(&hs, 0, sizeof hs);
+        expect(gm_cube(&plate, 80.f, 80.f, 0.f, 40.f, 40.f, 10.f) == 0, "a 40 x 40 x 10 plate");
+        v0 = signed_volume(&plate);
+        hs.d = 6.f;
+        expect(ge_hole_tool(&tool, GE_DRILL, &hs, &plate, why, (int)sizeof why) == 0 &&
+                   near((tool.min.x + tool.max.x) * 0.5f, 100.f) && near(tool.max.x - tool.min.x, 6.f) && tool.min.z < 0.f &&
+                   tool.max.z > 10.f,
+               "Drill: through the part's middle");
+        hs.aimed = 1, hs.ax = 88.f, hs.ay = 110.f;
+        expect(ge_hole_tool(&tool, GE_DRILL, &hs, &plate, why, (int)sizeof why) == 0 &&
+                   near((tool.min.x + tool.max.x) * 0.5f, 88.f) && near((tool.min.y + tool.max.y) * 0.5f, 110.f),
+               "aimed: where the face was clicked");
+        expect(ge_drill(&plate, GE_DRILL, &hs, why, (int)sizeof why) == 0 && gm_open_edges(&plate) == 0 &&
+                   fabsf(signed_volume(&plate) - (v0 - 3.14159f * 9.f * 10.f)) < 4.f,
+               "a 6 mm hole cut through, closed");
+        hs.ax = 150.f;
+        expect(ge_drill(&plate, GE_DRILL, &hs, why, (int)sizeof why) == -1 && strstr(why, "misses"), "a drill off the part");
+        hs.aimed = 0, hs.d = 4.f, hs.mouth = 10.f;
+        expect(ge_hole_tool(&tool, GE_COUNTERSINK, &hs, &plate, why, (int)sizeof why) == 0 && near(tool.max.x - tool.min.x, 10.4f) &&
+                   tool.max.z > 10.f && tool.min.z < 0.f,
+               "Countersink: through, 10 mm across the mouth at the top");
+        v0 = signed_volume(&plate);
+        expect(ge_drill(&plate, GE_COUNTERSINK, &hs, why, (int)sizeof why) == 0 && gm_open_edges(&plate) == 0 &&
+                   signed_volume(&plate) < v0 - 3.14159f * 4.f * 10.f + 1.f && signed_volume(&plate) > v0 - 3.14159f * 4.f * 10.f - 130.f,
+               "the hole and its 90 degree mouth cut, closed");
+        hs.mouth = 4.2f;
+        expect(ge_hole_tool(&tool, GE_COUNTERSINK, &hs, &plate, why, (int)sizeof why) == -1 && strstr(why, "wider than the drill"),
+               "a mouth no wider than the drill");
+        hs.mouth = 30.f;
+        expect(ge_hole_tool(&tool, GE_COUNTERSINK, &hs, &plate, why, (int)sizeof why) == -1 && strstr(why, "deeper than the part"),
+               "a mouth so wide its cone goes through");
+        gs_mesh_free(&tool);
+
+        expect(ps && gs_parts_add(ps, &plate, "Plate") == 0, "the plate in a list");
+        expect(ge_washer(ps, why, (int)sizeof why) == 0 && gs_parts_count(ps) == 2 && gs_parts_picked(ps) == 1 &&
+                   !strcmp(gs_parts_name(ps, 1), "Washer") && strstr(why, "32 mm washer, 14 mm hole, 8 mm thick"),
+               "Washer: a new part, picked");
+        ge_where(gs_parts_mesh(ps, 1), pos, size);
+        expect(near(size[0], 32.f) && near(size[2], 8.f) && near(pos[2], 0.f) && pos[0] - 16.f >= 120.f + 7.9f &&
+                   gm_open_edges(gs_parts_mesh(ps, 1)) == 0 &&
+                   fabsf(signed_volume(gs_parts_mesh(ps, 1)) - 3.14159f * (256.f - 49.f) * 8.f) < 60.f,
+               "on the bed, past the plate, a ring 32 across with a 14 mm hole");
         gs_parts_free(ps);
     }
     if (fails) { /* the checks after the first count too */
