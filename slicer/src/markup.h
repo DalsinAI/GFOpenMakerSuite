@@ -1,42 +1,60 @@
 /* The whole window. GFOpenLayout lays this out; the program only fills
- * the fields and answers Open, Slice and a chosen layer.
+ * the fields and answers Open, Slice and a chosen layer. 640 by 480
+ * inside, to fit a 640 by 512 PAL screen with the window's borders: the
+ * name and version are in the title bar. OpenLayout Clear, as GFOpenMake's
+ * (cad/src/make_ui.h): one light window, grouped boxes, one status line
+ * along the bottom, Slice the accent primary button. The markup is the
+ * window itself: wrapped in a <window> element, the view got no height.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef GS_MARKUP_H
 #define GS_MARKUP_H
 
 static const char gs_markup[] =
-    "<window>"
-    "<row><h2>GFOpenSlicer</h2><spacer></spacer><span id=\"ver\">0.1.0-rc1</span></row>"
+    "<fieldset><legend>Part</legend>"
     "<row>"
-    "<span>STL</span>"
-    "<input id=\"path\" style=\"flex:1\">"
+    "<label for=\"path\">STL</label>"
+    "<input id=\"path\">"
     "<button id=\"open\">Open</button>"
-    "<button id=\"slice\">Slice</button>"
+    "<button id=\"slice\" class=\"primary\">Slice</button>"
     "</row>"
+    "</fieldset>"
+    "<fieldset><legend>Settings</legend>"
     "<row>"
-    "<span>Layer mm</span><spinner id=\"layer\" min=\"0.05\" max=\"0.80\" step=\"0.05\" value=\"0.20\">"
-    "<span>Infill %</span><spinner id=\"infill\" min=\"0\" max=\"100\" step=\"5\" value=\"20\">"
-    "<span>Line mm</span><spinner id=\"line\" min=\"0.20\" max=\"1.20\" step=\"0.05\" value=\"0.40\">"
+    "<label for=\"layer\">Layer mm</label><spinner id=\"layer\" min=\"0.05\" max=\"0.80\" step=\"0.05\" value=\"0.20\">"
+    "<label for=\"infill\">Infill %</label><spinner id=\"infill\" min=\"0\" max=\"100\" step=\"5\" value=\"20\">"
+    "<label for=\"line\">Line mm</label><spinner id=\"line\" min=\"0.20\" max=\"1.20\" step=\"0.05\" value=\"0.40\">"
     "<checkbox id=\"skirt\" checked>Skirt</checkbox>"
     "</row>"
     "<row>"
-    "<span>Filament</span><spinner id=\"filament\" min=\"1.00\" max=\"3.00\" step=\"0.05\" value=\"1.75\">"
-    "<span>Hotend</span><spinner id=\"hotend\" min=\"0\" max=\"300\" step=\"5\" value=\"200\">"
-    "<span>Bed</span><spinner id=\"bed\" min=\"0\" max=\"120\" step=\"5\" value=\"60\">"
+    "<label for=\"filament\">Filament</label><spinner id=\"filament\" min=\"1.00\" max=\"3.00\" step=\"0.05\" value=\"1.75\">"
+    "<label for=\"hotend\">Hotend</label><spinner id=\"hotend\" min=\"0\" max=\"300\" step=\"5\" value=\"200\">"
+    "<label for=\"bed\">Bed</label><spinner id=\"bed\" min=\"0\" max=\"120\" step=\"5\" value=\"60\">"
+    "<spacer></spacer>"
     "</row>"
+    "</fieldset>"
     "<row id=\"body\">"
-    "<list id=\"layers\" style=\"width:148px\"></list>"
-    "<div id=\"view\" style=\"flex:1\"></div>"
+    "<list id=\"layers\"></list>"
+    "<div id=\"view\"></div>"
     "</row>"
-    "<span id=\"status\">Open an STL.</span>"
     "<progress id=\"progress\" value=\"0\"></progress>"
-    "</window>";
+    "<hr>"
+    "<div id=\"status\">Open an STL.</div>";
 
 static const char gs_css[] =
-    "window{height:100%}"
-    "#body{height:280px}"
-    "#layers{width:148px}"
-    "#view{flex:1;background-color:#14161c}"
-    "#path{flex:1}";
+    "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:6px}"
+    "fieldset{border:1px solid #d0d0d0;border-radius:8px;padding:0 8px 6px;gap:6px}"
+    "fieldset row{padding:0;gap:6px}"
+    "button{border:1px solid #d0d0d0;border-radius:4px;color:#1b1b1b;background:linear-gradient(#fefefe,#fbfbfb)}"
+    "button:active{background:#f0f0f0}"
+    "button:focus{border-color:#0067c0}"
+    "button.primary{background:#0067c0;border-color:#0067c0;color:#ffffff}"
+    "button.primary:active{background:#005ba1}"
+    "label{color:#616161}"
+    "spinner{width:72px}"
+    "#path{flex:1}"
+    "#body{flex:1;padding:0;gap:8px}"
+    "#layers{width:148px;border:1px solid #d0d0d0}"
+    "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
+    "hr{background:#d0d0d0}";
 
 #endif

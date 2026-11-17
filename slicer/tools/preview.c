@@ -6,6 +6,7 @@
 #include "gs_job.h"
 #include "gs_view.h"
 #include "markup.h"
+#include "omview_ui.h"
 
 #include <gfopenlayout_ui.h>
 
@@ -47,20 +48,11 @@ static void draw(void *userdata, const olui_draw_op *op)
     }
 }
 
-static float number(olui *ui, const char *id)
-{
-    olui_el *el = olui_find(ui, id);
-    int dec = olui_number_decimals(el), v = olui_number_value(el);
-    float d = 1.f;
-    while (dec-- > 0) d *= 10.f;
-    return (float)v / d;
-}
-
 int main(int argc, char **argv)
 {
     olui *ui;
     char err[160];
-    int w = 720, h = 390;
+    int w = 640, h = 480; /* as amiga.c opens it */
     gs_job job;
     int have = 0;
     if (argc < 3) return 2;
@@ -76,26 +68,31 @@ int main(int argc, char **argv)
         char name[32], value[16], status[160];
         int i;
         gs_cfg_default(&cfg);
-        cfg.layer_h = number(ui, "layer");
-        cfg.infill = number(ui, "infill");
-        cfg.line_w = number(ui, "line");
-        cfg.filament = number(ui, "filament");
-        cfg.hotend = number(ui, "hotend");
-        cfg.bed = number(ui, "bed");
+        cfg.layer_h = omv_number(ui, "layer");
+        cfg.infill = omv_number(ui, "infill");
+        cfg.line_w = omv_number(ui, "line");
+        cfg.filament = omv_number(ui, "filament");
+        cfg.hotend = omv_number(ui, "hotend");
+        cfg.bed = omv_number(ui, "bed");
         cfg.skirt = olui_get_checked(olui_find(ui, "skirt"));
         if (argc < 4 || gs_job_slice(&job, argv[3], "/tmp/gs-preview.gcode", &cfg, err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", argc < 4 ? "need an stl" : err);
             return 1;
         }
         have = 1;
-        olui_set_text(ui, olui_find(ui, "path"), "Work:Models/cube.stl");
+        {
+            /* The STL's own name, in an Amiga drawer. */
+            const char *base = strrchr(argv[3], '/');
+            snprintf(name, sizeof name, "Work:%.26s", base ? base + 1 : argv[3]);
+            olui_set_text(ui, olui_find(ui, "path"), name);
+        }
         for (i = 0; i < job.layers; i++) {
             gs_job_layer_name(&job, i, name, (int)sizeof name);
             snprintf(value, sizeof value, "%d", i);
             olui_list_add(ui, olui_find(ui, "layers"), NULL, name, value);
         }
         snprintf(status, sizeof status, "%d triangles, %d layers, CPU drawer", job.triangles, job.layers);
-        olui_set_text(ui, olui_find(ui, "status"), status);
+        omv_say(ui, status);
         olui_set_progress(ui, olui_find(ui, "progress"), 100);
     }
     if (!olui_layout(ui, w, h)) return 1;

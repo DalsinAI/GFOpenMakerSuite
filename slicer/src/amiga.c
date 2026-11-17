@@ -1,9 +1,11 @@
 /* GFOpenSlicer on the Amiga. The window is GFOpenLayout: this file opens
- * it, asks ASL for a file, and fills the list from the slice.
+ * it, asks ASL for a file, and fills the list from the slice. The status
+ * line, the numbers and the pen drawer are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_job.h"
 #include "gs_view.h"
 #include "markup.h"
+#include "omview_ui.h"
 
 #include <devices/inputevent.h>
 #include <proto/asl.h>
@@ -29,49 +31,34 @@ static int dragging;
 static int drag_x, drag_y;
 static int drag_shift;
 
-static void say(olui *ui, const char *text)
-{
-    olui_set_text(ui, olui_find(ui, "status"), text);
-}
-
-static float number(olui *ui, const char *id)
-{
-    olui_el *el = olui_find(ui, id);
-    int dec = olui_number_decimals(el);
-    int v = olui_number_value(el);
-    float d = 1.f;
-    while (dec-- > 0) d *= 10.f;
-    return (float)v / d;
-}
-
 static void show_layer(olui *ui, int index)
 {
     (void)index;
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
-/* Drag turns the solid. Shift-drag pans. The wheel zooms. The picture is
- * the CPU drawer; a chip takes the same triangles when gfopengpu.library
- * says OGPU_ONGPU. */
+/* One run of one pen: one RectFill, at the view's corner in ud. */
+static void put_run(void *ud, int x, int y, int n, int pen)
+{
+    const int *at = ud;
+    SetAPen(win->RPort, (UBYTE)pen);
+    RectFill(win->RPort, at[0] + x, at[1] + y, at[0] + x + n - 1, at[1] + y);
+}
+
+/* Drag turns the solid. Shift-drag pans. The picture is the CPU drawer's,
+ * drawn with the pens a run at a time (omv_pens). */
 static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, int h)
 {
     unsigned char *rgb;
-    int row, col;
+    int at[2];
     (void)userdata;
     (void)el;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
-    if (gs_view_solid(&job.mesh, &cam, rgb, w, h)) {
-        free(rgb);
-        return;
-    }
-    for (row = 0; row < h; row++) {
-        for (col = 0; col < w; col++) {
-            unsigned char *p = rgb + ((size_t)row * (size_t)w + (size_t)col) * 3;
-            int pen = p[0] < 40 ? 0 : p[0] < 140 ? 1 : 2;
-            SetAPen(win->RPort, (UBYTE)pen);
-            WritePixel(win->RPort, (WORD)(x + col), (WORD)(y + row));
-        }
+    if (!gs_view_solid(&job.mesh, &cam, rgb, w, h)) {
+        at[0] = x;
+        at[1] = y;
+        omv_pens(rgb, w, h, put_run, at);
     }
     free(rgb);
 }
@@ -102,16 +89,16 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
         ASLFR_InitialPattern, (ULONG)"#?.stl",
         TAG_END);
     if (!fr) {
-        say(ui, "The file requester did not open");
+        omv_say(ui, "The file requester did not open");
         return;
     }
     if (AslRequest(fr, NULL)) {
         if (fr->fr_Drawer && fr->fr_File) {
-            size_t n = strlen(fr->fr_Drawer);
-            int slash = n && (fr->fr_Drawer[n - 1] == '/' || fr->fr_Drawer[n - 1] == ':');
-            snprintf(path, sizeof path, slash ? "%s%s" : "%s/%s", fr->fr_Drawer, fr->fr_File);
+            size_t n = strlen((const char *)fr->fr_Drawer);
+            int slash = n && (((const char *)fr->fr_Drawer)[n - 1] == '/' || ((const char *)fr->fr_Drawer)[n - 1] == ':');
+            snprintf(path, sizeof path, slash ? "%s%s" : "%s/%s", (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
             olui_set_text(ui, olui_find(ui, "path"), path);
-            say(ui, "Ready to slice");
+            omv_say(ui, "Ready to slice");
         }
     }
     FreeAslRequest(fr);
@@ -125,23 +112,23 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     (void)ev;
     (void)userdata;
     gs_cfg_default(&cfg);
-    cfg.layer_h = number(ui, "layer");
-    cfg.infill = number(ui, "infill");
-    cfg.line_w = number(ui, "line");
-    cfg.filament = number(ui, "filament");
-    cfg.hotend = number(ui, "hotend");
-    cfg.bed = number(ui, "bed");
+    cfg.layer_h = omv_number(ui, "layer");
+    cfg.infill = omv_number(ui, "infill");
+    cfg.line_w = omv_number(ui, "line");
+    cfg.filament = omv_number(ui, "filament");
+    cfg.hotend = omv_number(ui, "hotend");
+    cfg.bed = omv_number(ui, "bed");
     cfg.skirt = olui_get_checked(olui_find(ui, "skirt"));
     olui_set_progress(ui, olui_find(ui, "progress"), 10);
     if (gs_job_slice(&job, path ? path : "", NULL, &cfg, err, (int)sizeof err)) {
-        say(ui, err);
+        omv_say(ui, err);
         olui_set_progress(ui, olui_find(ui, "progress"), 0);
         return;
     }
     fill_layers(ui);
     snprintf(status, sizeof status, "%d triangles, %d layers, %s drawer", job.triangles, job.layers,
              gs_view_on_gpu() ? "GPU" : "CPU");
-    say(ui, status);
+    omv_say(ui, status);
     olui_set_progress(ui, olui_find(ui, "progress"), 100);
 }
 
@@ -172,9 +159,9 @@ int main(void)
     gs_job_init(&job);
     gs_cam_home(&cam);
     w = OpenWindowTags(NULL,
-        WA_Title, (ULONG)"GFOpenSlicer",
+        WA_Title, (ULONG)"GFOpenSlicer 0.1.0",
         WA_InnerWidth, 640,
-        WA_InnerHeight, 400,
+        WA_InnerHeight, 480, /* with its borders, a 640 by 512 PAL screen */
         WA_MinWidth, 360,
         WA_MinHeight, 240,
         WA_MaxWidth, (ULONG)~0,
