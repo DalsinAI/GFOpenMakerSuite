@@ -69,7 +69,7 @@ int main(void)
     expect(load_laser(&m, err, (int)sizeof err) == 0 && m.family == OM_LASER, "Generic Diode 400");
     burn_defaults(&o);
     expect(o.size == (int)sizeof o && o.power == 50.f && o.speed == 20.f && o.passes == 1 && o.s100 == 1000.f &&
-               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f,
+               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1,
            "burn_defaults");
 
     gv_doc_init(&d);
@@ -183,6 +183,7 @@ int main(void)
                    burn_parse_layer("2,power=25,speed=40", &set[1], err, (int)sizeof err) == 0,
                "per-layer power and speed");
         o.nlayer = 2;
+        o.cuts_last = 0;
         expect(burn_path(&p, &spd, &d, &o) == 0 && p.n == 10 && spd && p.m[1].w == 100.f && p.m[6].w == 25.f &&
                    spd[1] == 10.f && spd[6] == 40.f,
                "red at 100% 10 mm/s, blue at 25% 40 mm/s");
@@ -191,12 +192,11 @@ int main(void)
         expect(got.power == 100.f && got.speed == 10.f && got.passes == 1 && got.on == 1, "layer_of red");
         burn_layer_of(&o, &d, 1, &got);
         expect(got.power == 25.f && got.speed == 40.f, "layer_of blue");
-        gv_doc_free(&d);
-        gt_free(&p);
 
         burn_defaults(&o);
         o.layer = set;
         o.nlayer = 2;
+        o.cuts_last = 0;
         memset(&st, 0, sizeof st);
         expect(burn_write("burn/tests/data/two-rects.svg", "build/two-rects.gcode", &m, &o, &st, err, (int)sizeof err) ==
                        0 &&
@@ -204,9 +204,80 @@ int main(void)
                "wrote two layers");
         g = slurp("build/two-rects.gcode");
         expect(g && strstr(g, "M4") && strstr(g, "S1000") && strstr(g, "S250") && strstr(g, " F600") &&
-                   strstr(g, " F2400"),
-               "S1000 then S250, F600 then F2400");
+                   strstr(g, " F2400") && strstr(g, "S1000") < strstr(g, "S250") &&
+                   strstr(g, " F600") < strstr(g, " F2400"),
+               "S1000 then S250, F600 then F2400, in list order");
         free(g);
+
+        /* Cuts last (default): lighter blue before heavier red. */
+        burn_defaults(&o);
+        o.layer = set;
+        o.nlayer = 2;
+        {
+            int run[2];
+            expect(burn_heaviness(&set[0]) > burn_heaviness(&set[1]), "red is the heavier cut");
+            expect(burn_seq(&o, &d, run, 2) == 0 && run[0] == 1 && run[1] == 0,
+                   "cuts last: blue then red");
+        }
+        expect(burn_path(&p, &spd, &d, &o) == 0 && p.n == 10 && spd && p.m[1].w == 25.f && p.m[6].w == 100.f &&
+                   spd[1] == 40.f && spd[6] == 10.f,
+               "cuts last burns the lighter blue first");
+        free(spd);
+        memset(&st, 0, sizeof st);
+        expect(burn_write("burn/tests/data/two-rects.svg", "build/two-rects-cuts-last.gcode", &m, &o, &st, err,
+                          (int)sizeof err) == 0,
+               "wrote cuts last");
+        g = slurp("build/two-rects-cuts-last.gcode");
+        expect(g && strstr(g, "S250") && strstr(g, "S1000") && strstr(g, "S250") < strstr(g, "S1000") &&
+                   strstr(g, " F2400") < strstr(g, " F600"),
+               "S250 then S1000 when cuts last is on");
+        free(g);
+
+        /* List order overrides when cuts last is off. */
+        {
+            int user[2] = {1, 0}, run[2];
+            o.cuts_last = 0;
+            o.seq = user;
+            o.nseq = 2;
+            expect(burn_seq(&o, &d, run, 2) == 0 && run[0] == 1 && run[1] == 0,
+                   "order=2,1 with cuts last off is blue then red");
+            expect(burn_path(&p, &spd, &d, &o) == 0 && p.m[1].w == 25.f && p.m[6].w == 100.f, "seq 1,0 is blue first");
+            free(spd);
+            o.seq = NULL;
+            o.nseq = 0;
+        }
+
+        /* A fill runs before a line, even when the fill is heavier. */
+        expect(burn_parse_layer("1,power=100,speed=10,mode=fill,interval=2", &set[0], err, (int)sizeof err) == 0 &&
+                   burn_parse_layer("2,power=10,speed=40", &set[1], err, (int)sizeof err) == 0,
+               "heavy red fill, light blue line");
+        o.layer = set;
+        o.nlayer = 2;
+        o.cuts_last = 1;
+        o.seq = NULL;
+        o.nseq = 0;
+        {
+            int run[2];
+            expect(burn_seq(&o, &d, run, 2) == 0 && run[0] == 0 && run[1] == 1,
+                   "cuts last: the fill is first, even when heavier");
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        {
+            int user[1] = {9};
+            o.seq = user;
+            o.nseq = 1;
+            o.layer = NULL;
+            o.nlayer = 0;
+            err[0] = 0;
+            expect(burn_write("burn/tests/data/two-rects.svg", "build/order-bad.gcode", &m, &o, NULL, err,
+                              (int)sizeof err) == -1 &&
+                       strstr(err, "order: no such layer 10") && !exists("build/order-bad.gcode"),
+                   "an order index past the document is refused");
+            o.seq = NULL;
+            o.nseq = 0;
+        }
 
         expect(burn_parse_layer("9,power=50", &set[0], err, (int)sizeof err) == 0, "a far index");
         o.layer = set;

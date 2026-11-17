@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 void burn_defaults(burn_opts *o)
@@ -18,6 +19,7 @@ void burn_defaults(burn_opts *o)
     o->passes = 1;
     o->s100 = 1000.f;
     o->interval = 0.2f;
+    o->cuts_last = 1;
 }
 
 int burn_mode_parse(const char *s)
@@ -467,6 +469,82 @@ static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc
     return 0;
 }
 
+float burn_heaviness(const burn_layer *ly)
+{
+    float s;
+    if (!ly) return 0.f;
+    s = ly->speed;
+    if (s < 0.001f) s = 0.001f;
+    return ly->power * (float)(ly->passes > 0 ? ly->passes : 1) / s;
+}
+
+static int opts_have(const burn_opts *o, size_t off, size_t sz)
+{
+    return o && o->size >= (int)(off + sz);
+}
+
+int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap)
+{
+    int n, i, j, used[256], cuts_last = 1, nseq = 0;
+    const int *user = NULL;
+    burn_layer ly[256];
+    if (!d || !seq) return -1;
+    n = d->nlayer;
+    if (n > cap) return -1;
+    if (n > 256) return -1;
+    if (opts_have(o, offsetof(burn_opts, cuts_last), sizeof o->cuts_last))
+        cuts_last = o->cuts_last ? 1 : 0;
+    if (opts_have(o, offsetof(burn_opts, nseq), sizeof o->nseq) &&
+        opts_have(o, offsetof(burn_opts, seq), sizeof o->seq) && o->seq && o->nseq > 0) {
+        user = o->seq;
+        nseq = o->nseq;
+    }
+    for (i = 0; i < n; i++) used[i] = 0;
+    if (user) {
+        int k = 0;
+        for (i = 0; i < nseq; i++) {
+            int L = user[i];
+            if (L < 0 || L >= n || used[L]) continue;
+            seq[k++] = L;
+            used[L] = 1;
+        }
+        for (i = 0; i < n; i++)
+            if (!used[i]) seq[k++] = i;
+    } else {
+        for (i = 0; i < n; i++) seq[i] = i;
+    }
+    if (!cuts_last) return 0;
+    for (i = 0; i < n; i++) burn_layer_of(o, d, seq[i], &ly[i]);
+    /* Stable: fills before lines, then lighter before heavier. */
+    for (i = 1; i < n; i++) {
+        int L = seq[i];
+        burn_layer keep = ly[i];
+        j = i;
+        while (j > 0) {
+            int af, bf;
+            float ah, bh;
+            af = (ly[j - 1].mode == BURN_FILL || ly[j - 1].mode == BURN_OFFSET);
+            bf = (keep.mode == BURN_FILL || keep.mode == BURN_OFFSET);
+            if (af != bf) {
+                if (bf) {
+                    /* keep is a fill, previous is a line: move keep up */
+                } else
+                    break;
+            } else {
+                ah = burn_heaviness(&ly[j - 1]);
+                bh = burn_heaviness(&keep);
+                if (ah <= bh) break;
+            }
+            seq[j] = seq[j - 1];
+            ly[j] = ly[j - 1];
+            j--;
+        }
+        seq[j] = L;
+        ly[j] = keep;
+    }
+    return 0;
+}
+
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
@@ -480,30 +558,44 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
         if (!spd) return -1;
         *speed = spd;
     }
-    for (L = 0; L < d->nlayer; L++) {
-        burn_layer ly;
-        burn_layer_of(o, d, L, &ly);
-        if (!ly.on || ly.colour == GV_NONE) continue;
-        for (pass = 0; pass < ly.passes; pass++) {
-            if (ly.mode == BURN_FILL || ly.mode == BURN_OFFSET) {
-                int rc = (ly.mode == BURN_FILL)
-                             ? add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)
-                             : add_offset(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
-                if (rc) {
-                    free(spd);
-                    if (speed) *speed = NULL;
-                    gt_free(p);
-                    return -1;
+    {
+        int run[256], r;
+        if (d->nlayer > 256) {
+            free(spd);
+            if (speed) *speed = NULL;
+            return -1;
+        }
+        if (burn_seq(o, d, run, 256)) {
+            free(spd);
+            if (speed) *speed = NULL;
+            return -1;
+        }
+        for (r = 0; r < d->nlayer; r++) {
+            burn_layer ly;
+            L = run[r];
+            burn_layer_of(o, d, L, &ly);
+            if (!ly.on || ly.colour == GV_NONE) continue;
+            for (pass = 0; pass < ly.passes; pass++) {
+                if (ly.mode == BURN_FILL || ly.mode == BURN_OFFSET) {
+                    int rc = (ly.mode == BURN_FILL)
+                                 ? add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)
+                                 : add_offset(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
+                    if (rc) {
+                        free(spd);
+                        if (speed) *speed = NULL;
+                        gt_free(p);
+                        return -1;
+                    }
+                    continue;
                 }
-                continue;
-            }
-            for (i = 0; i < d->n; i++) {
-                if (gv_path_colour(&d->p[i]) != ly.colour) continue;
-                if (add_path(p, speed ? &spd : NULL, &nspd, &cap, &d->p[i], ly.power, ly.speed)) {
-                    free(spd);
-                    if (speed) *speed = NULL;
-                    gt_free(p);
-                    return -1;
+                for (i = 0; i < d->n; i++) {
+                    if (gv_path_colour(&d->p[i]) != ly.colour) continue;
+                    if (add_path(p, speed ? &spd : NULL, &nspd, &cap, &d->p[i], ly.power, ly.speed)) {
+                        free(spd);
+                        if (speed) *speed = NULL;
+                        gt_free(p);
+                        return -1;
+                    }
                 }
             }
         }
@@ -525,11 +617,23 @@ static long to_file(const char *s, long n, void *ud)
 
 static int check_indexes(const gv_doc *d, const burn_opts *o, char *err, int errlen)
 {
-    int i;
+    int i, nseq;
+    if (!o) return 0;
     for (i = 0; i < o->nlayer; i++) {
         if (o->layer[i].index > 0 && o->layer[i].index > d->nlayer) {
             snprintf(err, (size_t)errlen, "layer %d: no such layer", o->layer[i].index);
             return -1;
+        }
+    }
+    if (opts_have(o, offsetof(burn_opts, nseq), sizeof o->nseq) &&
+        opts_have(o, offsetof(burn_opts, seq), sizeof o->seq) && o->seq && o->nseq > 0) {
+        nseq = o->nseq;
+        for (i = 0; i < nseq; i++) {
+            int L = o->seq[i];
+            if (L < 0 || L >= d->nlayer) {
+                snprintf(err, (size_t)errlen, "order: no such layer %d", L + 1);
+                return -1;
+            }
         }
     }
     return 0;

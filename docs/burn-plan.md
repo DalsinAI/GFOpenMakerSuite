@@ -54,11 +54,13 @@ Each layer has:
 
 ### Order
 
-The job is run in the order of the layer list, which the user can change.
-Engraving and scoring should usually run before a cut that goes through, so
-the piece does not move first. A later "cuts last" sort can do that on its
-own: fills first, then lines, with the heavier cuts (more power, less speed,
-more passes) last among the lines.
+The job is run in the order of the layer list, which the user can change
+with Up and Dn. "Cuts last" (on by default) still sorts the run: fills
+first, then lines, with the heavier cuts (more power, less speed, more
+passes) last among the lines. Turn it off to burn in list order. The
+command uses `cuts_last=` and `order=` (1-based layers, used as the list
+order). When both are given, the list order is the starting point and the
+sort still applies if cuts last is on.
 
 ### Preview
 
