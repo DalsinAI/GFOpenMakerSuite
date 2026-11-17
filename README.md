@@ -1,6 +1,7 @@
-# GFOpenSlicer
+# GFOpenMakerSuite
 
-This repository holds the **GFOpenMake suite** for GFOS on AmigaOS 3.2:
+This repository, [DalsinAI/GFOpenMakerSuite](https://github.com/DalsinAI/GFOpenMakerSuite)
+(it was `gfopenslicer`; the old address forwards here), holds the **GFOpenMake suite** for GFOS on AmigaOS 3.2:
 one shared core and the apps on top of it. Every app's window is
 GFOpenLayout (Clear look) and draws through OpenGPU, with the pen drawer
 as the fallback.
