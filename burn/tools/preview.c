@@ -230,6 +230,7 @@ int main(int argc, char **argv)
         base = strrchr(argv[3], '/');
         snprintf(name, sizeof name, "Work:%.26s", base ? base + 1 : argv[3]);
         olui_set_text(ui, olui_find(ui, "path"), name);
+        burn_ui_kind(ui, argv[3]);
         burn_ui_status(status, (int)sizeof status, m.name, st.moves, st.seconds);
         omv_say(ui, status);
         printf("%s\n", status);

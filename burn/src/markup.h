@@ -15,7 +15,7 @@
 static const char burn_markup[] =
     "<fieldset><legend>Drawing</legend>"
     "<row>"
-    "<label for=\"path\">SVG</label>"
+    "<label id=\"kind\" for=\"path\">File</label>"
     "<input id=\"path\">"
     "<button id=\"open\">Open</button>"
     "<button id=\"preview\" class=\"primary\">Preview</button>"
@@ -51,7 +51,7 @@ static const char burn_css[] =
     "#body{flex:1;padding:0;gap:8px}"
     "#side{width:" OMV_SETTINGS_W_CSS "}"
     "fieldset row label{width:48px}"
-    "#path{flex:1}"
+    "#kind{width:auto;min-width:48px}""#path{flex:1}"
     "#jobbar{padding:0;gap:6px}"
     "select{flex:1}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"

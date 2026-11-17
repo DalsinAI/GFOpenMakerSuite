@@ -45,7 +45,7 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
-    {"path", "input"},   {"open", "button"}, {"preview", "button"}, {"machine", "select"},
+    {"kind", "label"}, {"path", "input"},   {"open", "button"}, {"preview", "button"}, {"machine", "select"},
     {"constant", "checkbox"}, {"cuts_last", "checkbox"}, {"material", "select"}, {"frame", "button"}, {"gcode", "button"},
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
@@ -65,6 +65,7 @@ int main(void)
     olui_set_measure(ui, measure, NULL);
     expect(olui_load(ui, burn_markup, burn_css, err, sizeof err), "the window loads");
     expect(olui_layout(ui, w, h), "the window lays out at 640 by 480, as amiga.c opens it");
+    expect(!strcmp(olui_get_text(olui_find(ui, "kind")), "File"), "the Drawing label starts as File");
     for (i = 0; i < N; i++) {
         olui_el *el = olui_find(ui, controls[i][0]);
         char what[80];
@@ -103,6 +104,28 @@ int main(void)
     burn_defaults(&o);
     expect(gv_load_svg(&d, "burn/tests/data/two-rects.svg", err, (int)sizeof err) == 0, "two rectangles");
     expect(burn_ui_layers(ui, &d, &o, err, (int)sizeof err) == 0 && burn_ui_count(ui) == 2, "two layer rows");
+    burn_ui_kind(ui, "burn/tests/data/two-rects.svg");
+    expect(!strcmp(olui_get_text(olui_find(ui, "kind")), "SVG") && olui_layout(ui, w, h),
+           "an SVG names the Drawing field SVG");
+    {
+        olui_rect kr, pr;
+        expect(olui_box(ui, olui_find(ui, "kind"), &kr) && olui_box(ui, olui_find(ui, "path"), &pr) &&
+                   inside(&kr, w, h) && !overlap(&kr, &pr),
+               "the kind label stays in the window, clear of the path");
+    }
+    burn_ui_kind(ui, "burn/tests/data/two-rects.dxf");
+    expect(!strcmp(olui_get_text(olui_find(ui, "kind")), "DXF") && olui_layout(ui, w, h),
+           "a DXF names the Drawing field DXF");
+    burn_ui_kind(ui, "burn/tests/data/bars-8x2.pgm");
+    expect(!strcmp(olui_get_text(olui_find(ui, "kind")), "Picture") && olui_layout(ui, w, h),
+           "a picture names the Drawing field Picture");
+    {
+        olui_rect kr, pr;
+        expect(olui_box(ui, olui_find(ui, "kind"), &kr) && olui_box(ui, olui_find(ui, "path"), &pr) &&
+                   inside(&kr, w, h) && kr.w > 0 && !overlap(&kr, &pr),
+               "Picture still fits in the Drawing row");
+    }
+    burn_ui_kind(ui, "burn/tests/data/two-rects.svg");
     expect(olui_layout(ui, w, h), "it still lays out at 640 by 480 with the layers");
     {
         olui_rect r, p0, p1;

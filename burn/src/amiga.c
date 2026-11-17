@@ -1,5 +1,5 @@
 /* OpenMakeBurn on the Amiga. The window is GFOpenLayout (markup.h): Open
- * asks ASL for an SVG or a DXF, Preview builds the line toolpath at the layer
+ * asks ASL for an SVG, a DXF or a picture, Preview builds the line toolpath at the layer
  * settings, Frame writes a travel around the job with the laser off, and
  * Save G-code writes Grbl laser G-code for the laser picked (core/ui's
  * machine picker). The view is drawn by OpenGPU when gfopengpu.library
@@ -269,6 +269,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     have_doc = 1;
     snprintf(svg_path, sizeof svg_path, "%s", pathbuf);
     olui_set_text(ui, olui_find(ui, "path"), svg_path);
+    burn_ui_kind(ui, svg_path);
     if (burn_ui_layers(ui, &doc, &opts, err, (int)sizeof err)) {
         omv_say(ui, err);
         return;

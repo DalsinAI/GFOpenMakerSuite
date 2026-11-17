@@ -60,6 +60,10 @@ typedef struct {
 
 void burn_defaults(burn_opts *o);
 
+/* "SVG", "DXF" or "Picture" from the path's suffix, or a peek at the
+ * file when the suffix is not enough. Empty or unknown is "File". */
+const char *burn_drawing_kind(const char *path);
+
 /* line, fill, offset, or -1 if s is not a known mode. */
 int burn_mode_parse(const char *s);
 const char *burn_mode_name(int mode);
