@@ -45,8 +45,8 @@ $(BUILD)/preview: slicer/tools/preview.c slicer/src/markup.h slicer/src/slicer_u
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
-$(BUILD)/test_edit: cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c cad/include/gs_edit.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ cad/tests/test_edit.c cad/src/edit.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_edit: cad/tests/test_edit.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c cad/include/gs_edit.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ cad/tests/test_edit.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 $(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
@@ -261,9 +261,9 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 preview: $(BUILD)/preview $(BUILD)/make_preview
 
 # GFOpenMake's window after Slice, on the host (cad/tools/make_preview.c).
-$(BUILD)/make_preview: cad/tools/make_preview.c cad/src/make_ui.h cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/gcode.c | $(BUILD)
+$(BUILD)/make_preview: cad/tools/make_preview.c cad/src/make_ui.h cad/src/edit.c core/src/parts.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/gcode.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Icad/include -Icad/src -Imachines/include -I$(LAYOUT)/include -o $@ \
-	    cad/tools/make_preview.c cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/toolpath_paint.c core/src/gcode.c \
+	    cad/tools/make_preview.c cad/src/edit.c core/src/parts.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/toolpath_paint.c core/src/gcode.c \
 	    machines/src/machine.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm

@@ -450,6 +450,111 @@ int ge_bool(ge_scene *s, int op, ge_hist *h)
     return 0;
 }
 
+struct ge_steps {
+    gs_parts *back[HIST], *ahead[HIST];
+    int nb, na;
+};
+
+ge_steps *ge_steps_new(void) { return (ge_steps *)calloc(1, sizeof(ge_steps)); }
+
+static void drop_ahead(ge_steps *s)
+{
+    while (s->na > 0) gs_parts_free(s->ahead[--s->na]);
+}
+
+void ge_steps_free(ge_steps *s)
+{
+    if (!s) return;
+    drop_ahead(s);
+    while (s->nb > 0) gs_parts_free(s->back[--s->nb]);
+    free(s);
+}
+
+/* p onto a stack of HIST, the oldest falling off. */
+static void stack(gs_parts **st, int *n, gs_parts *p)
+{
+    if (*n == HIST) {
+        gs_parts_free(st[0]);
+        memmove(&st[0], &st[1], (size_t)(HIST - 1) * sizeof st[0]);
+        *n = HIST - 1;
+    }
+    st[(*n)++] = p;
+}
+
+int ge_steps_push(ge_steps *s, const gs_parts *now)
+{
+    gs_parts *c;
+    if (!s || !now || !(c = gs_parts_copy(now))) return -1;
+    drop_ahead(s);
+    stack(s->back, &s->nb, c);
+    return 0;
+}
+
+gs_parts *ge_steps_undo(ge_steps *s, gs_parts *now)
+{
+    if (!s || !now || s->nb < 1) return NULL;
+    stack(s->ahead, &s->na, now);
+    return s->back[--s->nb];
+}
+
+gs_parts *ge_steps_redo(ge_steps *s, gs_parts *now)
+{
+    if (!s || !now || s->na < 1) return NULL;
+    stack(s->back, &s->nb, now);
+    return s->ahead[--s->na];
+}
+
+gs_parts *ge_steps_forget(ge_steps *s, gs_parts *now)
+{
+    if (!s || !now || s->nb < 1) return NULL;
+    gs_parts_free(now);
+    return s->back[--s->nb];
+}
+
+int ge_steps_back(const ge_steps *s) { return s ? s->nb : 0; }
+int ge_steps_ahead(const ge_steps *s) { return s ? s->na : 0; }
+
+int ge_combine(gs_parts *ps, int op, char *line, int len)
+{
+    int t = gs_parts_picked(ps), k, colour, rc;
+    char stock[GS_PARTS_NAME + 1], tool[GS_PARTS_NAME + 1], name[2 * GS_PARTS_NAME + 8];
+    gs_mesh out;
+    if (gs_parts_count(ps) < 2 || t < 0 || op < 0 || op > 2) {
+        snprintf(line, (size_t)len, "Need two parts. The picked one is the tool.");
+        return -1;
+    }
+    k = t > 0 ? t - 1 : 1;
+    memset(&out, 0, sizeof out);
+    rc = op == 0 ? gm_union(&out, gs_parts_mesh(ps, k), gs_parts_mesh(ps, t))
+         : op == 1 ? gm_subtract(&out, gs_parts_mesh(ps, k), gs_parts_mesh(ps, t))
+                   : gm_intersect(&out, gs_parts_mesh(ps, k), gs_parts_mesh(ps, t));
+    if (rc || out.n < 1) {
+        gs_mesh_free(&out);
+        snprintf(line, (size_t)len, "Those two do not meet, so the solid was left as it was.");
+        return -2;
+    }
+    snprintf(stock, sizeof stock, "%s", gs_parts_name(ps, k));
+    snprintf(tool, sizeof tool, "%s", gs_parts_name(ps, t));
+    colour = gs_parts_colour(ps, k);
+    gs_parts_remove(ps, t > k ? t : k);
+    gs_parts_remove(ps, t > k ? k : t);
+    if (op == 2) snprintf(name, sizeof name, "%s and %s", stock, tool);
+    else snprintf(name, sizeof name, "%s", stock);
+    k = gs_parts_add(ps, &out, name);
+    gs_mesh_free(&out);
+    if (k < 0) {
+        snprintf(line, (size_t)len, "Not enough memory for the result.");
+        return -2;
+    }
+    gs_parts_set_colour(ps, k, colour);
+    if (op == 1)
+        snprintf(line, (size_t)len, "Cut %s out of %s. %d triangles.", tool, stock, gs_parts_mesh(ps, k)->n);
+    else if (op == 0)
+        snprintf(line, (size_t)len, "Joined into %s. %d triangles.", gs_parts_name(ps, k), gs_parts_mesh(ps, k)->n);
+    else snprintf(line, (size_t)len, "Kept only the overlap, as %s. %d triangles.", gs_parts_name(ps, k), gs_parts_mesh(ps, k)->n);
+    return 0;
+}
+
 int ge_open(gs_mesh *m, const char *path, char *err, int errlen)
 {
     gs_mesh_free(m);
