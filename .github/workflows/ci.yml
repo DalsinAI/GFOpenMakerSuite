@@ -20,6 +20,8 @@ jobs:
           repository: DalsinAI/gfopenlayout
           ref: c414f38fedcea1ea6c9a00ab3a12bf5214358678
           path: gfopenlayout
+      # The same commit build-amiga.sh wants (gfopenlayout.ref).
+      - run: test "$(git -C gfopenlayout rev-parse HEAD)" = "$(cat gfopenlayout.ref)"
       - run: make -C gfopenlayout build/libopenlayout.a
       - run: make test SDK=$GITHUB_WORKSPACE/gfopensdk/Include LAYOUT=$GITHUB_WORKSPACE/gfopenlayout
   bench:

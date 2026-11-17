@@ -5,11 +5,14 @@
 # instruction at all: that is checked here, and the build fails if it does.
 #
 #   CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
-#   OLUI=.../libolui.a ./build-amiga.sh
+#   OGT_ROOT=.../amicradle-guest/libraries/opengadtools ./build-amiga.sh
 #
 # SDK is the GFOpen SDK's root (Include, and Lib/m68k-soft-m68040.specs).
-# OLUI is GFOpenLayout's UI link library for the 68040, from its
-# build-ui-amiga.sh; it holds no floating point, so one serves both builds.
+# LAYOUT is a GFOpenLayout checkout at the commit in gfopenlayout.ref, the
+# one CI tests with (LAYOUT_ANY=1 takes any). OLUI is its UI link library
+# for the 68040: built here from LAYOUT with its build-ui-amiga.sh (which
+# needs OGT_ROOT), or given ready made; it is checked for every olui_ call
+# the apps make. It holds no floating point, so one serves both builds.
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -17,9 +20,35 @@ CC=${CC:-m68k-amigaos-gcc}
 OBJDUMP=${OBJDUMP:-$(dirname "$CC")/m68k-amigaos-objdump}
 SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 LAYOUT=${LAYOUT:?"LAYOUT: a GFOpenLayout checkout, for its headers"}
-OLUI=${OLUI:?"OLUI: GFOpenLayout's 68040 libolui.a (its build-ui-amiga.sh)"}
 OUT=${OUT:-"$HERE/build-amiga"}
+NM=${NM:-$(dirname "$CC")/m68k-amigaos-nm}
 cd "$HERE"
+
+# GFOpenLayout as pinned, so a clean clone builds what CI tested.
+PIN=$(cat gfopenlayout.ref)
+GOT=$(git -C "$LAYOUT" rev-parse HEAD 2>/dev/null || echo "not a git checkout")
+if [ "$GOT" != "$PIN" ] && [ -z "${LAYOUT_ANY:-}" ]; then
+    echo "build-amiga: LAYOUT is at $GOT, not the pinned $PIN (gfopenlayout.ref);" >&2
+    echo "  git -C \"$LAYOUT\" checkout $PIN, or LAYOUT_ANY=1" >&2
+    exit 1
+fi
+if [ -z "${OLUI:-}" ]; then
+    OGT_ROOT=${OGT_ROOT:?"OGT_ROOT: GFOpenGadTools (amicradle-guest libraries/opengadtools), to build libolui.a; or OLUI=.../libolui.a"}
+    CC="$CC" AR="$(dirname "$CC")/m68k-amigaos-ar" SPECS="$SDK/Lib/m68k-soft-m68040.specs" OGT_ROOT="$OGT_ROOT" \
+        OUT="$OUT/olui" sh "$LAYOUT/build-ui-amiga.sh" > /dev/null
+    OLUI="$OUT/olui/libolui.a"
+fi
+# Every olui_ function the apps call is in OLUI: an older one fails here,
+# by name, not at the link.
+MISSING=""
+DEFINED=$("$NM" "$OLUI" 2>/dev/null | awk '$2 == "T" { print $3 }')
+for f in $(grep -ho 'olui_[a-z_0-9]*(' cad/src/*.c slicer/src/*.c core/ui/*.c | tr -d '(' | sort -u); do
+    echo "$DEFINED" | grep -qx "_$f" || MISSING="$MISSING $f"
+done
+if [ -n "$MISSING" ]; then
+    echo "build-amiga: $OLUI lacks$MISSING: build it from GFOpenLayout $PIN (leave OLUI unset)" >&2
+    exit 1
+fi
 
 CORE="core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c"
 # The slice as a toolpath, and its picture (gpu.c draws it for a chip).
