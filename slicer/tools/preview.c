@@ -164,7 +164,8 @@ int main(int argc, char **argv)
             olui_set_checked(ui, olui_find(ui, "show"), 1);
             olui_set_slider(ui, olui_find(ui, "layerno"), omv_slider_of(upto, job.path.nlayers));
         }
-        omv_slice_status(status, (int)sizeof status, job.path.nlayers, job.st.moves, job.st.seconds, job.st.filament, upto);
+        omv_slice_status(status, (int)sizeof status, job.path.nlayers, job.st.moves, job.st.seconds, job.st.filament, upto,
+                         job.how == GC_FELL_BACK);
         omv_say(ui, status);
         printf("%s (%d tasks)\n", status, job.tasks);
     }

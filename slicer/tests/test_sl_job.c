@@ -68,6 +68,7 @@ int main(void)
     expect(sl_slice(&j, &po, &go, &m, 1, err, (int)sizeof err) == 0 && j.sliced && j.tasks == 1 && j.path.nlayers == 130,
            "130 layers on one task");
     expect(j.st.moves > 1000 && j.st.seconds > 60.f && j.st.filament > 100.f, "and its estimate");
+    expect(j.how == GC_WITH_ACCEL, "timed with the printer's acceleration, and said so");
     expect(sl_write(&j, "build/sl-job-1.gcode", &m, &go, err, (int)sizeof err) == 0, "written for the Marlin");
     expect(sl_slice(&j, &po, &go, &m, 4, err, (int)sizeof err) == 0 && j.tasks == 4 && j.path.nlayers == 130,
            "130 layers on four tasks");

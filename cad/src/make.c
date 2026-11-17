@@ -222,7 +222,7 @@ static void refresh(olui *ui)
     recut();
     if (has_slice) {
         omv_slice_status(status, (int)sizeof status, sliced.nlayers, slice_st.moves, slice_st.seconds,
-                         slice_st.filament, show_layer ? layer_no : 0);
+                         slice_st.filament, show_layer ? layer_no : 0, 0);
         say(ui, status);
         face_line(ui);
         olui_repaint(ui, olui_find(ui, "view"), NULL);

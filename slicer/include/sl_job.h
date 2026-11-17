@@ -13,6 +13,7 @@ typedef struct {
     gs_mesh part;              /* repaired, centred on the bed, on it */
     gt_path path;              /* the toolpath, once sliced */
     gc_stats st;               /* its estimate */
+    int how;                   /* how its time was got: GC_AT_SPEEDS and so on */
     int have_part, sliced;
     int tasks;                 /* the tasks the last slice ran on */
 } sl_job;

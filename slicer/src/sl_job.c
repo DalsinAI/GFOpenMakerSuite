@@ -19,6 +19,7 @@ static void drop_slice(sl_job *j)
     gt_free(&j->path);
     gt_init(&j->path);
     memset(&j->st, 0, sizeof j->st);
+    j->how = GC_AT_SPEEDS;
     j->sliced = 0;
     j->tasks = 0;
 }
@@ -65,7 +66,7 @@ int sl_slice(sl_job *j, const gp_opts *po, const gc_opts *go, const om_machine *
         snprintf(err, (size_t)errlen, "That did not slice: out of memory, or nothing to slice");
         return -1;
     }
-    gc_estimate(&j->path, m, &g, &j->st);
+    j->how = gc_estimate_how(&j->path, m, &g, &j->st);
     j->sliced = 1;
     j->tasks = tasks;
     return 0;

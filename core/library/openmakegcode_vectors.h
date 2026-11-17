@@ -27,9 +27,16 @@ static int LIB_GC_WriteTo(REG(a0, gc_put put), REG(a1, void *ud), REG(a2, const 
     return gc_write_to(put, ud, p, m, o, st, err, errlen);
 }
 
-#define OPENMAKEGCODE_LAST_BIAS 48
+static int LIB_GC_EstimateHow(REG(a0, const gt_path *p), REG(a1, const om_machine *m), REG(a2, const gc_opts *o), REG(a3, gc_stats *st), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gc_estimate_how(p, m, o, st);
+}
+
+#define OPENMAKEGCODE_LAST_BIAS 54
 #define OPENMAKEGCODE_VECTORS \
     (APTR)LIB_GC_Defaults, \
     (APTR)LIB_GC_Estimate, \
     (APTR)LIB_GC_Job, \
-    (APTR)LIB_GC_WriteTo
+    (APTR)LIB_GC_WriteTo, \
+    (APTR)LIB_GC_EstimateHow

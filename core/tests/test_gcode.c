@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int fails;
@@ -17,6 +18,16 @@ static void expect(int cond, const char *msg)
 }
 
 static int near(float a, float b, float tol) { return fabsf(a - b) < tol; }
+
+/* gcode.c's planner memory, built here with GC_CALLOC=no_room_calloc: it
+ * fails while no_room is set, as a full Amiga would. */
+static int no_room;
+
+void *no_room_calloc(size_t n, size_t size);
+void *no_room_calloc(size_t n, size_t size)
+{
+    return no_room ? NULL : calloc(n, size);
+}
 
 static char text[16384];
 
@@ -89,6 +100,19 @@ int main(void)
         gc_estimate(&p, &flat, &o, &est);
         expect(near(est.seconds, 40.f / 25 + 70.7107f / 300 + 10.f / 60 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
                "the time: travels at the machine's 300 mm/s, the lift at its Z's 5, and the retraction");
+
+        /* How each time was got, said: at the set speeds, with the
+         * machine's acceleration, or at the set speeds because there was
+         * no memory to plan with (the same time as with none given). */
+        expect(gc_estimate_how(&p, &flat, &o, &st) == GC_AT_SPEEDS && st.seconds == est.seconds,
+               "no acceleration given: at the set speeds, and said so");
+        expect(gc_estimate_how(&p, NULL, &o, &st) == GC_AT_SPEEDS, "no machine: at the set speeds");
+        expect(gc_estimate_how(&p, &m, &o, &st) == GC_WITH_ACCEL && st.seconds > est.seconds + 0.1f,
+               "the profile's acceleration: counted, and said so");
+        no_room = 1;
+        expect(gc_estimate_how(&p, &m, &o, &st) == GC_FELL_BACK, "no memory to plan with: said so");
+        no_room = 0;
+        expect(near(st.seconds, est.seconds, 1e-4f) && st.moves > 6, "and then the time at the set speeds");
     }
     f = fopen("build/test.gcode", "w");
     expect(f && gc_write(f, &p, &m, &o, &st, err, (int)sizeof err) == 0, "written");

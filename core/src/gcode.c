@@ -8,6 +8,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The planner's memory: calloc, or a test's own that can fail. */
+#ifdef GC_CALLOC
+void *GC_CALLOC(size_t n, size_t size);
+#else
+#define GC_CALLOC calloc
+#endif
+
 void gc_defaults(gc_opts *o)
 {
     memset(o, 0, sizeof *o);
@@ -133,6 +140,7 @@ typedef struct {
     float e;                    /* E now, since the layer's G92 */
     int bad;
     planner *pl;                /* NULL: no acceleration, distance over speed */
+    int how;                    /* GC_AT_SPEEDS and so on */
 } writer;
 
 static void say(writer *w, const char *line)
@@ -203,8 +211,9 @@ static void run(writer *w, const gt_path *p)
     memset(w->st, 0, sizeof *w->st);
     /* The profile's acceleration counted when it gives X and Y theirs. */
     if (w->m && w->m->accel[OM_X] > 0.f && w->m->accel[OM_Y] > 0.f) {
-        pl = (planner *)calloc(1, sizeof *pl);
+        pl = (planner *)GC_CALLOC(1, sizeof *pl);
         w->pl = pl;
+        w->how = pl ? GC_WITH_ACCEL : GC_FELL_BACK;
     }
     for (i = 0; i < p->n; i++) {
         if (layer < p->nlayers && p->layer[layer] == i) {
@@ -223,7 +232,7 @@ static void run(writer *w, const gt_path *p)
     }
 }
 
-void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
 {
     writer w;
     memset(&w, 0, sizeof w);
@@ -231,6 +240,12 @@ void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_sta
     w.o = o;
     w.st = st;
     run(&w, p);
+    return w.how;
+}
+
+void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+{
+    gc_estimate_how(p, m, o, st);
 }
 
 void gc_job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job)

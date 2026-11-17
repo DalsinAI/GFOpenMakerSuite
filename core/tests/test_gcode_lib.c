@@ -87,11 +87,14 @@ int main(void)
                GC_WriteTo(into, &kb, &p, &m, &ob, &sb, errb, (int)sizeof errb) == 0 && ka.n == kb.n &&
                !strcmp(ka.buf, kb.buf) && strstr(kb.buf, "M104 S") && !memcmp(&sa, &sb, sizeof sa),
            "GC_WriteTo, eight arguments: the same G-code, start code and all");
+    expect(GC_EstimateHow(&p, &m, &ob, &sb) == gc_estimate_how(&p, &m, &oa, &sa) && !memcmp(&sa, &sb, sizeof sa) &&
+               GC_EstimateHow(&p, NULL, &ob, &sb) == GC_AT_SPEEDS,
+           "GC_EstimateHow: the estimate, and how its time was got");
     m.family = OM_LASER;
     expect(GC_WriteTo(into, &kb, &p, &m, &ob, NULL, errb, (int)sizeof errb) == -1 && strstr(errb, "printer"),
            "GC_WriteTo refuses a laser, and says why");
     printf("through the library: %ld bytes of G-code, %d moves\n", ka.n, sb.moves);
-    expect(calls == 5, "every GC_ call went through the table");
+    expect(calls == 7, "every GC_ call went through the table");
 
     gt_free(&p);
     if (fails) {

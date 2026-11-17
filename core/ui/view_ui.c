@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void omv_say(olui *ui, const char *text)
 {
@@ -52,16 +53,18 @@ int omv_pens(const unsigned char *rgb, int w, int h, omv_put_fn put, void *ud)
     return total;
 }
 
-void omv_slice_status(char *buf, int len, int layers, int moves, float seconds, float filament, int upto)
+void omv_slice_status(char *buf, int len, int layers, int moves, float seconds, float filament, int upto, int rough)
 {
     long min = (long)(seconds / 60.f + 0.5f);
+    const char *over = rough ? "over " : "";
     char took[48], which[64];
-    if (min >= 60) snprintf(took, sizeof took, "%ld h %ld min", min / 60, min % 60);
-    else snprintf(took, sizeof took, "%ld min", min);
+    if (min >= 60) snprintf(took, sizeof took, "%s%ld h %ld min", over, min / 60, min % 60);
+    else snprintf(took, sizeof took, "%s%ld min", over, min);
     if (upto > 0) snprintf(which, sizeof which, "layers 1 to %d of %d", upto, layers);
     else snprintf(which, sizeof which, "%d layers", layers);
     snprintf(buf, (size_t)len, "Sliced: %s, %d moves, %s, %.2f m filament.", which, moves, took,
              (double)(filament / 1000.f));
+    if (strlen(buf) > 78) memmove(buf, buf + 8, strlen(buf + 8) + 1); /* without "Sliced: " */
 }
 
 void omv_window_fit(int sw, int sh, int top, int bw, int bh, int *w, int *h)

@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     }
     omv_machines_scan(&printers, argc > 3 ? argv[3] : "machines", "printer");
     omv_machines_fill(ui, "machine", &printers, "No printers");
-    omv_slice_status(status, (int)sizeof status, path.nlayers, st.moves, st.seconds, st.filament, upto);
+    omv_slice_status(status, (int)sizeof status, path.nlayers, st.moves, st.seconds, st.filament, upto, 0);
     omv_say(ui, status);
     if (upto) {
         olui_set_checked(ui, olui_find(ui, "show"), 1);

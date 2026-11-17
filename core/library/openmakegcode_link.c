@@ -22,3 +22,8 @@ int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, con
 {
     return GC_WriteTo(put, ud, p, m, o, st, err, errlen);
 }
+
+int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+{
+    return GC_EstimateHow(p, m, o, st);
+}
