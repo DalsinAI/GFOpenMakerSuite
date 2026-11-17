@@ -13,7 +13,7 @@ LAYOUT ?= ../gfopenlayout
 # OpenMakeCore's slice: a part's layers as a toolpath.
 PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/layer.c core/src/loops.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -102,6 +102,13 @@ $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl
 	python3 core/library/gen-library.py $(MESH_LIB) --check
 	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_mesh_lib.c core/src/model.c core/src/stl.c -lm
 
+# openmakeview.library's calls, the same way.
+VIEW_LIB = core/library/openmakeview_lib.sfd
+VIEW_SRC = core/src/solid.c core/src/view.c
+$(BUILD)/test_view_lib: core/tests/test_view_lib.c $(VIEW_SRC) core/src/model.c core/src/stl.c $(VIEW_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+	python3 core/library/gen-library.py $(VIEW_LIB) --check
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_view_lib.c $(VIEW_SRC) core/src/model.c core/src/stl.c -lm
+
 # openmakegcode.library's calls, the same way.
 GCODE_LIB = core/library/openmakegcode_lib.sfd
 $(BUILD)/test_gcode_lib: core/tests/test_gcode_lib.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c $(GCODE_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
@@ -112,7 +119,7 @@ $(BUILD)/test_gcode_lib: core/tests/test_gcode_lib.c core/src/gcode.c core/src/t
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -125,6 +132,7 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_path_lib
 	$(BUILD)/test_mesh_lib
 	$(BUILD)/test_gcode_lib
+	$(BUILD)/test_view_lib
 	$(BUILD)/test_toolpath
 	$(BUILD)/test_inset
 	$(BUILD)/test_fill

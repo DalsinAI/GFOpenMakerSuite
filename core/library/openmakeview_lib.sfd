@@ -1,0 +1,29 @@
+==id $Id: openmakeview_lib.sfd 1.0 (17.11.2026) $
+* "openmakeview.library": OpenMakeCore's view, the one every app of the
+* suite shows (gs_view.h): the turntable camera, the part and the plate
+* framed, and the CPU drawer's pictures and pens for a machine with no
+* graphics chip. Each call is its C function in snake case (GS_ViewFrameBed
+* is gs_view_frame_bed); floats travel as their bits. Never reorder or take
+* a call out; add new ones at the end. core/library/gen-library.py writes
+* the rest from this. gs_view_map and gs_view_colour take points by value
+* and gs_view_lines hands back memory the program frees, so they are not
+* here.
+==base _OpenMakeViewBase
+==basetype struct Library *
+==libname openmakeview.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_view.h>
+void GS_CamHome(gs_cam *c)(a0)
+void GS_CamOrbit(gs_cam *c, float dx, float dy)(a0,d0,d1)
+void GS_CamPan(gs_cam *c, float dx, float dy)(a0,d0,d1)
+void GS_CamZoom(gs_cam *c, float factor)(a0,d0)
+int GS_ViewFrame(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_frame *f)(a0,a1,d0,d1,a2)
+int GS_ViewFrameBed(const gs_mesh *m, const gs_cam *cam, int w, int h, float x0, float y0, float x1, float y1, gs_frame *f)(a0,a1,d0,d1,d2,d3,d4,d5,a2)
+int GS_ViewSolid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h)(a0,a1,a2,d0,d1)
+int GS_ViewBed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h)(a0,a1,a2,d0,d1)
+int GS_PenOf(const unsigned char *rgb)(a0)
+int GS_PenRow(const unsigned char *rgb, int w, gs_run *runs)(a0,d0,a1)
+int GS_ViewOnGpu()()
+==end
