@@ -82,7 +82,7 @@ build() {
     cp settings/* "$dir/settings/"
     # GFOpenSlicer's window (slicer/src/amiga.c): the toolpath engine on
     # exec tasks (sl_job.c), on core/ui's helpers, picker and OpenGPU view
-    "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/sl_job.c \
+    "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/slicer_rexx.c slicer/src/sl_job.c core/src/rexx.c core/src/rexx_amiga.c \
         slicer/src/slicer_ui.c core/ui/settings_ui.c core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c \
         core/ui/view_gpu.c core/ui/view_gpu_amiga.c core/src/gpu.c core/src/plan_par.c \
         core/src/par_exec.c core/src/gcode.c core/src/settings.c machines/src/machine.c $PLAN core/src/layer.c \
