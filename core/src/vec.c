@@ -4,17 +4,12 @@
  * Amiga build is to be openmakevec.library; this is the C.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_vec.h"
+#include "vec_int.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define GV_FLAT 0.05f
-#define GV_PI 3.14159265f
-#define GV_MAX_FILE (4 * 1024 * 1024)
-#define GV_MAX_PT 1000000
-#define GV_MIN 1e-7f
 
 /* No ctype.h: its table is libnix's, and a library has no libnix. */
 static int space(char c)
@@ -75,7 +70,7 @@ static float gv_atan1(float x)
     return x * (0.9998660f + x2 * (-0.3302995f + x2 * (0.1801410f + x2 * (-0.0851330f + x2 * 0.0208351f))));
 }
 
-static float gv_atan2(float y, float x)
+float gv_atan2(float y, float x)
 {
     float ax, ay, a;
     ax = x < 0 ? -x : x;
@@ -514,12 +509,12 @@ static paint paint_root(void)
     return p;
 }
 
-static void fail_set(char *err, int errlen, const char *why)
+void fail_set(char *err, int errlen, const char *why)
 {
     if (err && errlen > 0) snprintf(err, (size_t)errlen, "%s", why);
 }
 
-static int doc_add_path(gv_doc *d, int closed, unsigned stroke, unsigned fill, float width)
+int doc_add_path(gv_doc *d, int closed, unsigned stroke, unsigned fill, float width)
 {
     gv_path *p;
     if (d->n == d->cap) {
@@ -539,7 +534,7 @@ static int doc_add_path(gv_doc *d, int closed, unsigned stroke, unsigned fill, f
     return 0;
 }
 
-static int doc_add_pt(gv_doc *d, float x, float y)
+int doc_add_pt(gv_doc *d, float x, float y)
 {
     gv_path *p;
     float *xy;
@@ -593,7 +588,7 @@ static int emit_pt(gv_doc *d, mtx m, float x, float y, char *err, int errlen)
 }
 
 /* Drop the last path if it has too few points. */
-static void finish_path(gv_doc *d)
+void finish_path(gv_doc *d)
 {
     gv_path *p;
     if (d->n <= 0) return;
@@ -1664,7 +1659,7 @@ static int view_matrix(const attrs *as, mtx *out, float *vw, float *vh, char *er
     return 0;
 }
 
-static int layers_build(gv_doc *d, char *err, int errlen)
+int layers_build(gv_doc *d, char *err, int errlen)
 {
     int i, j;
     d->layer = NULL;
@@ -1695,7 +1690,7 @@ static int layers_build(gv_doc *d, char *err, int errlen)
     return 0;
 }
 
-static void bounds_of(gv_doc *d)
+void bounds_of(gv_doc *d)
 {
     int i, k, any = 0;
     d->minx = d->miny = d->maxx = d->maxy = 0;

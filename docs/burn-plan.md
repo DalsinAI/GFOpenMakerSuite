@@ -10,7 +10,7 @@ MIT.
 
 ## The first cut
 
-A command that reads an SVG, applies layer settings, and writes Grbl laser
+A command that reads an SVG or a DXF, applies layer settings, and writes Grbl laser
 G-code, with tests. Then a window: OpenLayout in the Clear look, the picture
 drawn with OpenGPU and a pen fallback. The window fits 640×512 PAL at its
 smallest, is resizable, and opens filling the screen. It has a layer list
@@ -28,8 +28,10 @@ A Grbl laser driver and a generic diode-laser profile live in
   becomes a layer; the stroke colour wins when both are set. Text is not
   read unless it has already been turned into paths. Pictures inside an
   SVG are left for later.
-- **DXF later.** The same layers from colours, with lines and arcs. Not in
-  the first cut.
+- **DXF.** ASCII DXF, with the same layers from colours: lines, arcs,
+  circles, polylines (including bulge), and block inserts. Units follow
+  HEADER `$INSUNITS` (unitless is millimetres). Binary DXF, font text,
+  hatches, splines and ellipses are later.
 
 ### Layers
 
@@ -108,7 +110,7 @@ another application's output.
 
 New work goes into OpenMakeCore's shared Amiga libraries wherever it can:
 
-- A 2D vector library (paths from SVG, later DXF; offset and fill of those
+- A 2D vector library (paths from SVG and ASCII DXF; offset and fill of those
   paths). New, with an FPU build and a soft build, `nm -u` clean, no FPU
   instructions in the soft build, and no 68040-trapped instructions.
 - Laser G-code in `openmakegcode.library`, new calls at the end.
@@ -130,7 +132,7 @@ The first window has:
 - the preview of the bed and the job
 - the layer list, with power, speed, mode, passes and on/off
 - the machine picker
-- Open (SVG), Preview, Frame, and Save G-code
+- Open (SVG or DXF), Preview, Frame, and Save G-code
 
 ## Order of work
 

@@ -122,11 +122,15 @@ for v in fpu soft; do
         -DLINK_BASE=OpenMakeTaskBase '-DLINK_NAME="openmaketask.library"' -lm
     echo "$OUT/$v/TestPlanParLib: $(wc -c < "$OUT/$v/TestPlanParLib") bytes"
     lib "$v" "$flags" openmakevec.library core/include \
-        core/library/openmakevec_lib.c core/src/vec.c
-    # core/tests/test_vec.c, the SVG reader through the library
+        core/library/openmakevec_lib.c core/src/vec.c core/src/dxf.c
+    # core/tests/test_vec.c / test_dxf.c, the SVG and DXF readers through the library
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestVecLib" core/tests/test_vec.c \
         core/library/openmakevec_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeVecBase '-DLINK_NAME="openmakevec.library"' -lm
     echo "$OUT/$v/TestVecLib: $(wc -c < "$OUT/$v/TestVecLib") bytes"
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestDxfLib" core/tests/test_dxf.c \
+        core/library/openmakevec_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeVecBase '-DLINK_NAME="openmakevec.library"' -lm
+    echo "$OUT/$v/TestDxfLib: $(wc -c < "$OUT/$v/TestDxfLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"

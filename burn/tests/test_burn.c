@@ -387,6 +387,21 @@ int main(void)
         gt_free(&p);
     }
 
+    /* The same 10 mm square as a DXF. */
+    expect(gv_load(&d, "burn/tests/data/square-10mm.dxf", err, (int)sizeof err) == 0 && d.n == 1 && d.p[0].closed,
+           "the 10 mm square as a DXF");
+    burn_defaults(&o);
+    gt_init(&p);
+    expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == 5, "the DXF square is four cuts and a travel");
+    memset(&st, 0, sizeof st);
+    expect(burn_write("burn/tests/data/square-10mm.dxf", "build/square-dxf.gcode", &m, &o, &st, err, (int)sizeof err) ==
+                   0 &&
+               st.moves == 5 && (g = slurp("build/square-dxf.gcode")) && strstr(g, "M4") && strstr(g, "G1 "),
+           "wrote G-code from a DXF");
+    free(g);
+    gv_doc_free(&d);
+    gt_free(&p);
+
     if (fails) {
         printf("%d failed\\n", fails);
         return 1;

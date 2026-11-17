@@ -32,3 +32,23 @@ void gv_path_box(const gv_path *p, float *minx, float *miny, float *maxx, float 
 {
     GV_PathBox(p, minx, miny, maxx, maxy);
 }
+
+int gv_load_dxf(gv_doc *d, const char *path, char *err, int errlen)
+{
+    return GV_LoadDxf(d, path, err, errlen);
+}
+
+int gv_load_dxf_text(gv_doc *d, const char *text, int n, char *err, int errlen)
+{
+    return GV_LoadDxfText(d, text, n, err, errlen);
+}
+
+int gv_load(gv_doc *d, const char *path, char *err, int errlen)
+{
+    return GV_Load(d, path, err, errlen);
+}
+
+int gv_load_text(gv_doc *d, const char *text, int n, char *err, int errlen)
+{
+    return GV_LoadText(d, text, n, err, errlen);
+}
