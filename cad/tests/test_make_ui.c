@@ -287,6 +287,40 @@ int main(void)
         olui_tabs_select(ui, side_tabs, 0);
         olui_layout(ui, w, h);
     }
+    {
+        /* The Extrude tab: the sketch's shape, width, depth and height, and
+         * Add, On top and Cut, each in the side and clear, above the status
+         * line, at 640 by 480 and sized up. */
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut"};
+        const int nx = (int)(sizeof ids / sizeof ids[0]);
+        static const int at[][2] = {{640, 480}, {1912, 1048}};
+        int s;
+        for (s = 0; s < 2; s++) {
+            olui_rect side, st, r[7];
+            int a, b;
+            char what[96];
+            olui_tabs_select(ui, side_tabs, 3);
+            expect(olui_layout(ui, at[s][0], at[s][1]), "the Extrude tab lays out");
+            olui_box(ui, olui_find(ui, "side"), &side);
+            olui_box(ui, olui_find(ui, "status"), &st);
+            for (a = 0; a < nx; a++) {
+                olui_el *el = olui_find(ui, ids[a]);
+                snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", ids[a], at[s][0], at[s][1]);
+                expect(el && olui_box(ui, el, &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
+                           r[a].y + r[a].h <= st.y &&
+                           !strcmp(olui_tag(el), a == 0 ? "select" : a < 4 ? "spinner" : "button") &&
+                           r[a].w >= (a < 4 ? 72 : 60),
+                       what);
+                for (b = 0; b < a; b++) {
+                    snprintf(what, sizeof what, "%s is clear of %s", ids[a], ids[b]);
+                    expect(!overlap(&r[a], &r[b]), what);
+                }
+            }
+            expect(side.w == OMV_SETTINGS_W, "the side keeps its width on the Extrude tab");
+        }
+        olui_tabs_select(ui, side_tabs, 0);
+        olui_layout(ui, w, h);
+    }
     expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
     /* The Clear look (docs/HANDOVER.md). */

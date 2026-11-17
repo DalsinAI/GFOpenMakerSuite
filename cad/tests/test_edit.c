@@ -390,6 +390,43 @@ int main(void)
         ge_facts_line(line, (int)sizeof line, &cube);
         expect(!strcmp(line, "No part to measure."), "no part");
     }
+    {
+        /* Extrude: Add puts the solid on the bed mid-plate, On stands it on
+         * the part's top and joins, Cut takes it down from the top. */
+        gs_mesh part, out;
+        gs_facts f;
+        char line[100];
+        memset(&part, 0, sizeof part);
+        memset(&out, 0, sizeof out);
+        gm_cube(&part, 100, 100, 8, 20, 20, 20);
+        expect(ge_extrude(&part, GM_RECT, GM_ON_BED, 30, 10, 5, &out, line, (int)sizeof line) == 0 &&
+                   near(out.min.x, 95.f) && near(out.max.y, 115.f) && near(out.min.z, 0.f) && near(out.max.z, 5.f) &&
+                   !strcmp(line, "A block 30.0 x 10.0, 5.0 mm tall, is on the bed. Place it, then Join or Cut."),
+               "extrude Add: a block on the bed, mid-plate");
+        expect(ge_extrude(&part, GM_ROUND, GM_ON_TOP, 10, 0, 6, &out, line, (int)sizeof line) == 0 &&
+                   near(out.max.z, 34.f) && gm_facts(&out, &f) == 0 && f.volume > 8400.f &&
+                   !strcmp(line, "A round 10.0 across stands 6.0 mm on the part, joined."),
+               "extrude On: a boss joined on the top");
+        expect(ge_extrude(&part, GM_SLOT, GM_FROM_TOP, 16, 6, 4, &out, line, (int)sizeof line) == 0 &&
+                   gm_facts(&out, &f) == 0 && f.volume < 8000.f - 300.f && f.volume > 8000.f - 400.f &&
+                   !strcmp(line, "A slot 16.0 x 6.0 cut 4.0 mm down from the top."),
+               "extrude Cut: a slot pocket in the top");
+        expect(ge_extrude(&part, GM_RECT, GM_FROM_TOP, 6, 6, 30, &out, line, (int)sizeof line) == 0 &&
+                   gm_facts(&out, &f) == 0 && fabsf(f.volume - (8000.f - 720.f)) < 2.f &&
+                   !strcmp(line, "A block 6.0 x 6.0 cut right through."),
+               "extrude Cut deeper than the part goes right through");
+        expect(ge_extrude(&part, GM_RECT, GM_ON_BED, 0.5f, 10, 5, &out, line, (int)sizeof line) == -1 &&
+                   !strcmp(line, "The footprint has to be 1 to 200 mm each way."),
+               "a footprint under 1 mm is refused");
+        expect(ge_extrude(&part, GM_RECT, GM_ON_BED, 10, 10, 121, &out, line, (int)sizeof line) == -1 &&
+                   !strcmp(line, "The height has to be 0.4 to 120 mm."),
+               "a height over 120 mm is refused");
+        expect(ge_extrude(&part, GM_RECT, GM_FROM_TOP, 40, 40, 30, &out, line, (int)sizeof line) == -1 &&
+                   !strcmp(line, "That cut takes the whole part."),
+               "a cut wider than the part is refused");
+        gs_mesh_free(&part);
+        gs_mesh_free(&out);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

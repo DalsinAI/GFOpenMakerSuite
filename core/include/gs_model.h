@@ -65,6 +65,21 @@ typedef struct {
 /* m's facts into f; an empty part's are all nought. 0, or -1. */
 int gm_facts(const gs_mesh *m, gs_facts *f);
 
+/* The bench's Extrude: a footprint about (x, y) stood up h. kind:
+ * GM_RECT w by d, GM_ROUND w across (d unused), GM_SLOT w by d with round
+ * ends. op: GM_ON_BED from z 0; GM_ON_TOP on part's top, 0.4 into it so
+ * a union joins; GM_FROM_TOP down h from part's top and 0.4 over it, to
+ * subtract, or right through (0.4 past both faces) when h is the part's
+ * height or more. Replaces m; 0, or -1 (no footprint or height, no part
+ * for a top, or no such kind or op). */
+#define GM_RECT 0
+#define GM_ROUND 1
+#define GM_SLOT 2
+#define GM_ON_BED 0
+#define GM_ON_TOP 1
+#define GM_FROM_TOP 2
+int gm_extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h);
+
 /* dst = a and b joined. a and b are not changed. 0, or -1. */
 int gm_union(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);
 

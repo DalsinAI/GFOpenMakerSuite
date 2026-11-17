@@ -697,6 +697,32 @@ static void take_added(olui *ui, gs_mesh box)
     refresh(ui);
 }
 
+/* Extrude's Add, On top or Cut: Add is a new added part on the bed, to
+ * place; On top and Cut change the picked part, as Holes does. */
+static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
+{
+    int op = (int)(intptr_t)userdata;
+    gs_mesh out;
+    char line[96];
+    (void)ev;
+    memset(&out, 0, sizeof out);
+    if (ge_extrude(work(), olui_select_index(olui_find(ui, "xkind")), op, omv_number(ui, "xw"), omv_number(ui, "xd"),
+                   omv_number(ui, "xh"), &out, line, (int)sizeof line)) {
+        gs_mesh_free(&out);
+        say(ui, line);
+        return;
+    }
+    if (op == GM_ON_BED) take_added(ui, out);
+    else {
+        remember();
+        gs_mesh_free(work());
+        *work() = out;
+        picked = -1;
+        refresh(ui);
+    }
+    say(ui, line);
+}
+
 /* Parts' Add: the shape picked, placed from the stock (ge_shape), as the
  * added part to join, cut or intersect with it. */
 static void on_add(olui *ui, const olui_event *ev, void *userdata)
@@ -917,7 +943,14 @@ int main(int argc, char **argv)
         int k;
         for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
         olui_select_set(ui, olui_find(ui, "shape"), 0);
+        olui_select_add(ui, olui_find(ui, "xkind"), "Block", "Block");
+        olui_select_add(ui, olui_find(ui, "xkind"), "Round", "Round");
+        olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
+        olui_select_set(ui, olui_find(ui, "xkind"), 0);
     }
+    olui_on(ui, "xadd", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_BED);
+    olui_on(ui, "xon", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_TOP);
+    olui_on(ui, "xcut", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_FROM_TOP);
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);

@@ -481,6 +481,66 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
     return 0;
 }
 
+int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h, gs_mesh *out, char *line, int len)
+{
+    static const char *const names[3] = {"block", "round", "slot"};
+    gs_mesh tool, r;
+    float pos[3], size[3], x = GS_BED * 0.5f, y = GS_BED * 0.5f;
+    char foot[32];
+    int rc;
+    if (kind < GM_RECT || kind > GM_SLOT || op < GM_ON_BED || op > GM_FROM_TOP || !out) {
+        snprintf(line, (size_t)len, "There is no such extrude.");
+        return -1;
+    }
+    if (!(w >= 1.f && w <= 200.f) || (kind != GM_ROUND && !(d >= 1.f && d <= 200.f))) {
+        snprintf(line, (size_t)len, "The footprint has to be 1 to 200 mm each way.");
+        return -1;
+    }
+    if (!(h >= 0.4f && h <= 120.f)) {
+        snprintf(line, (size_t)len, "The height has to be 0.4 to 120 mm.");
+        return -1;
+    }
+    if (op != GM_ON_BED) { /* about the middle of the part, as the bench */
+        if (!part || !part->t || !part->n) {
+            snprintf(line, (size_t)len, "There is no part to stand it on or cut.");
+            return -1;
+        }
+        ge_where(part, pos, size);
+        x = pos[0];
+        y = pos[1];
+    }
+    memset(&tool, 0, sizeof tool);
+    memset(&r, 0, sizeof r);
+    if (gm_extrude(&tool, part, kind, op, x, y, w, d, h)) {
+        gs_mesh_free(&tool);
+        snprintf(line, (size_t)len, "The %s did not build.", names[kind]);
+        return -1;
+    }
+    if (op == GM_ON_BED) r = tool;
+    else {
+        rc = op == GM_ON_TOP ? gm_union(&r, part, &tool) : gm_subtract(&r, part, &tool);
+        gs_mesh_free(&tool);
+        if (rc || !r.n) {
+            gs_mesh_free(&r);
+            snprintf(line, (size_t)len, op == GM_ON_TOP ? "The boss did not join." : "That cut takes the whole part.");
+            return -1;
+        }
+    }
+    gs_mesh_free(out);
+    *out = r;
+    if (kind == GM_ROUND) snprintf(foot, sizeof foot, "%.1f across", (double)w);
+    else snprintf(foot, sizeof foot, "%.1f x %.1f", (double)w, (double)d);
+    if (op == GM_ON_BED)
+        snprintf(line, (size_t)len, "A %s %s, %.1f mm tall, is on the bed. Place it, then Join or Cut.", names[kind], foot,
+                 (double)h);
+    else if (op == GM_ON_TOP)
+        snprintf(line, (size_t)len, "A %s %s stands %.1f mm on the part, joined.", names[kind], foot, (double)h);
+    else if (part->max.z - part->min.z - 0.05f <= h)
+        snprintf(line, (size_t)len, "A %s %s cut right through.", names[kind], foot);
+    else snprintf(line, (size_t)len, "A %s %s cut %.1f mm down from the top.", names[kind], foot, (double)h);
+    return 0;
+}
+
 static const char *const shape_names[GE_SHAPES] = {"Box", "Cylinder", "Sphere", "Cone", "Torus", "Wedge", "Slot"};
 
 const char *ge_shape_name(int kind) { return kind >= 0 && kind < GE_SHAPES ? shape_names[kind] : NULL; }

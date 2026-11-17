@@ -629,6 +629,33 @@ int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, floa
     return 0;
 }
 
+/* As the bench's Extrude (its sketchSpan): where the solid starts and how
+ * tall it is, then the footprint stood there. */
+int gm_extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h)
+{
+    const float over = 0.4f;
+    float z0 = 0.f, lo = 1e30f, hi = -1e30f;
+    int i;
+    if (!(w > 0.f) || !(h > 0.f) || (kind != GM_ROUND && !(d > 0.f)) || kind < GM_RECT || kind > GM_SLOT ||
+        op < GM_ON_BED || op > GM_FROM_TOP)
+        return -1;
+    if (op != GM_ON_BED) {
+        if (!part || !part->t || !part->n) return -1;
+        for (i = 0; i < part->n; i++) {
+            const gs_tri *t = &part->t[i];
+            float a = t->a.z, b = t->b.z, c = t->c.z;
+            lo = a < lo ? a : lo, lo = b < lo ? b : lo, lo = c < lo ? c : lo;
+            hi = a > hi ? a : hi, hi = b > hi ? b : hi, hi = c > hi ? c : hi;
+        }
+        if (op == GM_ON_TOP) z0 = hi - over, h += over;
+        else if (h >= hi - lo - 0.05f) z0 = lo - over, h = hi - lo + 2.f * over;
+        else z0 = hi - h, h += over;
+    }
+    if (kind == GM_ROUND) return gm_cylinder(m, x, y, z0, w * 0.5f, h, 40);
+    if (kind == GM_SLOT) return gm_slot(m, x - w * 0.5f, y - d * 0.5f, z0, w, d, h, 40);
+    return gm_cube(m, x - w * 0.5f, y - d * 0.5f, z0, w, d, h);
+}
+
 /* The bench's other solids (cad/bench/modeller/solids.ts), written again
  * here: outward faces, counter-clockwise from the outside, and each
  * corner worked out the same way every time it is used, so neighbouring

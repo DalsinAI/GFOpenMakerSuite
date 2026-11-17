@@ -120,4 +120,12 @@ int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part
 /* Those holes cut from part, replacing it. 0, or -1 with why, part kept. */
 int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
 
+/* The bench's Extrude: kind GM_RECT, GM_ROUND or GM_SLOT, w by d (a round
+ * w across), h tall. GM_ON_BED: out is the solid on the bed mid-plate, to
+ * place and join as an added part. GM_ON_TOP and GM_FROM_TOP: out is the
+ * part with it joined on its top, or cut down from its top (through when
+ * as deep), about the middle of the part's box. part is not changed. 0,
+ * with what was done in line, or -1 with why. */
+int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h, gs_mesh *out, char *line, int len);
+
 #endif

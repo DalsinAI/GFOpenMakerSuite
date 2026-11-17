@@ -117,7 +117,13 @@ static int LIB_GM_Facts(REG(a0, const gs_mesh *m), REG(a1, gs_facts *f), REG(a6,
     return gm_facts(m, f);
 }
 
-#define OPENMAKEMESH_LAST_BIAS 138
+static int LIB_GM_Extrude(REG(a0, gs_mesh *m), REG(a1, const gs_mesh *part), REG(d0, int kind), REG(d1, int op), REG(d2, ULONG x), REG(d3, ULONG y), REG(d4, ULONG w), REG(d5, ULONG d), REG(d6, ULONG h), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_extrude(m, part, kind, op, om_lib_float(x), om_lib_float(y), om_lib_float(w), om_lib_float(d), om_lib_float(h));
+}
+
+#define OPENMAKEMESH_LAST_BIAS 144
 #define OPENMAKEMESH_VECTORS \
     (APTR)LIB_GS_StlLoad, \
     (APTR)LIB_GS_MeshFree, \
@@ -137,4 +143,5 @@ static int LIB_GM_Facts(REG(a0, const gs_mesh *m), REG(a1, gs_facts *f), REG(a6,
     (APTR)LIB_GM_BoltCircle, \
     (APTR)LIB_GM_HoleRow, \
     (APTR)LIB_GM_Counterbore, \
-    (APTR)LIB_GM_Facts
+    (APTR)LIB_GM_Facts, \
+    (APTR)LIB_GM_Extrude

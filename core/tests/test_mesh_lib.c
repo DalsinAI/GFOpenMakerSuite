@@ -93,6 +93,16 @@ int main(void)
         expect(gm_facts(&x[1], &f0) == 0 && GM_Facts(&x[1], &f1) == 0 && !memcmp(&f0, &f1, sizeof f0) && f1.volume > 0.f,
                "GM_Facts, a pointer each way");
     }
+    {
+        /* 1.6: Extrude, two pointers, two ints and five floats. */
+        gs_mesh e0 = {0}, e1 = {0};
+        expect(gm_extrude(&e0, &x[1], GM_SLOT, GM_FROM_TOP, 50, 40, 16, 6, 4) == 0 &&
+                   GM_Extrude(&e1, &x[1], GM_SLOT, GM_FROM_TOP, 50, 40, 16, 6, 4) == 0 && same(&e0, &e1),
+               "GM_Extrude, the part's top found through the library");
+        expect(GM_Extrude(&e1, NULL, GM_ROUND, GM_ON_TOP, 0, 0, 10, 0, 5) == -1, "GM_Extrude wants a part for a top");
+        GS_MeshFree(&e0);
+        GS_MeshFree(&e1);
+    }
     GS_MeshFree(&x[0]);
     GS_MeshFree(&x[1]);
 
@@ -127,8 +137,8 @@ int main(void)
             expect(all[k]->n == 0 && all[k]->t == NULL, "GS_MeshFree");
         }
     }
-    expect(calls == 35, "every call went through the table");
-    if (calls != 35)
+    expect(calls == 39, "every call went through the table");
+    if (calls != 39)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);
