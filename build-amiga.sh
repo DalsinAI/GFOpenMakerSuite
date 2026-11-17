@@ -89,7 +89,7 @@ build() {
         core/src/loops.c $CORE "$OLUI" -lm
     # OpenMakeBurn's window (burn/src/amiga.c): SVG or DXF to Grbl laser G-code,
     # core/ui's helpers, the laser picker and the OpenGPU view
-    "$CC" $cf -Iburn/include -Iburn/src -s -o "$dir/GFOpenBurn" burn/src/amiga.c burn/src/burn_job.c burn/src/burn_ui.c burn/src/material.c \
+    "$CC" $cf -Iburn/include -Iburn/src -s -o "$dir/GFOpenBurn" burn/src/amiga.c burn/src/burn_job.c burn/src/burn_ui.c burn/src/material.c burn/src/image.c \
         core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c core/src/toolpath_paint.c core/src/gpu.c \
         core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c core/ui/view_gpu.c core/ui/view_gpu_amiga.c \
         machines/src/machine.c $CORE "$OLUI" -lm

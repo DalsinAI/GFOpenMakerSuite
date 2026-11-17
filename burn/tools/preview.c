@@ -11,6 +11,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 #include "burn_ui.h"
+#include "burn_image.h"
 #include "burn_material.h"
 #include "markup.h"
 #include "omview_machines.h"
@@ -121,7 +122,8 @@ int main(int argc, char **argv)
     int w = 640, h = 480;
     gv_doc d;
     gt_path path;
-    int have_path = 0;
+    burn_image im;
+    int have_path = 0, have_image = 0;
     omv_machines lasers;
     burn_opts o;
     burn_layer store[64];
@@ -148,6 +150,7 @@ int main(int argc, char **argv)
     }
     gv_doc_init(&d);
     gt_init(&path);
+    burn_image_init(&im);
     burn_defaults(&o);
     if (strcmp(argv[1], "job") == 0) {
         om_machine m;
@@ -157,15 +160,26 @@ int main(int argc, char **argv)
         gc_stats st;
         char name[64], status[180];
         const char *base;
-        if (argc < 4 || omv_machines_load(&lasers, 0, &m, err, (int)sizeof err) ||
-            gv_load(&d, argv[3], err, (int)sizeof err)) {
+        if (argc < 4 || omv_machines_load(&lasers, 0, &m, err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", argc < 4 ? "need a drawing" : err);
+            return 1;
+        }
+        if (burn_is_image(argv[3])) {
+            if (burn_image_load(&im, argv[3], err, (int)sizeof err) || burn_image_doc(&d, &im, &o)) {
+                fprintf(stderr, "%s\n", err[0] ? err : "the picture did not load");
+                return 1;
+            }
+            have_image = 1;
+        } else if (gv_load(&d, argv[3], err, (int)sizeof err)) {
+            fprintf(stderr, "%s\n", err);
             return 1;
         }
         if (burn_ui_layers(ui, &d, &o, err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", err);
             return 1;
         }
+        if (have_image && olui_find(ui, "layer-0-name"))
+            olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
         if (getenv("MODE") || getenv("INTERVAL")) {
             int i, n = burn_ui_count(ui);
             char id[32];
@@ -190,7 +204,14 @@ int main(int argc, char **argv)
             }
         }
         burn_ui_read(ui, &o, store, 64);
-        if (burn_path(&path, &speeds, &d, &o) || path.n < 2) {
+        if (have_image) {
+            if (getenv("INTERVAL")) o.interval = (float)atof(getenv("INTERVAL"));
+            if (burn_image_path(&path, &speeds, &im, &o) || path.n < 2) {
+                fprintf(stderr, "no paths to burn\n");
+                free(speeds);
+                return 1;
+            }
+        } else if (burn_path(&path, &speeds, &d, &o) || path.n < 2) {
             fprintf(stderr, "no paths to burn\n");
             free(speeds);
             return 1;
@@ -242,6 +263,7 @@ int main(int argc, char **argv)
         }
     }
     fclose(ops);
+    burn_image_free(&im);
     gv_doc_free(&d);
     gt_free(&path);
     omv_machines_free(&lasers);

@@ -9,6 +9,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 #include "burn_ui.h"
+#include "burn_image.h"
 #include "burn_material.h"
 #include "markup.h"
 #include "omview_gpu.h"
@@ -37,7 +38,8 @@
 static const char version[] = "OpenMakeBurn 0.1.0";
 static char svg_path[256];
 static gv_doc doc;
-static int have_doc;
+static burn_image pic;
+static int have_doc, have_image;
 static gt_path path;
 static int have_path;
 static burn_opts opts;
@@ -135,7 +137,7 @@ static int preview_job(olui *ui, om_machine *m, char *err, int errlen)
     read_opts(ui);
     gt_free(&path);
     have_path = 0;
-    if (burn_path(&path, &speeds, &doc, &opts)) {
+    if (have_image ? burn_image_path(&path, &speeds, &pic, &opts) : burn_path(&path, &speeds, &doc, &opts)) {
         snprintf(err, (size_t)errlen, "out of memory");
         free(speeds);
         return -1;
@@ -243,14 +245,23 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     om_machine m;
     (void)ev;
     (void)userdata;
-    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf)", pathbuf, (int)sizeof pathbuf)) return;
-    burn_materials_free(&stocks);
+    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf|pbm|pgm|ppm)", pathbuf, (int)sizeof pathbuf)) return;
+    burn_image_free(&pic);
     gv_doc_free(&doc);
     gv_doc_init(&doc);
     have_doc = 0;
+    have_image = 0;
     gt_free(&path);
     have_path = 0;
-    if (gv_load(&doc, pathbuf, err, (int)sizeof err)) {
+    burn_defaults(&opts);
+    if (burn_is_image(pathbuf)) {
+        if (burn_image_load(&pic, pathbuf, err, (int)sizeof err) || burn_image_doc(&doc, &pic, &opts)) {
+            omv_say(ui, err[0] ? err : "the picture did not load");
+            refresh(ui);
+            return;
+        }
+        have_image = 1;
+    } else if (gv_load(&doc, pathbuf, err, (int)sizeof err)) {
         omv_say(ui, err);
         refresh(ui);
         return;
@@ -258,11 +269,11 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     have_doc = 1;
     snprintf(svg_path, sizeof svg_path, "%s", pathbuf);
     olui_set_text(ui, olui_find(ui, "path"), svg_path);
-    burn_defaults(&opts);
     if (burn_ui_layers(ui, &doc, &opts, err, (int)sizeof err)) {
         omv_say(ui, err);
         return;
     }
+    if (have_image && olui_find(ui, "layer-0-name")) olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
     hook_shifts(ui);
     gs_cam_home(&cam);
     if (preview_job(ui, &m, err, (int)sizeof err)) omv_say(ui, err);
@@ -349,6 +360,7 @@ int main(void)
     olui_on(ui, "frame", OLUI_CLICK, on_frame, NULL);
     olui_on(ui, "material", OLUI_CHANGE, on_material, NULL);
     gv_doc_init(&doc);
+    burn_image_init(&pic);
     gt_init(&path);
     burn_defaults(&opts);
     gs_cam_home(&cam);
@@ -418,6 +430,7 @@ done:
     olui_amiga_free(a);
     CloseWindow(w);
     burn_materials_free(&stocks);
+    burn_image_free(&pic);
     gv_doc_free(&doc);
     gt_free(&path);
     omv_machines_free(&lasers);
