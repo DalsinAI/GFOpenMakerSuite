@@ -928,6 +928,42 @@ int ge_pull(gs_mesh *m, int face, float mm, char *line, int len)
     return moved;
 }
 
+int ge_face_axis(const gs_mesh *scene, const gs_mesh *m, int face, const gs_cam *cam, int w, int h, float *sx,
+                 float *sy)
+{
+    static const gs_v unit[3] = {{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
+    gs_v n, c, p;
+    float d, x0, y0, x1, y1, most = 0.f;
+    int k;
+    if (!m || !m->t || face < 0 || face >= m->n || plane_of(&m->t[face], &n, &d)) return -1;
+    c.x = (m->t[face].a.x + m->t[face].b.x + m->t[face].c.x) / 3.f;
+    c.y = (m->t[face].a.y + m->t[face].b.y + m->t[face].c.y) / 3.f;
+    c.z = (m->t[face].a.z + m->t[face].b.z + m->t[face].c.z) / 3.f;
+    if (ge_project(scene, cam, w, h, c, &x0, &y0)) return -1;
+    /* The view is a parallel one: a mm is as long every way across it, and
+     * the normal's own mm is shorter by how nearly it points at the eye. */
+    for (k = 0; k < 3; k++) {
+        p.x = c.x + unit[k].x, p.y = c.y + unit[k].y, p.z = c.z + unit[k].z;
+        ge_project(scene, cam, w, h, p, &x1, &y1);
+        d = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0);
+        if (d > most) most = d;
+    }
+    p.x = c.x + n.x, p.y = c.y + n.y, p.z = c.z + n.z;
+    ge_project(scene, cam, w, h, p, &x1, &y1);
+    *sx = x1 - x0;
+    *sy = y1 - y0;
+    return *sx * *sx + *sy * *sy < 0.04f * most || most <= 0.f ? -1 : 0;
+}
+
+float ge_drag_mm(float sx, float sy, float dx, float dy)
+{
+    float l2 = sx * sx + sy * sy, mm;
+    if (l2 <= 0.f) return 0.f;
+    mm = (dx * sx + dy * sy) / l2;
+    mm = (float)(long)(mm * 10.f + (mm < 0.f ? -0.5f : 0.5f)) / 10.f;
+    return mm == 0.f ? 0.f : mm; /* never -0 */
+}
+
 /* Where a to b crosses height cut (ha, hb theirs): the same point whichever
  * way round, so the faces either side of an edge split it alike. */
 static gs_v cross_at(gs_v a, float ha, gs_v b, float hb, float cut)

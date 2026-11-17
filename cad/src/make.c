@@ -80,6 +80,7 @@ static gs_mesh *work(void)
     gs_mesh *m = gs_parts_mesh(parts, gs_parts_picked(parts));
     if (m) return m;
     gs_mesh_free(&none);
+    gs_mesh_free(&pull_base);
     return &none;
 }
 
@@ -197,7 +198,7 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     draw_marks(x, y, w, h);
 }
 
-enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE, TOOL_MEASURE };
+enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE, TOOL_MEASURE, TOOL_PULL };
 
 /* Place's Size and At: the picked part's box and its bottom middle, in
  * tenths of a mm (the fields' one place). Setting them sends nothing. */
@@ -229,6 +230,7 @@ static const char *tool_label(void)
     if (tool == TOOL_ROT) return "Rotate. Drag turns the part.";
     if (tool == TOOL_SCALE) return "Scale. Drag up grows it.";
     if (tool == TOOL_MEASURE) return "Measure. Click two points on the part or bed.";
+    if (tool == TOOL_PULL) return "Pull. Drag the face along its normal. Escape leaves.";
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
@@ -424,9 +426,9 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 /* The chosen tool's button is :selected, lit in the accent. */
 static void light_tool(olui *ui)
 {
-    static const char *const ids[] = { "orbit", "move", "rot", "scale", "measure" };
+    static const char *const ids[] = { "orbit", "move", "rot", "scale", "measure", "fdrag" };
     int i;
-    for (i = 0; i < 5; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
+    for (i = 0; i < 6; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
 }
 
 static void on_tool(olui *ui, const olui_event *ev, void *userdata)
@@ -436,6 +438,87 @@ static void on_tool(olui *ui, const olui_event *ev, void *userdata)
     marks = 0;
     light_tool(ui);
     refresh(ui);
+}
+
+/* Drag to pull, as the bench's Pull mode (P, or Face's Drag): a drag in
+ * the view pulls the picked face along its normal, by as many mm as the
+ * pointer goes that way (ge_face_axis, ge_drag_mm), the part redrawn as it
+ * goes; one step for Undo. Escape, or Drag again, leaves it. */
+static gs_mesh pull_base; /* the part as the drag found it */
+static float pull_sx, pull_sy, pull_mm;
+static int pull_on, pull_x, pull_y;
+
+static void set_pull(olui *ui, int on)
+{
+    if (on && (picked < 0 || !work()->n)) {
+        say(ui, "Click a face on the part, then Drag.");
+        return;
+    }
+    if (!on && tool != TOOL_PULL) return;
+    tool = on ? TOOL_PULL : TOOL_ORBIT;
+    marks = 0;
+    light_tool(ui);
+    refresh(ui);
+    say(ui, on ? "Drag to pull that face along its normal. Escape leaves Pull." : "Pull is off.");
+}
+
+static void on_fdrag(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    (void)userdata;
+    set_pull(ui, tool != TOOL_PULL);
+}
+
+/* The drag starts at x, y on the screen: 0, or -1 and why said. */
+static int pull_start(olui *ui, int x, int y)
+{
+    rebuild_shown();
+    if (has_slice || picked < 0 || picked >= work()->n) {
+        say(ui, "Click a face on the part, then drag it.");
+        return -1;
+    }
+    if (ge_face_axis(&shown, work(), picked, &cam, vw, vh, &pull_sx, &pull_sy)) {
+        say(ui, "Turn the view a little. Pull cannot see along that face.");
+        return -1;
+    }
+    if (ge_copy(&pull_base, work())) return -1;
+    pull_on = 1;
+    pull_mm = 0.f;
+    pull_x = x;
+    pull_y = y;
+    return 0;
+}
+
+/* The pointer at x, y: the part as the drag found it, pulled that far. */
+static void pull_move(olui *ui, int x, int y)
+{
+    char line[96];
+    float mm = ge_drag_mm(pull_sx, pull_sy, (float)(x - pull_x), (float)(y - pull_y));
+    if (mm == pull_mm) return;
+    if (!pushed) {
+        remember();
+        pushed = 1;
+    }
+    if (ge_copy(work(), &pull_base)) return;
+    pull_mm = mm;
+    if (mm == 0.f) snprintf(line, sizeof line, "Drag along the face's normal to pull it.");
+    else if (ge_pull(work(), picked, mm, line, (int)sizeof line) < 0) ge_copy(work(), &pull_base);
+    refresh(ui);
+    say(ui, line);
+}
+
+/* The button up: under 0.2 mm the pull is dropped, as the bench's. */
+static void pull_end(olui *ui)
+{
+    pull_on = 0;
+    gs_mesh_free(&pull_base);
+    if (!pushed) return;
+    pushed = 0;
+    if (pull_mm < 0.2f && pull_mm > -0.2f) {
+        forget();
+        refresh(ui);
+        say(ui, "That pull was under 0.2 mm, so it was dropped.");
+    }
 }
 
 static void on_drop(olui *ui, const olui_event *ev, void *userdata)
@@ -1039,6 +1122,7 @@ int main(int argc, char **argv)
     }
     olui_on(ui, "pull", OLUI_CLICK, on_pull, NULL);
     olui_on(ui, "chamfer", OLUI_CLICK, on_pull, (void *)(intptr_t)1);
+    olui_on(ui, "fdrag", OLUI_CLICK, on_fdrag, NULL);
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);
@@ -1099,10 +1183,12 @@ int main(int argc, char **argv)
                 /* Amiga-Z, Amiga-Shift-Z and Amiga-Y, when no field took them */
                 int k = gm_command_key(code, (qual & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND)) != 0,
                                        (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0);
-                if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
+                if (k == GM_KEY_PULL || k == GM_KEY_LEAVE) set_pull(ui, k == GM_KEY_PULL && tool != TOOL_PULL);
+                else if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
             }
             if (cls == IDCMP_MOUSEBUTTONS && code == SELECTDOWN) {
                 if (in_view(ui, w, mx, my, NULL, NULL)) {
+                    if (tool == TOOL_PULL) pull_start(ui, mx, my);
                     dragging = 1;
                     drag_moved = 0;
                     pushed = 0;
@@ -1111,6 +1197,7 @@ int main(int argc, char **argv)
                     drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
                 }
             } else if (cls == IDCMP_MOUSEBUTTONS && code == SELECTUP) {
+                if (pull_on) pull_end(ui);
                 if (dragging && tool == TOOL_MEASURE && drag_moved < 4 && !has_slice &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
                     gs_v p;
@@ -1123,7 +1210,7 @@ int main(int argc, char **argv)
                         mark[marks++] = p;
                         refresh(ui);
                     }
-                } else if (dragging && tool == TOOL_ORBIT && drag_moved < 4 &&
+                } else if (dragging && (tool == TOOL_ORBIT || tool == TOOL_PULL) && drag_moved < 4 &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
                     /* The nearest face under the pointer in the shown parts;
                      * its part is picked, as a click on the bench. */
@@ -1150,7 +1237,9 @@ int main(int argc, char **argv)
                 if (ady < 0) ady = -ady;
                 drag_moved += adx + ady;
                 drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
-                if (tool == TOOL_ORBIT || tool == TOOL_MEASURE) {
+                if (tool == TOOL_PULL) {
+                    if (pull_on) pull_move(ui, mx, my);
+                } else if (tool == TOOL_ORBIT || tool == TOOL_MEASURE) {
                     if (drag_shift) gs_cam_pan(&cam, dx / 400.f, -dy / 400.f);
                     else gs_cam_orbit(&cam, dx * 0.01f, dy * 0.01f);
                     olui_repaint(ui, olui_find(ui, "view"), NULL);
