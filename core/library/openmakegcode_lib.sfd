@@ -1,4 +1,4 @@
-==id $Id: openmakegcode_lib.sfd 1.1 (17.11.2026) $
+==id $Id: openmakegcode_lib.sfd 1.2 (17.11.2026) $
 * "openmakegcode.library": OpenMakeCore's G-code for a printer
 * (gs_gcode.h) from a toolpath: how long and how much, the job for
 * om_check, and the G-code itself to the program's own put. The machine's
@@ -19,4 +19,8 @@ void GC_Job(const gt_path *p, const om_machine *m, const gc_opts *o, om_job *job
 int GC_WriteTo(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err, int errlen)(a0,a1,a2,a3,d0,d1,d2,d3)
 * 1.1: how the estimate's time was got (GC_AT_SPEEDS, GC_WITH_ACCEL, GC_FELL_BACK)
 int GC_EstimateHow(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)(a0,a1,a2,a3)
+* 1.2: more than gc_opts (gc_more): the first layer's speed
+void GC_MoreDefaults(gc_more *x, const gc_opts *o)(a0,a1)
+int GC_EstimateMore(const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st)(a0,a1,a2,a3)
+int GC_WriteMore(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st, char *err, int errlen)(a0,a1,a2,a3,d0,d1,d2,d3)
 ==end

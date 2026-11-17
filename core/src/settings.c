@@ -255,3 +255,9 @@ void gs_settings_more(const gs_settings *s, gp_more *x)
     x->skirt = s->around == GS_SKIRT ? s->loops : 0;
     x->gap = s->around == GS_NONE ? 0.f : s->distance;
 }
+
+void gs_settings_gc_more(const gs_settings *s, const gc_opts *go, gc_more *x)
+{
+    gc_more_defaults(x, go);
+    x->first = s->first;
+}

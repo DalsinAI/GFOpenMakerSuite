@@ -133,6 +133,11 @@ int main(void)
         gs_settings_more(&s, &x);
         expect(x.skirt == 0 && x.gap == 0.f, "neither");
     }
+    {
+        gc_more y;
+        gs_settings_gc_more(&s, &go, &y);
+        expect(y.size == (int)sizeof y && y.o == &go && y.first == s.first, "the G-code's more: the first layer's speed");
+    }
 
     if (fails) {
         printf("%d failed\n", fails);

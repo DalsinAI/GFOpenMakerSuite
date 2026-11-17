@@ -62,4 +62,20 @@ typedef long (*gc_put)(const char *s, long n, void *ud);
 int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err,
                 int errlen);
 
+/* More than gc_opts says, for the _more calls: o itself, and the first
+ * layer's speed. A program sets size to sizeof (gc_more) as it was
+ * built: fields past it are as gc_more_defaults gives them. */
+typedef struct {
+    int size;
+    const gc_opts *o;
+    float first;                /* mm/s: no line on the first layer faster (travels are not held); 0: none */
+} gc_more;
+
+void gc_more_defaults(gc_more *x, const gc_opts *o);
+
+/* gc_estimate_how and gc_write_to with x's options. */
+int gc_estimate_more(const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st);
+int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st, char *err,
+                  int errlen);
+
 #endif

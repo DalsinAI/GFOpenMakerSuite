@@ -3,6 +3,7 @@
 #include "gs_gcode.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,6 +138,57 @@ int main(void)
     expect(est.seconds == st.seconds && est.filament == st.filament && est.moves == st.moves && st.moves > 6,
            "the estimate is what was written");
     printf("%d moves, %.1f s, %.3f mm of filament\n", st.moves, st.seconds, st.filament);
+
+    {
+        /* The first layer at 15 mm/s: its wall (25) and infill (60) both
+         * slowed, travels not, the second layer's skin (40) as it was. */
+        static sink k;
+        gc_more x, part;
+        gc_stats xs;
+        om_machine flat = m;
+        gc_more_defaults(&x, &o);
+        expect(x.size == (int)sizeof x && x.o == &o && x.first == 0.f, "the more's defaults: as o alone");
+        k.room = 1L << 30;
+        expect(gc_write_more(into, &k, &p, &m, &x, &xs, err, (int)sizeof err) == 0 && !strcmp(k.buf, text) &&
+                   xs.seconds == st.seconds,
+               "no first-layer speed: what gc_write writes");
+        x.first = 15.f;
+        k.n = 0;
+        expect(gc_write_more(into, &k, &p, &m, &x, &xs, err, (int)sizeof err) == 0, "written with a first-layer speed");
+        {
+            const char *two = strstr(k.buf, "; LAYER 2");
+            int slow = 0;
+            const char *s = k.buf;
+            while ((s = strstr(s, "G1 X")) != NULL && (!two || s < two)) {
+                const char *fe = strstr(s, " F");
+                slow += fe && !strncmp(fe, " F900\n", 6);
+                s++;
+            }
+            expect(slow == 5, "the first layer's five lines at 15 mm/s");
+            expect(two && strstr(two, " F2400\n") && strstr(k.buf, " F18000\n"), "the second layer's skin at 40, travels at 300");
+        }
+        memset(flat.accel, 0, sizeof flat.accel);
+        expect(gc_estimate_more(&p, &flat, &x, &xs) == GC_AT_SPEEDS &&
+                   near(xs.seconds, 40.f / 15 + 70.7107f / 300 + 10.f / 15 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
+               "and its time: the first layer's 50 mm at 15 mm/s");
+        expect(gc_estimate_more(&p, &m, &x, &est) == GC_WITH_ACCEL && gc_write_more(into, &k, &p, &m, &x, &xs, err, 128) == 0 &&
+                   est.seconds == xs.seconds,
+               "the estimate is what was written");
+        x.first = 500.f;
+        expect(gc_estimate_more(&p, &flat, &x, &xs) == GC_AT_SPEEDS &&
+                   near(xs.seconds, 40.f / 25 + 70.7107f / 300 + 10.f / 60 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
+               "a first-layer speed above the others speeds nothing up");
+        /* An older program's shorter gc_more: no first-layer speed. */
+        part = x;
+        part.first = 15.f;
+        part.size = (int)offsetof(gc_more, first);
+        expect(gc_estimate_more(&p, &flat, &part, &xs) == GC_AT_SPEEDS &&
+                   near(xs.seconds, 40.f / 25 + 70.7107f / 300 + 10.f / 60 + 0.2f / 5 + 10.f / 40 + 2.f / 20, 1e-3f),
+               "a gc_more cut short at its size: no first-layer speed");
+        part.size = (int)sizeof part.size;
+        expect(gc_write_more(into, &k, &p, &m, &part, &xs, err, (int)sizeof err) == -1 && strstr(err, "too short"),
+               "too short for its options: refused");
+    }
 
     {
         static sink k;
