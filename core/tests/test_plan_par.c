@@ -74,6 +74,23 @@ int main(void)
         snprintf(what, sizeof what, "%d tasks: the same toolpath", tasks[k]);
         expect(same_path(&one, &many), what);
     }
+    {
+        /* With the more (a grid, a skirt, top and bottom apart): the same. */
+        gp_more x;
+        gp_more_defaults(&x);
+        x.pattern = GP_GRID;
+        x.skirt = 2;
+        x.gap = 3.f;
+        x.top = 5;
+        x.bottom = 2;
+        expect(gp_part_more(&one, &wrench, &o, &x) == 0 && one.nlayers == 130, "the more, on one task");
+        for (k = 0; k < (int)(sizeof tasks / sizeof tasks[0]); k++) {
+            char what[64];
+            expect(gp_part_par_more(&many, &wrench, &o, &x, tasks[k]) == 0, "made with the more");
+            snprintf(what, sizeof what, "%d tasks with the more: the same toolpath", tasks[k]);
+            expect(same_path(&one, &many), what);
+        }
+    }
     gt_free(&one);
     gt_free(&many);
     gs_mesh_free(&wrench);

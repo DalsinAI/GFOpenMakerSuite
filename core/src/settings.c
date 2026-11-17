@@ -245,3 +245,13 @@ void gs_settings_opts(const gs_settings *s, gp_opts *po, gc_opts *go)
     go->retract = s->retract;
     go->retract_speed = s->retract_speed;
 }
+
+void gs_settings_more(const gs_settings *s, gp_more *x)
+{
+    gp_more_defaults(x);
+    x->pattern = s->pattern == GS_GRID ? GP_GRID : GP_LINES;
+    x->top = s->top;
+    x->bottom = s->bottom;
+    x->skirt = s->around == GS_SKIRT ? s->loops : 0;
+    x->gap = s->around == GS_NONE ? 0.f : s->distance;
+}

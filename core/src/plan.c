@@ -16,6 +16,27 @@ void gp_defaults(gp_opts *o)
     o->brim = 3;
 }
 
+void gp_more_defaults(gp_more *x)
+{
+    memset(x, 0, sizeof *x);
+    x->size = (int)sizeof *x;
+    x->pattern = GP_LINES;
+    x->top = x->bottom = -1;
+}
+
+/* x as far as its size, the rest the defaults. */
+static void more_of(const gp_more *x, gp_more *to)
+{
+    gp_more_defaults(to);
+    if (x && x->size > (int)sizeof x->size)
+        memcpy(&to->pattern, &x->pattern, (size_t)(x->size < (int)sizeof *x ? x->size : (int)sizeof *x) - sizeof x->size);
+}
+
+static int held(int v, int lo, int hi)
+{
+    return v < lo ? lo : v > hi ? hi : v;
+}
+
 int gp_layers(const gs_mesh *m, const gp_opts *o)
 {
     return gl_layers(m, o->layer_h);
@@ -48,34 +69,43 @@ static int ring(gt_path *p, const gl_loops *in, float d, int kind, int outer, fl
 
 int gp_layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)
 {
+    return gp_layer_more(p, m, o, NULL, n);
+}
+
+int gp_layer_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *more, int n)
+{
     float h = gl_height(o->layer_h), w = o->line_w, z = (float)n * h;
-    int walls = o->walls < 1 ? 1 : o->walls > 8 ? 8 : o->walls;
-    int skins = o->skins < 0 ? 0 : o->skins > MOST_SKINS ? MOST_SKINS : o->skins;
+    int walls = held(o->walls, 1, 8), skins = held(o->skins, 0, MOST_SKINS), below, above, ns = 0;
     int every = o->infill <= 0.f ? 1 << 20 : o->infill >= 100.f ? 1 : (int)(100.f / o->infill + 0.5f);
     gl_loops L, region, near[2 * MOST_SKINS];
     const gl_loops *solid[2 * MOST_SKINS];
     int i, k, r, rc = 0;
+    gp_more x;
+    more_of(more, &x);
+    below = x.bottom < 0 ? skins : held(x.bottom, 0, MOST_SKINS);
+    above = x.top < 0 ? skins : held(x.top, 0, MOST_SKINS);
     memset(&L, 0, sizeof L);
     memset(&region, 0, sizeof region);
     memset(near, 0, sizeof near);
     if (gt_layer(p)) return -1;
     r = loops(m, h, n, &L);
     if (r) return r < 0 ? -1 : 0;
-    /* the brim, from the part out; then the walls, from the inside out */
-    for (k = 1; n == 1 && k <= o->brim && !rc; k++) rc = ring(p, &L, -w * ((float)k - 0.5f), GT_BRIM, 1, z, w);
+    /* the skirt, out to in; the brim, from the part out; then the walls,
+     * from the inside out */
+    for (k = x.skirt; n == 1 && k >= 1 && !rc; k--) rc = ring(p, &L, -x.gap - w * ((float)k - 0.5f), GT_BRIM, 1, z, w);
+    for (k = 1; n == 1 && k <= o->brim && !rc; k++) rc = ring(p, &L, -x.gap - w * ((float)k - 0.5f), GT_BRIM, 1, z, w);
     for (k = walls - 1; k >= 0 && !rc; k--) rc = ring(p, &L, w * ((float)k + 0.5f), k ? GT_INNER : GT_OUTER, 0, z, w);
     /* skin where the layers above or below run out, infill elsewhere */
-    for (i = 0; i < skins && !rc; i++) {
-        r = loops(m, h, n - 1 - i, &near[2 * i]);
-        solid[2 * i] = r ? NULL : &near[2 * i];
+    for (i = 0; i < below + above && !rc; i++) {
+        r = loops(m, h, i < below ? n - 1 - i : n + 1 + (i - below), &near[ns]);
+        solid[ns] = r ? NULL : &near[ns];
+        ns++;
         rc = r < 0;
-        r = loops(m, h, n + 1 + i, &near[2 * i + 1]);
-        solid[2 * i + 1] = r ? NULL : &near[2 * i + 1];
-        rc = rc || r < 0;
     }
     if (!rc) rc = gl_inset(&L, w * (float)walls, &region);
-    if (!rc) rc = gt_fill(p, &region, solid, 2 * skins, z, w, every, n & 1);
-    for (i = 0; i < 2 * skins; i++) gl_loops_free(&near[i]);
+    if (!rc && x.pattern == GP_GRID) rc = gt_fill_grid(p, &region, solid, ns, z, w, every, n & 1);
+    else if (!rc) rc = gt_fill(p, &region, solid, ns, z, w, every, n & 1);
+    for (i = 0; i < ns; i++) gl_loops_free(&near[i]);
     gl_loops_free(&region);
     gl_loops_free(&L);
     return rc ? -1 : 0;
@@ -108,9 +138,14 @@ void gp_place(gs_mesh *m, float bed_x, float bed_y)
 
 int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o)
 {
+    return gp_part_more(p, m, o, NULL);
+}
+
+int gp_part_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x)
+{
     int n, layers = gp_layers(m, o);
     gt_free(p);
     for (n = 1; n <= layers; n++)
-        if (gp_layer(p, m, o, n)) return -1;
+        if (gp_layer_more(p, m, o, x, n)) return -1;
     return 0;
 }

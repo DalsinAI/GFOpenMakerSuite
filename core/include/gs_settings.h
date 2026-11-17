@@ -2,8 +2,7 @@
  * share them: kept as a simple text profile of "key = value" lines, each
  * setting described once (gs_setting) so a window can lay them out, and
  * held to what the machine can do (greyed when it cannot do one at all).
- * The pattern, the top and bottom apart, a skirt and its distance, and
- * the first layer's speed are kept here ahead of the planner taking them.
+ * The first layer's speed is kept here ahead of the G-code taking it.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef GS_SETTINGS_H
 #define GS_SETTINGS_H
@@ -77,5 +76,8 @@ unsigned gs_settings_fit(gs_settings *s, const om_machine *m);
 
 /* s as the planner's and the G-code's options. */
 void gs_settings_opts(const gs_settings *s, gp_opts *po, gc_opts *go);
+
+/* And the planner's more: the pattern, top and bottom, the skirt, the gap. */
+void gs_settings_more(const gs_settings *s, gp_more *x);
 
 #endif

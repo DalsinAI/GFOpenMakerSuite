@@ -117,6 +117,22 @@ int main(void)
     s.around = GS_SKIRT;
     gs_settings_opts(&s, &po, &go);
     expect(po.brim == 0, "a skirt is no brim");
+    {
+        gp_more x;
+        s.pattern = GS_GRID;
+        s.top = 6;
+        s.bottom = 2;
+        gs_settings_more(&s, &x);
+        expect(x.size == (int)sizeof x && x.pattern == GP_GRID && x.top == 6 && x.bottom == 2 && x.skirt == s.loops &&
+                   x.gap == 3.f,
+               "the planner's more: a grid, top and bottom apart, a skirt 3 mm out");
+        s.around = GS_BRIM;
+        gs_settings_more(&s, &x);
+        expect(x.skirt == 0 && x.gap == 3.f, "a brim is no skirt, at its distance");
+        s.around = GS_NONE;
+        gs_settings_more(&s, &x);
+        expect(x.skirt == 0 && x.gap == 0.f, "neither");
+    }
 
     if (fails) {
         printf("%d failed\n", fails);

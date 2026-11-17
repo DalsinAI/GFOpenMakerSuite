@@ -85,6 +85,9 @@ static int toolpath_case(const gl_loops *walls)
     expect(gt_fill(&pa, &ia, solid, 2, 10.f, 0.4f, 5, 1) == 0 && GT_Fill(&pb, &ib, solid, 2, 10.f, 0.4f, 5, 1) == 0,
            "GT_Fill, eight arguments");
     expect(same_path(&pa, &pb) && pb.n > 50, "the same moves");
+    expect(gt_fill_grid(&pa, &ia, solid, 2, 10.f, 0.4f, 5, 1) == 0 && GT_FillGrid(&pb, &ib, solid, 2, 10.f, 0.4f, 5, 1) == 0 &&
+               same_path(&pa, &pb),
+           "GT_FillGrid, eight arguments (1.3)");
     expect(GT_Length(&pb, GT_SKIN) == gt_length(&pa, GT_SKIN) && GT_Length(&pb, GT_SKIN) > 0, "GT_Length");
     expect(gt_bounds(&pa, mina, maxa) == 0 && GT_Bounds(&pb, minb, maxb) == 0 && !memcmp(mina, minb, sizeof mina) &&
                !memcmp(maxa, maxb, sizeof maxa),
@@ -102,8 +105,8 @@ static int toolpath_case(const gl_loops *walls)
     gl_loops_free(&ia);
     gl_loops_free(&ib);
     /* GL_Inset, GT_Init, GT_Layer, a GT_Loop a loop, GT_Add, GT_Fill, three
-     * GT_Length, GT_Bounds, GT_Init, two GT_Append, two GT_Free */
-    return 14 + i;
+     * GT_Length, GT_Bounds, GT_Init, two GT_Append, two GT_Free, GT_FillGrid */
+    return 15 + i;
 }
 
 /* The holed cube placed on a bed and sliced: the GP_ calls against the C
@@ -135,12 +138,30 @@ static int plan_case(const gs_mesh *part)
            "GP_Layer");
     expect(gp_part(&pa, part, &oa) == 0 && GP_Part(&pb, part, &ob) == 0 && same_path(&pa, &pb) && pb.nlayers == n,
            "GP_Part");
+    {
+        /* 1.3: the more, a grid and a skirt. */
+        gp_more xa, xb;
+        gp_more_defaults(&xa);
+        memset(&xb, 0xff, sizeof xb);
+        GP_MoreDefaults(&xb);
+        expect(!memcmp(&xa, &xb, sizeof xa), "GP_MoreDefaults");
+        xa.pattern = xb.pattern = GP_GRID;
+        xa.skirt = xb.skirt = 2;
+        xa.gap = xb.gap = 3.f;
+        xa.top = xb.top = 1;
+        expect(gp_layer_more(&pa, part, &oa, &xa, 1) == 0 && GP_LayerMore(&pb, part, &ob, &xb, 1) == 0 &&
+                   same_path(&pa, &pb) && GT_Length(&pb, GT_BRIM) > 0.f,
+               "GP_LayerMore, five arguments");
+        expect(gp_part_more(&pa, part, &oa, &xa) == 0 && GP_PartMore(&pb, part, &ob, &xb) == 0 && same_path(&pa, &pb) &&
+                   pb.nlayers == n,
+               "GP_PartMore");
+    }
     printf("through the library: %d layers, %d moves\n", pb.nlayers, pb.n);
     gt_free(&pa);
     gt_free(&pb);
     gs_mesh_free(&ca);
     gs_mesh_free(&cb);
-    return 5;
+    return 5 + 4; /* and the three _More and GT_Length */
 }
 
 /* Two sets of walls, piece for piece the same. */

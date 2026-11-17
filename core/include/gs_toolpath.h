@@ -67,6 +67,11 @@ int gt_bounds(const gt_path *p, float *min, float *max);
 int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
             int every, int cross);
 
+/* gt_fill as a grid: the skin as gt_fill lays it, and the sparse lines
+ * both ways, every 2 every-th line each way. 0, or -1. */
+int gt_fill_grid(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
+                 int every, int cross);
+
 /* The colour each kind is drawn in: 0xRRGGBB. A travel is not drawn. */
 unsigned long gt_colour(int kind);
 /* Its colour at height z, top the highest drawn: darker the lower. */

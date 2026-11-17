@@ -99,8 +99,9 @@ static int run(gt_path *p, int kind, float v, float u0, float u1, int cross, flo
     return gt_add(p, GT_TRAVEL, u0, v, z, 0.f) || gt_add(p, kind, u1, v, z, w);
 }
 
-int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
-            int every, int cross)
+/* skins 0: the sparse runs alone. */
+static int fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
+                int every, int cross, int skins)
 {
     runs in = {0}, keep = {0}, t = {0}, skin = {0}, sparse = {0};
     float lo = 1e30f, hi = -1e30f;
@@ -137,6 +138,7 @@ int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, in
         }
         /* skin and sparse runs merged in order along the line, back and forth */
         if (!sparse_line) keep.n = 0;
+        if (!skins) skin.n = 0;
         n = skin.n + keep.n;
         for (i = 0; i < n && !rc; i += 2) {
             int at = flip ? n - 2 - i : i, kind;
@@ -151,4 +153,20 @@ int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, in
     free(skin.x);
     free(sparse.x);
     return rc ? -1 : 0;
+}
+
+int gt_fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
+            int every, int cross)
+{
+    return fill(p, region, solid, nsolid, z, w, every, cross, 1);
+}
+
+int gt_fill_grid(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w,
+                 int every, int cross)
+{
+    if (every < 1) every = 1;
+    return fill(p, region, solid, nsolid, z, w, 2 * every, cross, 1) ||
+                   fill(p, region, solid, nsolid, z, w, 2 * every, !cross, 0)
+               ? -1
+               : 0;
 }

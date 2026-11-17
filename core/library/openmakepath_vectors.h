@@ -155,7 +155,31 @@ static int LIB_GP_Part(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, c
     return gp_part(p, m, o);
 }
 
-#define OPENMAKEPATH_LAST_BIAS 174
+static void LIB_GP_MoreDefaults(REG(a0, gp_more *x), REG(a6, struct Library *base))
+{
+    (void)base;
+    gp_more_defaults(x);
+}
+
+static int LIB_GP_LayerMore(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, const gp_opts *o), REG(a3, const gp_more *x), REG(d0, int n), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gp_layer_more(p, m, o, x, n);
+}
+
+static int LIB_GP_PartMore(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, const gp_opts *o), REG(a3, const gp_more *x), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gp_part_more(p, m, o, x);
+}
+
+static int LIB_GT_FillGrid(REG(a0, gt_path *p), REG(a1, const gl_loops *region), REG(a2, const gl_loops *const *solid), REG(d0, int nsolid), REG(d1, ULONG z), REG(d2, ULONG w), REG(d3, int every), REG(d4, int cross), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_fill_grid(p, region, solid, nsolid, om_lib_float(z), om_lib_float(w), every, cross);
+}
+
+#define OPENMAKEPATH_LAST_BIAS 198
 #define OPENMAKEPATH_VECTORS \
     (APTR)LIB_GL_Height, \
     (APTR)LIB_GL_Layers, \
@@ -181,4 +205,8 @@ static int LIB_GP_Part(REG(a0, gt_path *p), REG(a1, const gs_mesh *m), REG(a2, c
     (APTR)LIB_GP_Layers, \
     (APTR)LIB_GP_Layer, \
     (APTR)LIB_GP_Place, \
-    (APTR)LIB_GP_Part
+    (APTR)LIB_GP_Part, \
+    (APTR)LIB_GP_MoreDefaults, \
+    (APTR)LIB_GP_LayerMore, \
+    (APTR)LIB_GP_PartMore, \
+    (APTR)LIB_GT_FillGrid
