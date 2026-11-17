@@ -1,6 +1,9 @@
 /* GFOpenMake on the Amiga. A 20 mm cube with a hole through it, on a 220 mm
- * plate, in a GFOpenLayout window. Orbit turns the view. Move, rotate and
- * scale change the solid. Drop, Centre and Lay flat put it on the bed.
+ * plate, in a GFOpenLayout window: the first of up to 24 parts, as the
+ * bench's list (gs_parts.h). A click picks a part. Orbit turns the view.
+ * Move, rotate and scale change the picked part. Drop, Centre and Lay flat
+ * put it on the bed. Join, Cut and Intersect take the picked part as the
+ * tool and the one before it as the stock (ge_combine).
  *
  * The triangles are submitted as OGPU_OP_TRIANGLES, with a depth buffer,
  * whenever gfopengpu.library can draw them. The picture is shown through
@@ -661,8 +664,8 @@ static void take_added(olui *ui, gs_mesh box, const char *name)
     refresh(ui);
 }
 
-/* Extrude's Add, On top or Cut: Add is a new added part on the bed, to
- * place; On top and Cut change the picked part, as Holes does. */
+/* Extrude's Add, On top or Cut: Add is a new part on the bed, to place;
+ * On top and Cut change the picked part, as Holes does. */
 static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
 {
     int op = (int)(intptr_t)userdata, kind = olui_select_index(olui_find(ui, "xkind"));
@@ -687,8 +690,8 @@ static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
     say(ui, line);
 }
 
-/* Parts' Add: the shape picked, placed from the stock (ge_shape), as the
- * added part to join, cut or intersect with it. */
+/* Parts' Add: the shape chosen, placed from the picked part (ge_shape), as
+ * a new part, picked, to join, cut or intersect with it. */
 static void on_add(olui *ui, const olui_event *ev, void *userdata)
 {
     gs_mesh part;
