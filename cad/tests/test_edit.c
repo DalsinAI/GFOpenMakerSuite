@@ -368,6 +368,19 @@ int main(void)
         expect(ge_pick(&cube, &cam, 320, 240, (int)x, (int)y) == face, "the same face as ge_pick");
         expect(ge_project(&cube, &cam, 320, 240, side, &x2, &y2) == 0 && (x2 != x || y2 != y), "another point elsewhere");
         expect(ge_pick_at(&cube, &cam, 320, 240, 2, 2, &at) == -1, "nothing under a corner of the view");
+        {
+            /* Off the part, as the bench: the point on the bed under the pointer. */
+            gs_v bed = {40, 180, 0};
+            float bx, by;
+            expect(ge_project(&cube, &cam, 320, 240, bed, &bx, &by) == 0 &&
+                       ge_pick_at(&cube, &cam, 320, 240, (int)bx, (int)by, &at) == -1,
+                   "a point on the bed is off the part");
+            expect(ge_pick_bed(&cube, &cam, 320, 240, (int)bx, (int)by, &at) == 0 && fabsf(at.x - 40.f) < 2.f &&
+                       fabsf(at.y - 180.f) < 2.f && at.z == 0.f,
+                   "and picked on the bed there, to a pixel");
+            expect(ge_pick_bed(&cube, &cam, 320, 240, 2, 2, &at) == -1, "off the bed is nothing");
+            expect(ge_pick_bed(NULL, &cam, 320, 240, (int)bx, (int)by, &at) == 0, "the bed is there with no part");
+        }
         ge_measure_line(line, (int)sizeof line, top, side);
         expect(!strcmp(line, "19.0 mm between the two points (X 10.0, Y 8.0, Z 14.0)."), "the distance said");
         ge_facts_line(line, (int)sizeof line, &cube);

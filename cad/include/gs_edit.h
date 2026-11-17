@@ -35,6 +35,9 @@ int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y);
 /* The same, with the point on it under the pixel in at. */
 int ge_pick_at(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y, gs_v *at);
 /* Where p shows in that view. 0, or -1. */
+/* Off the part: the point on the bed (z 0, inside the plate) under the
+ * pointer, as the bench measures from. 0, or -1 off the plate. */
+int ge_pick_bed(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y, gs_v *at);
 int ge_project(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_v p, float *x, float *y);
 /* Measure's lines: the distance between two points and along each axis;
  * a part's volume, its PLA (1.24 g/cm3, as the bench), size and triangles. */
