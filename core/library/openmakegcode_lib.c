@@ -1,4 +1,4 @@
-/* openmakegcode.library 1.0: OpenMakeCore's G-code for a printer
+/* openmakegcode.library 1.1: OpenMakeCore's G-code for a printer
  * (core/src/gcode.c) as a shared library. Its calls are
  * openmakegcode_lib.sfd's. The machine's start and end code are filled in
  * through openmakemachine.library (om_code is OM_Code, by
@@ -6,8 +6,8 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #define LIB_NAME "openmakegcode.library"
 #define LIB_VERSION 1
-#define LIB_REVISION 0
-#define LIB_DATE "16.11.2026"
+#define LIB_REVISION 1
+#define LIB_DATE "17.11.2026"
 
 #include "openmakegcode_vectors.h"
 #define LIB_VECTORS OPENMAKEGCODE_VECTORS

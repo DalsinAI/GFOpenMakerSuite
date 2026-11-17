@@ -33,6 +33,14 @@ void gc_defaults(gc_opts *o);
  * the speeds are not held to a machine's). */
 void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st);
 
+/* How a time was got: */
+#define GC_AT_SPEEDS 0          /* distance over speed: no acceleration given (or no machine) */
+#define GC_WITH_ACCEL 1         /* with the machine's acceleration and jerk */
+#define GC_FELL_BACK 2          /* distance over speed: no memory to plan with, so short */
+
+/* gc_estimate, and how its time was got (GC_AT_SPEEDS and so on). */
+int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st);
+
 /* The job p is for om_check: where every move goes (travels too), the
  * fastest of each axis as gc_write would ask it of m (held to m's most,
  * so never too fast for m itself; m may be NULL), o's temperatures, one

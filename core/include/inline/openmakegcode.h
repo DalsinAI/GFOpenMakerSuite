@@ -68,4 +68,20 @@ static __inline__ int GC_WriteTo(gc_put put, void *ud, const gt_path *p, const o
 #endif
 }
 
+static __inline__ int GC_EstimateHow(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gt_path *, const om_machine *, const gc_opts *, gc_stats *, struct Library *))om_host_vector(OpenMakeGcodeBase, 54))(p, m, o, st, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(o);
+    register ULONG _a3 __asm("a3") = (ULONG)(st);
+    __asm__ volatile("jsr a6@(-54:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

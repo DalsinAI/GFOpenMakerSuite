@@ -65,7 +65,7 @@ static void refresh(olui *ui)
     char status[180];
     if (job.sliced) {
         omv_slice_status(status, (int)sizeof status, job.path.nlayers, job.st.moves, job.st.seconds, job.st.filament,
-                         show_layer ? layer_no : 0);
+                         show_layer ? layer_no : 0, job.how == GC_FELL_BACK);
         omv_say(ui, status);
     }
     olui_repaint(ui, olui_find(ui, "view"), NULL);
