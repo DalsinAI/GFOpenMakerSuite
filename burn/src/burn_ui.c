@@ -322,6 +322,12 @@ void burn_ui_material(olui *ui, burn_opts *o, const burn_material *m)
     }
 }
 
+void burn_ui_kind(olui *ui, const char *path)
+{
+    olui_el *el = olui_find(ui, "kind");
+    if (el) olui_set_text(ui, el, burn_drawing_kind(path));
+}
+
 void burn_ui_status(char *buf, int len, const char *name, int moves, float seconds)
 {
     char time[40];

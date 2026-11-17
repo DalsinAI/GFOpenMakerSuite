@@ -584,6 +584,20 @@ int main(void)
         gt_free(&p);
     }
 
+    expect(!strcmp(burn_drawing_kind(NULL), "File") && !strcmp(burn_drawing_kind(""), "File") &&
+               !strcmp(burn_drawing_kind("notes.txt"), "File"),
+           "no path, or an unknown name, is File");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/two-rects.svg"), "SVG") &&
+               !strcmp(burn_drawing_kind("Work:Box.SVG"), "SVG"),
+           "an SVG, whatever the case");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/two-rects.dxf"), "DXF") &&
+               !strcmp(burn_drawing_kind("part.DXF"), "DXF"),
+           "a DXF");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/bars-8x2.pgm"), "Picture") &&
+               !strcmp(burn_drawing_kind("a.PBM"), "Picture") &&
+               !strcmp(burn_drawing_kind("a.ppm"), "Picture"),
+           "a Netpbm picture");
+
     if (fails) {
         printf("%d failed\\n", fails);
         return 1;
