@@ -24,7 +24,8 @@ typedef struct {
 } omv_machines;
 
 /* Every machine of family ("printer", "laser", "cnc") under root (e.g.
- * "PROGDIR:machines"), sorted by name, in place of what l had
+ * "PROGDIR:machines"), the generic ones ("Generic ...") first, then
+ * sorted by name, in place of what l had
  * (l zeroed the first time). Only profiles that
  * load and say that family are listed. How many, or -1 out of memory. */
 int omv_machines_scan(omv_machines *l, const char *root, const char *family);

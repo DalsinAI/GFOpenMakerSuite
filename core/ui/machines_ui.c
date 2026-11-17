@@ -19,9 +19,13 @@ static void join(char *out, int len, const char *a, const char *b)
 
 static int lower(int c) { return c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c; }
 
+/* The suite's generic starting points ("Generic ...") first, so a window
+ * starts on one; then by name, whatever the case. */
 static int by_name(const void *pa, const void *pb)
 {
     const char *a = ((const omv_machine *)pa)->name, *b = ((const omv_machine *)pb)->name;
+    int ga = !strncmp(a, "Generic ", 8), gb = !strncmp(b, "Generic ", 8);
+    if (ga != gb) return gb - ga;
     while (*a && lower((unsigned char)*a) == lower((unsigned char)*b)) a++, b++;
     return lower((unsigned char)*a) - lower((unsigned char)*b);
 }

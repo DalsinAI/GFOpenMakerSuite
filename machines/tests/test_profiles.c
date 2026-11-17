@@ -57,7 +57,7 @@ static int count_files(void)
                 if (!strcmp(known[k].driver, drivers[d]) && !strncmp(known[k].profile, e->d_name, len - 3) &&
                     strlen(known[k].profile) == len - 3)
                     found = 1;
-            snprintf(what, sizeof what, "%s/%s is tested here", dir, e->d_name);
+            snprintf(what, sizeof what, "%s/%.64s is tested here", dir, e->d_name);
             expect(found, what);
         }
         closedir(h);
