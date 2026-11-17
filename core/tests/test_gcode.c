@@ -1,5 +1,6 @@
-/* G-code for a printer: start and end code, speeds held to the machine,
- * filament, retraction, and the estimates. MIT, Copyright (c) 2026 AmiCradle Team. */
+/* G-code for a printer, and for a Grbl laser: start and end code, speeds
+ * held to the machine, filament, retraction, M3/M4 and S, and the
+ * estimates. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_gcode.h"
 
 #include <math.h>
@@ -57,6 +58,66 @@ static int count(const char *what)
     const char *s = text;
     while ((s = strstr(s, what)) != NULL) n++, s++;
     return n;
+}
+
+
+/* 1 if g never fires on a travel or at the end. why is set when not. */
+static int laser_safe(const char *g, char *why, int nwhy)
+{
+    const char *s = g;
+    int on = 0, had_m5 = 0;
+    while (*s) {
+        const char *line = s, *e, *p;
+        int is_g0 = 0, is_g1 = 0, is_m3 = 0, is_m4 = 0, is_m5 = 0, sv = -1;
+        while (*s && *s != '\n') s++;
+        e = s;
+        if (*s == '\n') s++;
+        p = line;
+        while (p < e && (*p == ' ' || *p == '\t')) p++;
+        if (p >= e || *p == ';') continue;
+        if (p[0] == 'G' && p[1] == '0' && (p[2] == ' ' || p[2] == '\n' || p[2] == 0 || p[2] == '\t')) is_g0 = 1;
+        if (p[0] == 'G' && p[1] == '1' && (p[2] == ' ' || p[2] == '\n' || p[2] == 0 || p[2] == '\t')) is_g1 = 1;
+        if (p[0] == 'M' && p[1] == '3' && (p[2] == ' ' || p[2] == '\n' || p[2] == 0 || p[2] == '\t' || p[2] == 'S'))
+            is_m3 = 1;
+        if (p[0] == 'M' && p[1] == '4' && (p[2] == ' ' || p[2] == '\n' || p[2] == 0 || p[2] == '\t' || p[2] == 'S'))
+            is_m4 = 1;
+        if (p[0] == 'M' && p[1] == '5' && (p[2] == ' ' || p[2] == '\n' || p[2] == 0 || p[2] == '\t')) is_m5 = 1;
+        {
+            const char *q = line;
+            while (q < e) {
+                if (*q == 'S' && (q == line || !(q[-1] >= 'A' && q[-1] <= 'Z'))) {
+                    const char *n = q + 1;
+                    if (*n >= '0' && *n <= '9') {
+                        sv = 0;
+                        while (*n >= '0' && *n <= '9') sv = sv * 10 + (*n - '0'), n++;
+                    }
+                }
+                q++;
+            }
+        }
+        if (sv >= 0) on = sv > 0;
+        if (is_m5) {
+            on = 0;
+            had_m5 = 1;
+        }
+        if ((is_m3 || is_m4) && sv == 0) on = 0;
+        if (is_g0 && sv > 0) {
+            snprintf(why, (size_t)nwhy, "a travel has S%d", sv);
+            return 0;
+        }
+        if (is_g0) on = 0;
+        if (is_g1 && on) had_m5 = 0;
+        (void)is_g1;
+    }
+    if (on) {
+        snprintf(why, (size_t)nwhy, "the laser is still on at the end");
+        return 0;
+    }
+    if (!had_m5) {
+        snprintf(why, (size_t)nwhy, "no M5 at the end");
+        return 0;
+    }
+    return 1;
 }
 
 int main(void)
@@ -270,6 +331,91 @@ int main(void)
         gc_estimate(&q, &a, &qo, &st);
         expect(st.seconds > est.seconds + 0.2f, "one more line, more time");
         gt_free(&q);
+    }
+
+    /* Grbl laser G-code. */
+    {
+        static const char *drv =
+            "family = laser\n"
+            "dialect = grbl\n"
+            "name = Test diode\n"
+            "send = file\n"
+            "features = laser-power homing\n"
+            "area = 400 400 50\n"
+            "speed = 200 200 20 0\n"
+            "accel = 2000 2000 200 0\n"
+            "laser = 100\n"
+            "start = G21\n"
+            "start += G90\n"
+            "end = G0 X0 Y0\n";
+        om_machine laser;
+        gc_laser L;
+        gc_stats lst;
+        om_job job;
+        gt_path lp;
+        sink sk;
+        char why[128];
+        int how;
+        om_clear(&laser);
+        expect(om_parse(&laser, drv, err, (int)sizeof err) == 0 && laser.family == OM_LASER, "a test Grbl laser");
+        gc_laser_defaults(&L);
+        L.s100 = 1000;
+        L.speed = 20;
+        L.travel = 100;
+        gt_init(&lp);
+        gt_add(&lp, GT_TRAVEL, 0, 0, 0, 0);
+        gt_add(&lp, GT_CUT, 10, 0, 0, 50);   /* 50%, 10 mm */
+        gt_add(&lp, GT_TRAVEL, 10, 10, 0, 0);
+        gt_add(&lp, GT_CUT, 20, 10, 0, 100); /* 100%, 10 mm */
+        memset(&sk, 0, sizeof sk);
+        sk.room = (long)sizeof sk.buf;
+        expect(gc_laser_write_to(into, &sk, &lp, &laser, &L, &lst, err, (int)sizeof err) == 0, "laser G-code written");
+        expect(strstr(sk.buf, "; GFOpenMake laser") && strstr(sk.buf, "G21") && strstr(sk.buf, "G90") &&
+                   strstr(sk.buf, "G0 X0 Y0"),
+               "the start and end code are in the job");
+        expect(strstr(sk.buf, "M4") && !strstr(sk.buf, "M3\n"), "M4 is the default");
+        expect(strstr(sk.buf, "S500") && strstr(sk.buf, "S1000"), "50% is S500, 100% is S1000, for s100 1000");
+        expect(strstr(sk.buf, "G1 X10.000 Y0.000") && strstr(sk.buf, "G1 X20.000 Y10.000"), "the two cuts");
+        expect(strstr(sk.buf, "G0 X10.000 Y10.000") != NULL, "the travel between them is G0");
+        expect(laser_safe(sk.buf, why, (int)sizeof why), why[0] ? why : "the laser is off on travels and at the end");
+        expect(lst.moves == 4 && lst.filament == 0.f && lst.seconds > 0.f, "four moves, no filament, some time");
+
+        L.constant = 1;
+        L.s100 = 255;
+        memset(&sk, 0, sizeof sk);
+        sk.room = (long)sizeof sk.buf;
+        expect(gc_laser_write_to(into, &sk, &lp, &laser, &L, NULL, err, (int)sizeof err) == 0 &&
+                   strstr(sk.buf, "M3") && !strstr(sk.buf, "M4") && strstr(sk.buf, "S128") &&
+                   strstr(sk.buf, "S255") && laser_safe(sk.buf, why, (int)sizeof why),
+               "M3 constant, S scaled to 255 (50% is S128)");
+
+        how = gc_laser_estimate_how(&lp, &laser, &L, &lst);
+        expect(how == GC_WITH_ACCEL && lst.moves == 4 && lst.seconds > 0.1f && lst.seconds < 2.f,
+               "the estimate counts the acceleration");
+        L.travel = 500; /* more than the machine's 200 */
+        gc_laser_job(&lp, &laser, &L, &job);
+        expect(job.min[0] == 0.f && job.max[0] == 20.f && job.max[1] == 10.f && job.laser == 100.f &&
+                   job.needs == OM_LASER_POWER && job.speed[OM_X] <= 200.f && job.speed[OM_X] > 0.f,
+               "the job's box, 100% power, and travel held to 200 mm/s");
+
+        {
+            gc_laser_more more;
+            float spd[4] = {0, 10, 0, 10};
+            gc_laser_more_defaults(&more, &L);
+            more.speed = spd;
+            L.constant = 0;
+            L.s100 = 1000;
+            memset(&sk, 0, sizeof sk);
+            sk.room = (long)sizeof sk.buf;
+            expect(gc_laser_write_more(into, &sk, &lp, &laser, &more, &lst, err, (int)sizeof err) == 0 &&
+                       strstr(sk.buf, " F600\n") && laser_safe(sk.buf, why, (int)sizeof why),
+                   "a per-move speed of 10 mm/s is F600");
+        }
+
+        expect(gc_laser_write_to(into, &sk, &lp, &m, &L, NULL, err, (int)sizeof err) == -1 &&
+                   strstr(err, "laser"),
+               "a printer is refused for laser G-code");
+        gt_free(&lp);
     }
 
     m.family = OM_LASER;
