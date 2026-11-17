@@ -345,10 +345,9 @@ static int add_fill(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *
 }
 
 
-/* SVG paths can come out clockwise after the Y flip. gl_union keeps material
- * that winds at least once to the left, so a lone clockwise loop would drop
- * out. Reverse every loop when the largest one is clockwise; holes stay
- * opposite the outside. */
+/* Even-odd as the SVG reader: a loop whose inside sits in an odd number of
+ * others is a hole and must wind clockwise, so gl_union and gl_inset keep
+ * the hole and grow it. An outside winds anticlockwise. */
 static void reverse_loop(gl_loop *l)
 {
     int i, j;
@@ -361,21 +360,62 @@ static void reverse_loop(gl_loop *l)
     }
 }
 
-static void face_out(gl_loops *ls)
+static int loop_contains(const gl_loop *l, float x, float y)
 {
-    int i, k = 0;
-    float best = 0.f, a;
-    if (!ls->n) return;
-    for (i = 0; i < ls->n; i++) {
-        a = gl_loop_area(&ls->l[i]);
-        if (a < 0.f) a = -a;
-        if (a > best) {
-            best = a;
-            k = i;
+    int c = 0, i, j;
+    for (i = 0, j = l->n - 1; i < l->n; j = i++) {
+        float xi = l->xy[i * 2], yi = l->xy[i * 2 + 1];
+        float xj = l->xy[j * 2], yj = l->xy[j * 2 + 1];
+        if ((yi > y) != (yj > y)) {
+            float xh = xi + (y - yi) / (yj - yi) * (xj - xi);
+            if (x < xh) c++;
         }
     }
-    if (gl_loop_area(&ls->l[k]) < 0.f)
-        for (i = 0; i < ls->n; i++) reverse_loop(&ls->l[i]);
+    return c & 1;
+}
+
+static int inside_point(const gl_loop *l, float *px, float *py)
+{
+    int i;
+    for (i = 0; i < l->n; i++) {
+        float x0 = l->xy[i * 2], y0 = l->xy[i * 2 + 1];
+        float x1 = l->xy[((i + 1) % l->n) * 2], y1 = l->xy[((i + 1) % l->n) * 2 + 1];
+        float dx = x1 - x0, dy = y1 - y0, s = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+        float mx, my, nx, ny;
+        if (s < 1e-8f) continue;
+        mx = (x0 + x1) * 0.5f;
+        my = (y0 + y1) * 0.5f;
+        nx = -dy * 0.001f / s;
+        ny = dx * 0.001f / s;
+        if (loop_contains(l, mx + nx, my + ny)) {
+            *px = mx + nx;
+            *py = my + ny;
+            return 0;
+        }
+        if (loop_contains(l, mx - nx, my - ny)) {
+            *px = mx - nx;
+            *py = my - ny;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static void face_even_odd(gl_loops *ls)
+{
+    int i, j, n;
+    float x, y, a;
+    for (i = 0; i < ls->n; i++) {
+        if (!ls->l[i].closed || ls->l[i].n < 3) continue;
+        if (inside_point(&ls->l[i], &x, &y)) continue;
+        n = 0;
+        for (j = 0; j < ls->n; j++) {
+            if (j == i || !ls->l[j].closed) continue;
+            if (loop_contains(&ls->l[j], x, y)) n++;
+        }
+        a = gl_loop_area(&ls->l[i]);
+        if ((n % 2 == 0 && a < 0.f) || (n % 2 == 1 && a > 0.f)) reverse_loop(&ls->l[i]);
+    }
 }
 
 /* Offset fill: the outline, then gl_inset by the interval, until nothing
@@ -385,7 +425,7 @@ static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc
     gl_loops region, cur, next;
     int ring, i, start;
     if (loops_of(d, ly->colour, &region)) return -1;
-    face_out(&region);
+    face_even_odd(&region);
     memset(&cur, 0, sizeof cur);
     memset(&next, 0, sizeof next);
     if (region.n) {

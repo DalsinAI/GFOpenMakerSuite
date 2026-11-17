@@ -374,14 +374,15 @@ int main(void)
         /* A hole: the outer shrinks, the hole grows, they do not fill the hole. */
         expect(gv_load_svg(&d, "burn/tests/data/square-hole.svg", err, (int)sizeof err) == 0, "the holed square, offset");
         o.interval = 1.f;
-        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n > 10, "offset fill round a hole");
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n > 10 && p.n < 50, "offset fill round a hole, not a solid square");
         off = 0;
         for (i = 0; i < p.n; i++) {
             if (p.m[i].kind != GT_CUT) continue;
+            /* Strictly inside the 8 mm hole (walls at 6 and 14). Growing the hole
+             * moves later rings into the material, never into the opening. */
             if (p.m[i].x > 6.5f && p.m[i].x < 13.5f && p.m[i].y > 6.5f && p.m[i].y < 13.5f) off++;
         }
-        /* The grown hole's wall sits in that band, but a solid fill of the hole would put many more. */
-        expect(off < p.n / 2, "offset rings follow the hole, they do not hatch it");
+        expect(off == 0, "no cut inside the hole");
         gv_doc_free(&d);
         gt_free(&p);
     }
