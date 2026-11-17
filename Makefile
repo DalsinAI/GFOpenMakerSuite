@@ -105,7 +105,7 @@ $(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c ma
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
 
 # OpenMakeBurn: an SVG to Grbl laser G-code (line mode).
-BURN_JOB = burn/src/burn_job.c core/src/vec.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c
+BURN_JOB = burn/src/burn_job.c core/src/vec.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
 $(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/tests/test_burn.c $(BURN_JOB) -lm
 
@@ -307,6 +307,15 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	    layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
 	grep -q '^S1000' $(BUILD)/burn-layers.gcode && grep -q '^S250' $(BUILD)/burn-layers.gcode && \
 	    grep -q ' F600' $(BUILD)/burn-layers.gcode && grep -q ' F2400' $(BUILD)/burn-layers.gcode
+	$(BUILD)/openmake-burn burn/tests/data/square-fill.svg $(BUILD)/burn-fill.gcode mode=fill interval=0.2 > /dev/null
+	grep -q '^M4' $(BUILD)/burn-fill.gcode && grep -q '^G1 ' $(BUILD)/burn-fill.gcode && \
+	    test $$(grep -c '^G1 ' $(BUILD)/burn-fill.gcode) -ge 40
+	$(BUILD)/openmake-burn burn/tests/data/square-fill.svg $(BUILD)/burn-offset.gcode mode=offset interval=2 > /dev/null
+	grep -q '^M4' $(BUILD)/burn-offset.gcode && grep -q '^G1 ' $(BUILD)/burn-offset.gcode && \
+	    test $$(grep -c '^G1 ' $(BUILD)/burn-offset.gcode) -ge 8
+	! $(BUILD)/openmake-burn burn/tests/data/square-fill.svg $(BUILD)/burn-fillbad.gcode mode=fil \
+	    2> $(BUILD)/burn-fillbad.txt
+	grep -q 'mode=fil' $(BUILD)/burn-fillbad.txt && test ! -e $(BUILD)/burn-fillbad.gcode
 	! $(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-lybad.gcode layer=#ff0000,spped=10 \
 	    2> $(BUILD)/burn-lybad.txt
 	grep -q 'spped=10' $(BUILD)/burn-lybad.txt && test ! -e $(BUILD)/burn-lybad.gcode

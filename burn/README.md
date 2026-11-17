@@ -5,11 +5,12 @@ G-code. The plan is [docs/burn-plan.md](../docs/burn-plan.md).
 
 The command, `openmake-burn`, reads an SVG and writes Grbl laser G-code
 in line mode, for the generic 400 mm diode unless DRIVER or PROFILE say
-otherwise. A `layer=` sets power, speed, passes or on for one colour
-(or a 1-based index).
+otherwise. A `layer=` sets power, speed, passes, mode or on for one colour
+(or a 1-based index). `mode=fill` scans back and forth inside closed shapes, `mode=offset`
+follows them inwards, `interval` the gap in mm (0.2 by default).
 
 The Amiga window (`src/amiga.c`, binary GFOpenBurn) is GFOpenLayout in
-the Clear look: Open an SVG, a layer list with power, speed and passes,
+the Clear look: Open an SVG, a layer list with power, speed, passes, mode and gap,
 the laser picker, Preview, Frame (a travel around the job, laser off),
 and Save G-code. The view is OpenGPU with a pen fallback. It fits 640 by
 480 inside (a 640 by 512 PAL screen with its borders), is resizable, and

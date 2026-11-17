@@ -1,8 +1,9 @@
 /* OpenMakeBurn's job: an SVG to Grbl laser G-code, through openmakevec
- * and openmakegcode. Line mode for this cut: each path is followed, in
- * layer order (the colour as it first appears). A layer can take its own
- * power, speed and passes; the job's values are the default. MIT,
- * Copyright (c) 2026 AmiCradle Team. */
+ * and openmakegcode. Line mode follows each path; fill mode scans back
+ * and forth inside closed shapes (openmakepath's gt_fill); offset
+ * fill follows them inwards (gl_inset). A layer can
+ * take its own power, speed, passes and mode; the job's values are the
+ * default. MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef BURN_JOB_H
 #define BURN_JOB_H
 
@@ -14,8 +15,13 @@ enum {
     BURN_SET_POWER = 1,
     BURN_SET_SPEED = 2,
     BURN_SET_PASSES = 4,
-    BURN_SET_ON = 8
+    BURN_SET_ON = 8,
+    BURN_SET_MODE = 16,
+    BURN_SET_INTERVAL = 32
 };
+
+/* How a layer is burned. */
+enum { BURN_LINE = 0, BURN_FILL = 1, BURN_OFFSET = 2 };
 
 /* One layer's settings, matching a colour or a 1-based place in the
  * document's layer list. Fields not in set come from the job. */
@@ -27,33 +33,41 @@ typedef struct {
     float speed;     /* mm/s for a cut */
     int passes;
     int on;          /* 0: leave the layer out; not 0: include it */
+    int mode;        /* BURN_LINE, BURN_FILL or BURN_OFFSET */
+    float interval;  /* mm between fill lines; 0: 0.2 */
     unsigned set;
 } burn_layer;
 
 typedef struct {
     int size;
-    float power;  /* 0 to 100, every layer; 0: 50 */
-    float speed;  /* mm/s for a cut; 0: 20 */
-    float travel; /* mm/s for a travel; 0: the machine's most X, or 150 */
-    int passes;   /* 0 or 1: once; more than 1: that many */
-    int constant; /* 0: M4, not 0: M3 */
-    float s100;   /* S at 100%; 0: 1000 */
+    float power;    /* 0 to 100, every layer; 0: 50 */
+    float speed;    /* mm/s for a cut; 0: 20 */
+    float travel;   /* mm/s for a travel; 0: the machine's most X, or 150 */
+    int passes;     /* 0 or 1: once; more than 1: that many */
+    int constant;   /* 0: M4, not 0: M3 */
+    float s100;     /* S at 100%; 0: 1000 */
+    int mode;       /* BURN_LINE, BURN_FILL or BURN_OFFSET; 0: line */
+    float interval; /* mm between fill lines; 0: 0.2 */
     const burn_layer *layer; /* overrides, or NULL */
     int nlayer;
 } burn_opts;
 
 void burn_defaults(burn_opts *o);
 
+/* line, fill, offset, or -1 if s is not a known mode. */
+int burn_mode_parse(const char *s);
+const char *burn_mode_name(int mode);
+
 /* Parse a layer= value: "#rrggbb,power=80,speed=10,passes=2,on=1" or
- * "1,power=80". 0, or -1 with why in err. */
+ * "1,power=80", and mode= / interval= for a fill. 0, or -1 with why in err. */
 int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen);
 
 /* Layer L (0-based) of d, with o's defaults and any matching override.
- * power, speed, passes and on are filled in. */
+ * power, speed, passes, on, mode and interval are filled in. */
 void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out);
 
-/* Replaces p with the line paths of d, each layer at its power, its
- * passes times, in layer order. If speed is not NULL, *speed is a new
+/* Replaces p with the line or fill paths of d, each layer at its power,
+ * its passes times, in layer order. If speed is not NULL, *speed is a new
  * array of p->n mm/s values the caller frees (0 on a travel). 0, or -1
  * out of memory. */
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o);
