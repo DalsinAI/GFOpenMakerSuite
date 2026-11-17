@@ -460,6 +460,16 @@ int main(void)
                        near((out.min.x + out.max.x) * 0.5f, 40.f) && near((out.min.y + out.max.y) * 0.5f, 50.f) &&
                        near(out.min.z, 0.f),
                    "extrude at a dragged place, not the middle of the plate");
+            expect(ge_sketch_ghost(&part, GM_RECT, GM_ON_BED, 40.f, 50.f, 20.f, 10.f, 5.f, &out, line, (int)sizeof line) == 0 &&
+                       part.n == 12 && near(out.min.x, 30.f) && near(out.max.x, 50.f) && near(out.min.y, 45.f) &&
+                       near(out.max.y, 55.f) && near(out.min.z, 0.f) && near(out.max.z, 5.f) && gm_open_edges(&out) == 0,
+                   "the ghost is the block, and the part is not changed");
+            expect(ge_sketch_ghost(&part, GM_ROUND, GM_ON_TOP, 110.f, 110.f, 10.f, 0.f, 6.f, &out, line, (int)sizeof line) == 0 &&
+                       near(out.min.z, 27.6f) && near(out.max.z, 34.f) && part.n == 12,
+                   "the ghost of On stands on the top, and is not joined");
+            expect(ge_sketch_ghost(&part, GM_RECT, GM_ON_BED, 0.5f, 10.f, 0.5f, 10.f, 5.f, &out, line, (int)sizeof line) == -1 &&
+                       strstr(line, "1 to 200"),
+                   "a ghost under 1 mm is refused");
         }
         gs_mesh_free(&part);
         gs_mesh_free(&out);

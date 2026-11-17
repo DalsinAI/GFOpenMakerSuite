@@ -102,8 +102,9 @@ hole, on a 220 mm plate. The window has the bench's move, turn, scale,
 place, extrude, pull, chamfer, arrange, one layer of walls, and the hole
 tools, including one drill, a 90 degree countersink, a washer and a
 split. Section hides the picture above a height. Draw drags a footprint
-on the bed: a block or a slot is the box between the two points, a round
-is centred on the first. The NASA shelf is still only on the bench.
+on the bed, and the solid is shown while the pointer moves: a block or a
+slot is the box between the two points, a round is centred on the first.
+The NASA shelf is still only on the bench.
 
 ## Preview bench
 

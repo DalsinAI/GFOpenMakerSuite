@@ -52,7 +52,7 @@ static const char version[] = "$VER: GFOpenMake 0.1.0 (8.11.2026) AmiCradle Team
  * shown part's triangles, for the view, picking and the slicer. */
 static gs_parts *parts;
 static gs_mesh shown, none;
-static gs_tint tints[GS_PARTS_MAX]; /* shown's faces in each part's metal */
+static gs_tint tints[GS_PARTS_MAX + 1]; /* shown's faces in each part's metal, and the drag's ghost */
 static int ntints;
 static gs_cam cam;
 static struct Window *win;
@@ -113,12 +113,42 @@ static void rebuild_shown(void)
 static int section_on;
 static float section_z = 10.f;
 static gs_mesh section_mesh;
+static gs_mesh sketch_ghost; /* the footprint while the pointer moves, not a part */
+static int sketch_live;
+static int sketch_op = GM_ON_BED; /* what a drag does: Add, On top or Cut */
+static gs_mesh view_mesh; /* shown, with the ghost after it, for the picture only */
+
+static void sketch_clear(void)
+{
+    sketch_live = 0;
+    gs_mesh_free(&sketch_ghost);
+}
+
+/* The picture is the parts, and the ghost after them while a drag is down.
+ * Picking stays on the parts. */
+static const gs_mesh *with_ghost(const gs_mesh *base)
+{
+    int n;
+    gs_tri *t;
+    if (!sketch_live || !sketch_ghost.n || !sketch_ghost.t) return base;
+    n = (base && base->n > 0 ? base->n : 0) + sketch_ghost.n;
+    t = (gs_tri *)malloc(sizeof(gs_tri) * (size_t)n);
+    if (!t) return base;
+    if (base && base->n > 0 && base->t) memcpy(t, base->t, sizeof(gs_tri) * (size_t)base->n);
+    memcpy(t + (base && base->n > 0 ? base->n : 0), sketch_ghost.t, sizeof(gs_tri) * (size_t)sketch_ghost.n);
+    gs_mesh_free(&view_mesh);
+    view_mesh.t = t;
+    view_mesh.n = n;
+    view_mesh.cap = n;
+    return &view_mesh;
+}
 
 static const gs_mesh *view_of(void)
 {
-    if (!section_on) return &shown;
+    const gs_mesh *base = with_ghost(&shown);
+    if (!section_on) return base;
     gs_mesh_free(&section_mesh);
-    if (ge_clip_below(&section_mesh, &shown, section_z)) return &shown;
+    if (ge_clip_below(&section_mesh, base, section_z)) return base;
     return &section_mesh;
 }
 
@@ -141,9 +171,14 @@ static int draw_gpu(int x, int y, int w, int h)
         if (!omv_gpu_room(&gpu, sliced.n * 6 + 6)) return 0;
         nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
     } else {
-        verts_fit(show_layer ? walls.n * 6 : 0);
-        nv = gs_gpu_vertices_plate_tint(vm, &cam, w, h, section_on ? NULL : tints, section_on ? 0 : ntints, gpu.verts,
-                                        gpu.vert_cap);
+        int nt = section_on ? 0 : ntints;
+        verts_fit((show_layer ? walls.n * 6 : 0) + (sketch_live ? sketch_ghost.n * 3 : 0));
+        if (sketch_live && sketch_ghost.n && !section_on && nt < GS_PARTS_MAX + 1) {
+            tints[nt].n = sketch_ghost.n;
+            tints[nt].rgb = sketch_op == GM_FROM_TOP ? 0xe85d4cUL : sketch_op == GM_ON_TOP ? 0x3e7a45UL : 0x0067c0UL;
+            nt++;
+        }
+        nv = gs_gpu_vertices_plate_tint(vm, &cam, w, h, section_on ? NULL : tints, nt, gpu.verts, gpu.vert_cap);
     }
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
@@ -456,7 +491,6 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 }
 
 /* The chosen tool's button is :selected, lit in the accent. */
-static int sketch_op = GM_ON_BED; /* what a drag does: Add, On top or Cut */
 static int sketch_down;
 static float sketch_x0, sketch_y0;
 
@@ -1034,6 +1068,7 @@ static void set_sketch(olui *ui, int on)
     if (on && pull_on) pull_end(ui);
     tool = on ? TOOL_SKETCH : TOOL_ORBIT;
     sketch_down = 0;
+    sketch_clear();
     marks = 0;
     light_tool(ui);
     refresh(ui);
@@ -1050,16 +1085,27 @@ static void on_xdraw(olui *ui, const olui_event *ev, void *userdata)
 
 static void sketch_say(olui *ui, float x1, float y1)
 {
-    float cx, cy, w, d;
+    float cx, cy, w, d, h;
     char line[120];
     int kind = olui_select_index(olui_find(ui, "xkind"));
     if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line)) {
+        sketch_clear();
         say(ui, line);
+        olui_repaint(ui, olui_find(ui, "view"), NULL);
         return;
     }
+    h = omv_number(ui, "xh");
+    if (ge_sketch_ghost(work(), kind, sketch_op, cx, cy, w, d, h, &sketch_ghost, line, (int)sizeof line)) {
+        sketch_clear();
+        say(ui, line);
+        olui_repaint(ui, olui_find(ui, "view"), NULL);
+        return;
+    }
+    sketch_live = 1;
     if (kind == GM_ROUND) snprintf(line, sizeof line, "Round %.1f mm across.", (double)w);
     else snprintf(line, sizeof line, "%s %.1f x %.1f mm.", kind == GM_SLOT ? "Slot" : "Block", (double)w, (double)d);
     say(ui, line);
+    olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
 static void sketch_commit(olui *ui, float x1, float y1)
@@ -1068,6 +1114,7 @@ static void sketch_commit(olui *ui, float x1, float y1)
     float cx, cy, w, d;
     gs_mesh out;
     char line[120];
+    sketch_clear();
     memset(&out, 0, sizeof out);
     if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line) ||
         ge_extrude_at(work(), kind, sketch_op, cx, cy, w, d, omv_number(ui, "xh"), &out, line, (int)sizeof line)) {
@@ -1502,8 +1549,12 @@ int main(int argc, char **argv)
                     rebuild_shown();
                     if (hit) hit = ge_pick_bed(&shown, &cam, vw, vh, lx, ly, &p) == 0;
                     sketch_down = 0;
+                    sketch_clear();
                     if (hit) sketch_commit(ui, p.x, p.y);
-                    else say(ui, "The bed is not under the pointer.");
+                    else {
+                        say(ui, "The bed is not under the pointer.");
+                        olui_repaint(ui, olui_find(ui, "view"), NULL);
+                    }
                 } else if (pull_on) pull_end(ui);
                 if (!sketch_down && dragging && tool == TOOL_MEASURE && drag_moved < 4 && !has_slice &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
@@ -1577,6 +1628,8 @@ done:
     gs_mesh_free(&none);
     gs_mesh_free(&pull_base);
     gs_mesh_free(&section_mesh);
+    gs_mesh_free(&sketch_ghost);
+    gs_mesh_free(&view_mesh);
     gl_walls_free(&walls);
     drop_slice();
     omv_machines_free(&printers);
