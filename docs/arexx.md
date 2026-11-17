@@ -272,6 +272,17 @@ Adds the bench's washer: 32 mm across, a 14 mm hole, 8 mm thick, on the
 bed past the parts shown. `RESULT` says so. RC 10 if the list is full or
 the washer does not build.
 
+### SPLIT
+
+Template: `SPLIT Z/K`
+
+Cuts the picked part on a horizontal plane into two closed halves, as
+the window's Split. `Z` is the height in millimetres. Without it, the
+plane is through the middle. The lower half keeps the part's place.
+The upper half is added and picked. A part over 2,500 triangles is
+refused. `RESULT` says the height. RC 10 if the plane misses the part
+or the cut does not make two solids.
+
 ### PULL
 
 Template: `PULL MM/A FACE/N/K`

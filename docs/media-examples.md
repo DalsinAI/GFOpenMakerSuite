@@ -2,7 +2,7 @@
 
 17 November 2026. Each Cradle instance gets a media volume of example
 files: things to open, slice, burn and look at, not a library to scrape.
-This is the first list. Nothing here has been downloaded yet.
+This is the first set, and it is in `examples/`. The big meshes are for opening and slicing. They are not parts to drill.
 
 The files follow Workshop's kinds (`docs/workshop-plan.md`). A folder
 keeps the license text that came with the files. A file with no license
@@ -48,7 +48,7 @@ Counts below were read from the files already in `cad/bench/library/`.
 
 ## Already in this tree
 
-Copy these. Do not download them again.
+These were copied into `examples/cad/`, not downloaded again. `workshop/` is this suite's, under the MIT licence. `nasa/` is the NASA models already on the bench. `teapot/` is the bench's teapot.
 
 | File | Triangles | What it is | On the volume |
 | --- | --- | --- | --- |
@@ -69,27 +69,24 @@ of the tree. The NASA README says the models are free and without
 copyright. Read the usage guidelines before adding more of them, and do
 not take the insignia. The teapot is the one already on the bench.
 
-`burn/tests/data/` is the first laser set: squares, a hole, two
-rectangles, an open line, a small picture. Those files are this suite's.
-They are enough to open Burn. They are not a real job.
+`burn/tests/data/` is copied to `examples/laser/`. Those files are this suite's. They are enough to open Burn. They are not a real job.
 
-## To fetch
+## Fetched
 
-Each row is one example, not a whole repository.
+Each row is one example, not a whole repository. The licence note is in that folder.
 
-| Kind | Example | Licence | Take this | Leave this |
-| --- | --- | --- | --- | --- |
-| Print | 3DBenchy | Public domain (NTI, Daniel Norée and Paulo Kiefe, February 2025). The original CAD file is also given as CC0 | The STL from [3dbenchy.com](https://www.3dbenchy.com/download/) | A reupload. Count the triangles before it goes on a small volume. It is a slice test, not a part to drill |
-| Print | 20 mm calibration cube | CC BY-SA 3.0, iDig3Dprinting | The cube in [PrusaSlicer's calibration resources](https://github.com/prusa3d/PrusaSlicer/tree/master/resources/calibration), with the attribution in that folder | The rest of PrusaSlicer |
-| Print | Voron calibration cube | GPL-3.0, Voron Design | The one cube | The printer |
-| CAD | One more NASA printable | NASA, free and without copyright | A single small model from [NASA-3D-Resources `3D Printing`](https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Printing), after a triangle count. The sample tube and the maintenance tool are the kind of thing. Terrain, nebulae and the insignia are not | The rest of the repository |
-| Electronics | KiCad `pic_programmer` | Shipped with KiCad. The program is GPL-3.0-or-later. Read the `COPYING` beside the demo and keep it | [The demo](https://gitlab.com/kicad/code/kicad/-/tree/master/demos/pic_programmer) | The other demos, until someone has opened this one |
-| Electronics | Uno in KiCad, with Gerbers | WTFPL, a recreation, not Arduino's files | [sabogalc/KiCad-Arduino-Boards](https://github.com/sabogalc/KiCad-Arduino-Boards), the Uno folder: the `.kicad_pro` and `gerbers.zip` | The other boards in that repository |
-| Electronics | Arduino Uno design files | Whatever licence is printed in the zip. The older Uno files have been shared as CC BY-SA. Read the zip | The design-files archive linked from that board's own documentation | The Uno Q. Its published files are manufacturing files, not an editable design |
-| CNC | One LinuxCNC sample | GPL-2.0, with LinuxCNC | A short program from the LinuxCNC samples | A machine configuration |
+| Where | What | Licence |
+| --- | --- | --- |
+| `examples/print/3DBenchy.stl` | The single-part file from [CreativeTools/3DBenchy](https://github.com/CreativeTools/3DBenchy), 225,706 triangles, 11 MB. A slice test | The repository says it may be downloaded, made and shared. NTI, Daniel Norée and Paulo Kiefe put the model in the public domain in February 2025. The repository itself has no licence file |
+| `examples/print/xyzCalibration_cube.amf` | The 20 mm cube from PrusaSlicer commit `45d0532`, which is where that folder still is. Current PrusaSlicer no longer has it. The file is a zip of an AMF | CC BY-SA 3.0, iDig3Dprinting. The note that came with it is `examples/print/cube-LICENCE.txt` |
+| `examples/print/xyzCalibration_cube.stl` | The same cube, written here as an STL (136 triangles, 20 mm) so the editor and the slicer can open it. The AMF is the source | The same CC BY-SA 3.0 |
+| `examples/print/Voron_Design_Cube_v8.STL` | The Voron test cube, from Voron-Extras `Test_Prints` | GPL-3.0. `examples/print/GPL-3.0.txt` is that repository's licence |
+| `examples/print/Mars-2020-sample-tube.stl` | NASA's Mars 2020 sample tube, 2 MB | NASA 3D Resources: free and without copyright. Not the insignia |
+| `examples/electronics/pic_programmer/` | KiCad's `pic_programmer` demo, the project files only | Shipped with KiCad. The program is GPL-3.0-or-later. `GPL-3.0.txt` is that licence. Kept as taken from the KiCad source on 17 November 2026 |
+| `examples/electronics/uno-kicad/` | A recreation of an Uno, KiCad 8, with `gerbers.zip` | WTFPL. Not Arduino's files. `LICENSE.txt` is in the folder |
+| `examples/cnc/3dtest.ngc` | LinuxCNC's `nc_files/3dtest.ngc`, Ray Henry, 10 February 2000 | LinuxCNC is GPL-2.0. The file itself has no licence line. `examples/cnc/GPL-2.0.txt` is that repository's COPYING |
 
-Gerbers from the Uno recreation sit next to that KiCad project. They are
-the example of a board-house output. No app in this suite opens them.
+The official Arduino Uno design-files zip was not fetched. The page that used to point at it was not checked in this pass, and a guessed address is worse than a missing file. The Uno recreation above is the board and the Gerbers until that zip is taken from the board's own documentation.
 
 ## Not in this list
 

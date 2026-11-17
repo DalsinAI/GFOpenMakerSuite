@@ -724,6 +724,34 @@ static int cmd_washer(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The bench's split: the picked part cut at Z, or through its middle. */
+static int cmd_split(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[120];
+    float z = 0.f;
+    int have;
+    if (!list(g)) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    have = arg_f(c, "Z", &z);
+    if (have < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    remember(g);
+    if (ge_split(list(g), z, have > 0, line, (int)sizeof line) < 0) {
+        forget(g);
+        omr_set_result(c, line[0] ? line : "the split did not cut");
+        return OMR_ERROR;
+    }
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, line);
+    return OMR_OK;
+}
+
 static int cmd_face(void *c, void *g0, int chamfer)
 {
     gm_rexx *g = app(g0);
@@ -947,6 +975,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
     {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
     {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},
+    {sizeof(omr_verb), "SPLIT", "Z/K", "cut the picked part into two at a height", cmd_split},
     {sizeof(omr_verb), "PULL", "MM/A FACE/N/K", "pull a face by a distance", cmd_pull},
     {sizeof(omr_verb), "CHAMFER", "MM/A FACE/N/K", "chamfer a face's edges", cmd_chamfer},
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},

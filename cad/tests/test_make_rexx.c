@@ -148,6 +148,14 @@ int main(void)
                    strstr(buf, "32 mm washer") && !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Washer"),
                "WASHER adds a part");
     }
+    {
+        int n = gs_parts_count(ps);
+        expect(run(&g, "SELECT PART 1", &io) == 0 && run(&g, "SPLIT Z 10", &io) == 0 && io.rc == OMR_OK &&
+                   strstr(buf, "10.0") && gs_parts_count(ps) == n + 1 &&
+                   !strcmp(gs_parts_name(ps, 0), "Box lower") &&
+                   !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Box upper"),
+               "SPLIT at 10 mm");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);

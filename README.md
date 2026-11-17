@@ -100,9 +100,10 @@ temperature command out.
 The solid editor is `cad/src/make.c`. It starts from a 20 mm cube with a
 hole, on a 220 mm plate. The window has the bench's move, turn, scale,
 place, extrude, pull, chamfer, arrange, one layer of walls, and the hole
-tools, including one drill, a 90 degree countersink and a washer. Split,
-the section clip and dragging a sketch onto the bed are still only on
-the bench.
+tools, including one drill, a 90 degree countersink, a washer and a
+split. Section hides the picture above a height. Draw drags a footprint
+on the bed: a block or a slot is the box between the two points, a round
+is centred on the first. The NASA shelf is still only on the bench.
 
 ## Preview bench
 
@@ -117,7 +118,7 @@ The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domai
 ## Examples
 
 Each instance's media volume gets a small set of free examples: STL, SVG,
-DXF, a KiCad project and Gerbers. The list, the licences, and what is
+DXF, a KiCad project and Gerbers. The files are in [examples/](examples/). The list, the licences, and what is
 not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
@@ -125,7 +126,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 Support, and start or end G-code of your own. A skirt can still be a
 rectangle rather than the outline. The view shows the solid and one
 layer's walls. It does not yet lay a sliced toolpath back onto the model.
-Split and the section clip are still only on the bench.
+The NASA models are files in `examples/`, not a shelf in the window.
 
 ## Building
 

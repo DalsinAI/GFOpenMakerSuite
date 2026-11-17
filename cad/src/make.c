@@ -108,6 +108,20 @@ static void rebuild_shown(void)
     ntints = gm_tints(parts, tints, GS_PARTS_MAX);
 }
 
+/* Section: the picture hides whatever is above section_z. The parts are
+ * not cut. Split does that. */
+static int section_on;
+static float section_z = 10.f;
+static gs_mesh section_mesh;
+
+static const gs_mesh *view_of(void)
+{
+    if (!section_on) return &shown;
+    gs_mesh_free(&section_mesh);
+    if (ge_clip_below(&section_mesh, &shown, section_z)) return &shown;
+    return &section_mesh;
+}
+
 static void say(olui *ui, const char *text)
 {
     omv_say(ui, text);
@@ -118,15 +132,18 @@ static void verts_fit(int extra);
 static int draw_gpu(int x, int y, int w, int h)
 {
     int nv, nw;
+    const gs_mesh *vm;
     if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
+    vm = view_of();
     if (has_slice) {
         /* The toolpath alone, fitted to the part, with no grid. */
         if (!omv_gpu_room(&gpu, sliced.n * 6 + 6)) return 0;
         nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
     } else {
         verts_fit(show_layer ? walls.n * 6 : 0);
-        nv = gs_gpu_vertices_plate_tint(&shown, &cam, w, h, tints, ntints, gpu.verts, gpu.vert_cap);
+        nv = gs_gpu_vertices_plate_tint(vm, &cam, w, h, section_on ? NULL : tints, section_on ? 0 : ntints, gpu.verts,
+                                        gpu.vert_cap);
     }
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
@@ -136,7 +153,7 @@ static int draw_gpu(int x, int y, int w, int h)
     }
     nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
                              (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
-                             (uint32_t)(uintptr_t)gpu.depth, w, h, &shown, &cam, has_slice ? 0 : draw_grid, 1);
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, vm, &cam, has_slice ? 0 : draw_grid, 1);
     if (!omv_gpu_show(&gpu, nw, win->RPort, x, y)) return 0;
     presented = 1;
     return 1;
@@ -154,12 +171,14 @@ static void draw_pens(int x, int y, int w, int h)
 {
     unsigned char *rgb;
     int at[2];
+    const gs_mesh *vm;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     vw = w;
     vh = h;
     rebuild_shown();
-    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(&shown, &cam, rgb, w, h)) {
+    vm = view_of();
+    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(vm, &cam, rgb, w, h)) {
         free(rgb);
         return;
     }
@@ -210,7 +229,7 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     draw_marks(x, y, w, h);
 }
 
-enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE, TOOL_MEASURE, TOOL_PULL };
+enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE, TOOL_MEASURE, TOOL_PULL, TOOL_SKETCH };
 
 /* Place's Size and At: the picked part's box and its bottom middle, in
  * tenths of a mm (the fields' one place). Setting them sends nothing. */
@@ -243,6 +262,7 @@ static const char *tool_label(void)
     if (tool == TOOL_SCALE) return "Scale. Drag up grows it.";
     if (tool == TOOL_MEASURE) return "Measure. Click two points on the part or bed.";
     if (tool == TOOL_PULL) return "Pull. Drag the face along its normal. Escape leaves.";
+    if (tool == TOOL_SKETCH) return "Draw. Drag the footprint on the bed. Escape leaves.";
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
@@ -436,11 +456,15 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 }
 
 /* The chosen tool's button is :selected, lit in the accent. */
+static int sketch_op = GM_ON_BED; /* what a drag does: Add, On top or Cut */
+static int sketch_down;
+static float sketch_x0, sketch_y0;
+
 static void light_tool(olui *ui)
 {
-    static const char *const ids[] = { "orbit", "move", "rot", "scale", "measure", "fdrag" };
+    static const char *const ids[] = { "orbit", "move", "rot", "scale", "measure", "fdrag", "xdraw" };
     int i;
-    for (i = 0; i < 6; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
+    for (i = 0; i < 7; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
 }
 
 static void on_tool(olui *ui, const olui_event *ev, void *userdata)
@@ -448,6 +472,7 @@ static void on_tool(olui *ui, const olui_event *ev, void *userdata)
     (void)ev;
     tool = (int)(intptr_t)userdata;
     marks = 0;
+    sketch_down = 0;
     light_tool(ui);
     refresh(ui);
 }
@@ -468,6 +493,7 @@ static void set_pull(olui *ui, int on)
     }
     if (!on && tool != TOOL_PULL) return;
     tool = on ? TOOL_PULL : TOOL_ORBIT;
+    sketch_down = 0;
     marks = 0;
     light_tool(ui);
     refresh(ui);
@@ -796,6 +822,63 @@ static void on_washer(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
     say(ui, line);
 }
+
+/* Section hides the picture above At. Split cuts the picked part there. */
+static void section_say(olui *ui)
+{
+    char line[96];
+    if (!section_on) {
+        say(ui, "Section is off.");
+        return;
+    }
+    snprintf(line, sizeof line, "Section at %.1f mm. Everything above the plane is hidden.", (double)section_z);
+    say(ui, line);
+}
+
+static void set_section_z(olui *ui, float z)
+{
+    if (z < 0.f) z = 0.f;
+    if (z > 220.f) z = 220.f;
+    section_z = (float)(long)(z * 10.f + 0.5f) / 10.f;
+    olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + 0.5f));
+}
+
+static void on_sect(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)userdata;
+    section_on = ev->checked;
+    section_z = omv_number(ui, "sectz");
+    refresh(ui);
+    section_say(ui);
+}
+
+static void on_sectz(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    (void)userdata;
+    section_z = omv_number(ui, "sectz");
+    if (!section_on) olui_set_checked(ui, olui_find(ui, "sect"), section_on = 1);
+    refresh(ui);
+    section_say(ui);
+}
+
+static void on_split(olui *ui, const olui_event *ev, void *userdata)
+{
+    char line[120];
+    (void)ev;
+    (void)userdata;
+    remember();
+    if (ge_split(parts, omv_number(ui, "sectz"), 1, line, (int)sizeof line) < 0) {
+        forget();
+        say(ui, line);
+        return;
+    }
+    picked = -1;
+    verts_fit(0);
+    refresh(ui);
+    say(ui, line);
+}
+
 static void on_plist(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)userdata;
@@ -915,6 +998,16 @@ static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
     gs_mesh out;
     char line[96];
     (void)ev;
+    if (tool == TOOL_SKETCH) {
+        sketch_op = op;
+        if (op == GM_ON_BED)
+            say(ui, "Add is on. Drag the footprint. It stands the height on the bed.");
+        else if (op == GM_ON_TOP)
+            say(ui, "On is on. Drag the footprint. It stands the height on the part and joins.");
+        else
+            say(ui, "Cut is on. Drag the footprint. That depth comes off the top.");
+        return;
+    }
     memset(&out, 0, sizeof out);
     if (ge_extrude(work(), kind, op, omv_number(ui, "xw"), omv_number(ui, "xd"),
                    omv_number(ui, "xh"), &out, line, (int)sizeof line)) {
@@ -924,6 +1017,72 @@ static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
     }
     if (op == GM_ON_BED) take_added(ui, out, kind == GM_ROUND ? "Round" : kind == GM_SLOT ? "Slot" : "Block");
     else {
+        remember();
+        gs_mesh_free(work());
+        *work() = out;
+        picked = -1;
+        refresh(ui);
+    }
+    say(ui, line);
+}
+
+/* Draw: a drag on the bed is the footprint, as the bench's sketch. Add, On
+ * top and Cut, while Draw is on, choose what the drag does and do not place
+ * from the fields. Escape, or Draw again, leaves it. */
+static void set_sketch(olui *ui, int on)
+{
+    if (on && pull_on) pull_end(ui);
+    tool = on ? TOOL_SKETCH : TOOL_ORBIT;
+    sketch_down = 0;
+    marks = 0;
+    light_tool(ui);
+    refresh(ui);
+    say(ui, on ? "Drag the footprint on the bed. Add, On top or Cut choose what it does. Escape leaves Draw."
+               : "Draw is off.");
+}
+
+static void on_xdraw(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    (void)userdata;
+    set_sketch(ui, tool != TOOL_SKETCH);
+}
+
+static void sketch_say(olui *ui, float x1, float y1)
+{
+    float cx, cy, w, d;
+    char line[120];
+    int kind = olui_select_index(olui_find(ui, "xkind"));
+    if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line)) {
+        say(ui, line);
+        return;
+    }
+    if (kind == GM_ROUND) snprintf(line, sizeof line, "Round %.1f mm across.", (double)w);
+    else snprintf(line, sizeof line, "%s %.1f x %.1f mm.", kind == GM_SLOT ? "Slot" : "Block", (double)w, (double)d);
+    say(ui, line);
+}
+
+static void sketch_commit(olui *ui, float x1, float y1)
+{
+    int kind = olui_select_index(olui_find(ui, "xkind"));
+    float cx, cy, w, d;
+    gs_mesh out;
+    char line[120];
+    memset(&out, 0, sizeof out);
+    if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line) ||
+        ge_extrude_at(work(), kind, sketch_op, cx, cy, w, d, omv_number(ui, "xh"), &out, line, (int)sizeof line)) {
+        gs_mesh_free(&out);
+        say(ui, line);
+        return;
+    }
+    if (sketch_op == GM_ON_BED) {
+        if (gs_parts_count(parts) >= GS_PARTS_MAX) {
+            gs_mesh_free(&out);
+            say(ui, "Twenty-four parts is the limit.");
+            return;
+        }
+        take_added(ui, out, kind == GM_ROUND ? "Round" : kind == GM_SLOT ? "Slot" : "Block");
+    } else {
         remember();
         gs_mesh_free(work());
         *work() = out;
@@ -1164,6 +1323,9 @@ int main(int argc, char **argv)
     olui_on(ui, "drill", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_DRILL);
     olui_on(ui, "csink", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERSINK);
     olui_on(ui, "washer", OLUI_CLICK, on_washer, NULL);
+    olui_on(ui, "sect", OLUI_CHANGE, on_sect, NULL);
+    olui_on(ui, "sectz", OLUI_CHANGE, on_sectz, NULL);
+    olui_on(ui, "split", OLUI_CLICK, on_split, NULL);
     {
         int k;
         for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);
@@ -1180,6 +1342,7 @@ int main(int argc, char **argv)
     olui_on(ui, "xadd", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_BED);
     olui_on(ui, "xon", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_TOP);
     olui_on(ui, "xcut", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_FROM_TOP);
+    olui_on(ui, "xdraw", OLUI_CLICK, on_xdraw, NULL);
     olui_on(ui, "plist", OLUI_SELECT, on_plist, NULL);
     olui_on(ui, "pname", OLUI_SUBMIT, on_pname, NULL);
     olui_on(ui, "pshow", OLUI_CLICK, on_part, (void *)(intptr_t)PART_SHOW);
@@ -1290,22 +1453,59 @@ int main(int argc, char **argv)
                 /* Amiga-Z, Amiga-Shift-Z and Amiga-Y, when no field took them */
                 int k = gm_command_key(code, (qual & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND)) != 0,
                                        (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0);
-                if (k == GM_KEY_PULL || k == GM_KEY_LEAVE) set_pull(ui, k == GM_KEY_PULL && tool != TOOL_PULL);
-                else if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
+                if (k == GM_KEY_LEAVE && tool == TOOL_SKETCH) set_sketch(ui, 0);
+                else if (k == GM_KEY_PULL || k == GM_KEY_LEAVE) set_pull(ui, k == GM_KEY_PULL && tool != TOOL_PULL);
+                else if (k == GM_KEY_SECTION) {
+                    section_on = !section_on;
+                    olui_set_checked(ui, olui_find(ui, "sect"), section_on);
+                    refresh(ui);
+                    section_say(ui);
+                } else if (k == GM_KEY_SECT_DOWN || k == GM_KEY_SECT_UP) {
+                    set_section_z(ui, section_z + (k == GM_KEY_SECT_UP ? 1.f : -1.f));
+                    if (!section_on) olui_set_checked(ui, olui_find(ui, "sect"), section_on = 1);
+                    refresh(ui);
+                    section_say(ui);
+                } else if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
             }
             if (cls == IDCMP_MOUSEBUTTONS && code == SELECTDOWN) {
-                if (in_view(ui, w, mx, my, NULL, NULL)) {
-                    if (tool == TOOL_PULL) pull_start(ui, mx, my);
-                    dragging = 1;
-                    drag_moved = 0;
-                    pushed = 0;
-                    drag_x = mx;
-                    drag_y = my;
-                    drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
+                int shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
+                if (in_view(ui, w, mx, my, &lx, &ly)) {
+                    if (tool == TOOL_SKETCH && !shift) {
+                        gs_v p;
+                        rebuild_shown();
+                        sketch_down = 0;
+                        dragging = 0;
+                        if (ge_pick_bed(&shown, &cam, vw, vh, lx, ly, &p) == 0) {
+                            sketch_x0 = p.x;
+                            sketch_y0 = p.y;
+                            sketch_down = 1;
+                            dragging = 1;
+                            drag_moved = 0;
+                            drag_x = mx;
+                            drag_y = my;
+                        } else
+                            say(ui, "The bed is not under the pointer.");
+                    } else {
+                        if (tool == TOOL_PULL) pull_start(ui, mx, my);
+                        dragging = 1;
+                        drag_moved = 0;
+                        pushed = 0;
+                        drag_x = mx;
+                        drag_y = my;
+                        drag_shift = shift;
+                    }
                 }
             } else if (cls == IDCMP_MOUSEBUTTONS && code == SELECTUP) {
-                if (pull_on) pull_end(ui);
-                if (dragging && tool == TOOL_MEASURE && drag_moved < 4 && !has_slice &&
+                if (sketch_down) {
+                    gs_v p;
+                    int hit = in_view(ui, w, mx, my, &lx, &ly);
+                    rebuild_shown();
+                    if (hit) hit = ge_pick_bed(&shown, &cam, vw, vh, lx, ly, &p) == 0;
+                    sketch_down = 0;
+                    if (hit) sketch_commit(ui, p.x, p.y);
+                    else say(ui, "The bed is not under the pointer.");
+                } else if (pull_on) pull_end(ui);
+                if (!sketch_down && dragging && tool == TOOL_MEASURE && drag_moved < 4 && !has_slice &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
                     gs_v p;
                     rebuild_shown();
@@ -1344,9 +1544,15 @@ int main(int argc, char **argv)
                 if (ady < 0) ady = -ady;
                 drag_moved += adx + ady;
                 drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
-                if (tool == TOOL_PULL) {
+                if (sketch_down) {
+                    gs_v p;
+                    if (in_view(ui, w, mx, my, &lx, &ly)) {
+                        rebuild_shown();
+                        if (ge_pick_bed(&shown, &cam, vw, vh, lx, ly, &p) == 0) sketch_say(ui, p.x, p.y);
+                    }
+                } else if (tool == TOOL_PULL) {
                     if (pull_on) pull_move(ui, mx, my);
-                } else if (tool == TOOL_ORBIT || tool == TOOL_MEASURE) {
+                } else if (tool == TOOL_ORBIT || tool == TOOL_MEASURE || tool == TOOL_SKETCH) {
                     if (drag_shift) gs_cam_pan(&cam, dx / 400.f, -dy / 400.f);
                     else gs_cam_orbit(&cam, dx * 0.01f, dy * 0.01f);
                     olui_repaint(ui, olui_find(ui, "view"), NULL);
@@ -1370,6 +1576,7 @@ done:
     gs_mesh_free(&shown);
     gs_mesh_free(&none);
     gs_mesh_free(&pull_base);
+    gs_mesh_free(&section_mesh);
     gl_walls_free(&walls);
     drop_slice();
     omv_machines_free(&printers);

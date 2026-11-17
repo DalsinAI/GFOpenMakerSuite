@@ -445,6 +445,22 @@ int main(void)
         expect(ge_extrude(&part, GM_RECT, GM_FROM_TOP, 40, 40, 30, &out, line, (int)sizeof line) == -1 &&
                    !strcmp(line, "That cut takes the whole part."),
                "a cut wider than the part is refused");
+        {
+            float cx, cy, w, d;
+            expect(ge_footprint(GM_RECT, 0.f, 0.f, 20.f, 10.f, &cx, &cy, &w, &d, line, (int)sizeof line) == 0 &&
+                       near(cx, 10.f) && near(cy, 5.f) && near(w, 20.f) && near(d, 10.f),
+                   "a dragged block is the box between the two points");
+            expect(ge_footprint(GM_ROUND, 40.f, 50.f, 40.f, 55.f, &cx, &cy, &w, &d, line, (int)sizeof line) == 0 &&
+                       near(cx, 40.f) && near(cy, 50.f) && near(w, 10.f),
+                   "a dragged round is centred on the first point, the diameter twice the radius");
+            expect(ge_footprint(GM_RECT, 0.f, 0.f, 0.4f, 10.f, &cx, &cy, &w, &d, line, (int)sizeof line) == -1 &&
+                       strstr(line, "under 1 mm"),
+                   "a drag under 1 mm is refused");
+            expect(ge_extrude_at(&part, GM_RECT, GM_ON_BED, 40.f, 50.f, 20.f, 10.f, 5.f, &out, line, (int)sizeof line) == 0 &&
+                       near((out.min.x + out.max.x) * 0.5f, 40.f) && near((out.min.y + out.max.y) * 0.5f, 50.f) &&
+                       near(out.min.z, 0.f),
+                   "extrude at a dragged place, not the middle of the plate");
+        }
         gs_mesh_free(&part);
         gs_mesh_free(&out);
     }
@@ -824,6 +840,51 @@ int main(void)
                    gm_open_edges(gs_parts_mesh(ps, 1)) == 0 &&
                    fabsf(signed_volume(gs_parts_mesh(ps, 1)) - 3.14159f * (256.f - 49.f) * 8.f) < 60.f,
                "on the bed, past the plate, a ring 32 across with a 14 mm hole");
+        gs_parts_free(ps);
+    }
+    {
+        gs_mesh cube, clip, heavy;
+        gs_parts *ps;
+        char why[120];
+        float pos[3], size[3];
+        int i, k, under = 1;
+        memset(&cube, 0, sizeof cube);
+        memset(&clip, 0, sizeof clip);
+        expect(gm_cube(&cube, 0.f, 0.f, 0.f, 20.f, 20.f, 20.f) == 0, "a cube to section");
+        expect(ge_clip_below(&clip, &cube, 10.f) == 0 && clip.n > 0, "the section view cuts");
+        for (i = 0; i < clip.n; i++) {
+            gs_v p[3];
+            p[0] = clip.t[i].a;
+            p[1] = clip.t[i].b;
+            p[2] = clip.t[i].c;
+            for (k = 0; k < 3; k++)
+                if (p[k].z > 10.05f) under = 0;
+        }
+        expect(under && clip.max.z > 9.5f && clip.min.z < 0.2f, "nothing above 10 mm, the cut is at the plane");
+        gs_mesh_free(&clip);
+        ps = gs_parts_new();
+        expect(ps && gs_parts_add(ps, &cube, "Cube") == 0, "the cube in a list");
+        expect(ge_split(ps, 0.1f, 1, why, (int)sizeof why) == -1 && strstr(why, "misses"), "a section that misses");
+        expect(ge_split(ps, 10.f, 1, why, (int)sizeof why) == 0 && gs_parts_count(ps) == 2 && gs_parts_picked(ps) == 1 &&
+                   strstr(why, "10.0") && !strcmp(gs_parts_name(ps, 0), "Cube lower") &&
+                   !strcmp(gs_parts_name(ps, 1), "Cube upper"),
+               "Split: two halves, the upper one picked");
+        ge_where(gs_parts_mesh(ps, 0), pos, size);
+        expect(near(size[0], 20.f) && near(size[2], 10.f) && near(pos[2], 0.f) && gm_open_edges(gs_parts_mesh(ps, 0)) == 0,
+               "the lower half is 20 by 10, closed, on the bed");
+        ge_where(gs_parts_mesh(ps, 1), pos, size);
+        expect(near(size[2], 10.f) && near(pos[2], 10.f) && gm_open_edges(gs_parts_mesh(ps, 1)) == 0 &&
+                   gs_parts_colour(ps, 0) == gs_parts_colour(ps, 1),
+               "the upper half sits on the cut, the same metal");
+        memset(&heavy, 0, sizeof heavy);
+        heavy.n = 2501;
+        heavy.t = (gs_tri *)calloc(2501, sizeof(gs_tri));
+        heavy.t[0].a = (gs_v){0, 0, 0};
+        heavy.t[0].b = (gs_v){1, 0, 0};
+        heavy.t[0].c = (gs_v){0, 1, 20};
+        expect(heavy.t && gs_parts_add(ps, &heavy, "Heavy") >= 0 &&
+                   ge_split(ps, 10.f, 1, why, (int)sizeof why) == -1 && strstr(why, "2,500"),
+               "over 2,500 triangles is not split");
         gs_parts_free(ps);
     }
     if (fails) { /* the checks after the first count too */

@@ -4,6 +4,8 @@ build/
 *.stl
 !core/tests/data/*.stl
 !cad/bench/library/*.stl
+!examples/**/*.stl
+!examples/**/*.STL
 cad/bench/node_modules/
 cad/bench/dist/
 build-amiga/
