@@ -33,7 +33,7 @@ int burn_ui_count(olui *ui)
 int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int errlen)
 {
     olui_el *parent = olui_find(ui, "layers");
-    char m[512], css[96], id[32];
+    char m[2048], css[96], id[32];
     int i;
     if (!parent) {
         snprintf(err, (size_t)errlen, "the layer list is missing");
@@ -50,15 +50,21 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
         burn_layer_of(o, d, i, &ly);
         if (ly.colour == GV_NONE) continue;
         snprintf(m, sizeof m,
-                 "<row id=\"layer-%d\">"
+                 "<column id=\"layer-%d\">"
+                 "<row>"
                  "<checkbox id=\"layer-%d-on\"></checkbox>"
                  "<div id=\"layer-%d-swatch\" class=\"swatch\"></div>"
-                 "<label id=\"layer-%d-name\">#%06x</label>"
+                 "<label id=\"layer-%d-name\" class=\"name\">#%06x</label>"
+                 "</row>"
+                 "<row><label for=\"layer-%d-power\">Power</label>"
                  "<spinner id=\"layer-%d-power\" min=\"0\" max=\"100\" step=\"1\" value=\"%.0f\">"
-                 "<spinner id=\"layer-%d-speed\" min=\"0.1\" max=\"500\" step=\"0.1\" value=\"%.1f\">"
-                 "<spinner id=\"layer-%d-passes\" min=\"1\" max=\"100\" step=\"1\" value=\"%d\">"
-                 "</row>",
-                 i, i, i, i, (unsigned)ly.colour, i, (double)ly.power, i, (double)ly.speed, i, ly.passes);
+                 "<span>%%</span></row>"
+                 "<row><label for=\"layer-%d-speed\">mm/s</label>"
+                 "<spinner id=\"layer-%d-speed\" min=\"0.1\" max=\"500\" step=\"0.1\" value=\"%.1f\"></row>"
+                 "<row><label for=\"layer-%d-passes\">Pass</label>"
+                 "<spinner id=\"layer-%d-passes\" min=\"1\" max=\"100\" step=\"1\" value=\"%d\"></row>"
+                 "</column>",
+                 i, i, i, i, (unsigned)ly.colour, i, i, (double)ly.power, i, i, (double)ly.speed, i, i, ly.passes);
         snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", i, (unsigned)ly.colour);
         if (!olui_add_css(ui, css) || !olui_add(ui, parent, m, err, (size_t)errlen)) return -1;
         id_of(id, (int)sizeof id, i, "on");

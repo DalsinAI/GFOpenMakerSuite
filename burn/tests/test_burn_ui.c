@@ -99,7 +99,16 @@ int main(void)
         expect(olui_box(ui, olui_find(ui, "layer-0"), &r) && inside(&r, w, h) &&
                    olui_box(ui, olui_find(ui, "layer-1"), &p1) && inside(&p1, w, h) && !overlap(&r, &p1),
                "both layer rows are in the window and clear of each other");
-        expect(olui_box(ui, olui_find(ui, "layer-0-power"), &p0) && inside(&p0, w, h), "power is in the first row");
+        expect(olui_box(ui, olui_find(ui, "layer-0-power"), &p0) && inside(&p0, w, h) &&
+                   p0.x + p0.w <= side.x + side.w && r.x + r.w <= side.x + side.w,
+               "power is in the first row, and the list stays in the side column");
+        {
+            olui_rect boxset, pass;
+            expect(olui_box(ui, olui_find(ui, "settingsbox"), &boxset) &&
+                       olui_box(ui, olui_find(ui, "layer-0-passes"), &pass) &&
+                       pass.x >= boxset.x && pass.x + pass.w <= boxset.x + boxset.w,
+                   "the pass spinner stays inside the settings box");
+        }
         expect(omv_number(ui, "layer-0-power") == 50.f && omv_number(ui, "layer-0-speed") == 20.f &&
                    omv_number(ui, "layer-0-passes") == 1.f && olui_get_checked(olui_find(ui, "layer-0-on")),
                "defaults in the list: 50%, 20 mm/s, one pass, on");
