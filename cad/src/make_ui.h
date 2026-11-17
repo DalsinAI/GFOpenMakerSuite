@@ -19,7 +19,8 @@
  * and the groups are a row shorter where they can be. The side is two
  * tabs, Model (File to Place) and Print (Layers, and Slice with core/ui's
  * print settings panel, omview_settings.h, put in "settings" by make.c),
- * as wide as that panel. */
+ * as wide as that panel. Place's Size and At, a row for each axis, are the
+ * bench's Size and place: the picked part's box in mm, and its bottom middle. */
 static const char gm_markup[] =
     "<row id=\"body\">"
     "<column id=\"side\">"
@@ -38,6 +39,10 @@ static const char gm_markup[] =
     "</fieldset>"
     "<fieldset><legend>Place</legend>"
     "<row><button id=\"drop\">Drop</button><button id=\"centre\">Centre</button><button id=\"lay\">Lay flat</button></row>"
+    "<row><label></label><span class=\"head\">Size mm</span><span class=\"head\">At mm</span></row>"
+    "<row><label for=\"sx\">X</label><spinner id=\"sx\" min=\"0.1\" max=\"999.9\" step=\"0.1\" value=\"0.0\"><spinner id=\"px\" min=\"-999.9\" max=\"999.9\" step=\"0.1\" value=\"0.0\"></row>"
+    "<row><label for=\"sy\">Y</label><spinner id=\"sy\" min=\"0.1\" max=\"999.9\" step=\"0.1\" value=\"0.0\"><spinner id=\"py\" min=\"-999.9\" max=\"999.9\" step=\"0.1\" value=\"0.0\"></row>"
+    "<row><label for=\"sz\">Z</label><spinner id=\"sz\" min=\"0.1\" max=\"999.9\" step=\"0.1\" value=\"0.0\"><spinner id=\"pz\" min=\"-999.9\" max=\"999.9\" step=\"0.1\" value=\"0.0\"></row>"
     "<row><label for=\"face\">Face</label><span id=\"face\">no face</span></row>"
     "</fieldset>"
     "</tab><tab title=\"Print\">"
@@ -74,6 +79,7 @@ static const char gm_css[] =
     "label{width:40px;color:#616161}"
     "select{flex:1}"
     "spinner{flex:1}"
+    "span.head{flex:1;color:#616161}"
     "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
     "hr{background:#d0d0d0}";

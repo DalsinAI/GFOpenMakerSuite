@@ -266,6 +266,34 @@ int main(void)
         expect(ge_shape(&part, GE_CONE, &stock) == 0 && part.n > 0, "with no stock, at the plate's origin");
         gs_mesh_free(&part);
     }
+    {
+        /* Size and place: the box's bottom middle and its size, set. */
+        gs_mesh p;
+        float pos[3], size[3], vol;
+        memset(&p, 0, sizeof p);
+        expect(gm_cube(&p, 10.f, 20.f, 5.f, 4.f, 8.f, 2.f) == 0, "a part to place");
+        ge_where(&p, pos, size);
+        expect(near(pos[0], 12.f) && near(pos[1], 24.f) && near(pos[2], 5.f), "where: bottom middle");
+        expect(near(size[0], 4.f) && near(size[1], 8.f) && near(size[2], 2.f), "where: size");
+        ge_place(&p, 100.f, 90.f, 0.f);
+        ge_where(&p, pos, size);
+        expect(near(pos[0], 100.f) && near(pos[1], 90.f) && near(pos[2], 0.f) && near(size[1], 8.f), "placed");
+        vol = signed_volume(&p);
+        expect(ge_fit(&p, 1, 16.f) == 0, "fit Y to 16");
+        ge_where(&p, pos, size);
+        expect(near(size[0], 8.f) && near(size[1], 16.f) && near(size[2], 4.f), "fit scales evenly");
+        expect(near(pos[0], 100.f) && near(pos[1], 90.f) && near(pos[2], 0.f), "fit keeps the bottom middle");
+        expect(near(signed_volume(&p), vol * 8.f), "fit: eight times the volume");
+        expect(ge_fit(&p, 1, 0.f) == -1 && ge_fit(&p, 1, -2.f) == -1 && ge_fit(&p, 3, 5.f) == -1 &&
+                   ge_fit(&p, -1, 5.f) == -1,
+               "fit refuses no size and no axis");
+        ge_where(&p, pos, size);
+        expect(near(size[1], 16.f), "a refused fit leaves the part");
+        gs_mesh_free(&p);
+        expect(ge_fit(&p, 0, 5.f) == -1, "fit refuses an empty part");
+        ge_where(&p, pos, size);
+        expect(pos[0] == 0.f && size[2] == 0.f, "where: an empty part is nowhere");
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

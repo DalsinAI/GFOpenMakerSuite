@@ -191,12 +191,28 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
 
 enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE };
 
+/* Place's Size and At: the picked part's box and its bottom middle, in
+ * tenths of a mm (the fields' one place). Setting them sends nothing. */
+static const char *const place_ids[6] = {"sx", "sy", "sz", "px", "py", "pz"};
+
+static int tenths(float v)
+{
+    return (int)(v < 0.f ? v * 10.f - 0.5f : v * 10.f + 0.5f);
+}
+
 static void face_line(olui *ui)
 {
     char buf[32];
+    float pos[3], size[3];
+    int k;
     if (picked >= 0) snprintf(buf, sizeof buf, "face %d", picked);
     else snprintf(buf, sizeof buf, "no face");
     olui_set_text(ui, olui_find(ui, "face"), buf);
+    ge_where(work(), pos, size);
+    for (k = 0; k < 3; k++) {
+        olui_set_number(ui, olui_find(ui, place_ids[k]), tenths(size[k]));
+        olui_set_number(ui, olui_find(ui, place_ids[3 + k]), tenths(pos[k]));
+    }
 }
 
 static const char *tool_label(void)
@@ -574,6 +590,29 @@ static int in_view(olui *ui, struct Window *w, int mx, int my, int *lx, int *ly)
     return 1;
 }
 
+/* Size: the part scaled evenly to the new size (ge_fit); At: moved there. */
+static void on_place(olui *ui, const olui_event *ev, void *userdata)
+{
+    int which = (int)(intptr_t)userdata;
+    float v = omv_number(ui, place_ids[which]), pos[3], size[3];
+    (void)ev;
+    ge_where(work(), pos, size);
+    if (which < 3 ? (v - size[which] < 0.05f && size[which] - v < 0.05f) : (v - pos[which - 3] < 0.05f && pos[which - 3] - v < 0.05f))
+        return;
+    remember();
+    if (which < 3) {
+        if (ge_fit(work(), which, v)) {
+            say(ui, "That part is too thin to size that way.");
+            face_line(ui);
+            return;
+        }
+    } else {
+        pos[which - 3] = v;
+        ge_place(work(), pos[0], pos[1], pos[2]);
+    }
+    refresh(ui);
+}
+
 static void take_added(olui *ui, gs_mesh box)
 {
     remember();
@@ -794,6 +833,10 @@ int main(int argc, char **argv)
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
+    {
+        int k;
+        for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);
+    }
     {
         int k;
         for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));

@@ -83,4 +83,13 @@ const char *ge_shape_name(int kind);
  * 0, or -1. */
 int ge_shape(gs_mesh *m, int kind, const gs_mesh *stock);
 
+/* Size and place, as the bench's: where is the middle of the part's box
+ * in X and Y and its bottom in Z; size its box. Both 0 with no part. */
+void ge_where(const gs_mesh *m, float pos[3], float size[3]);
+/* Moved so where is (x, y, z). */
+void ge_place(gs_mesh *m, float x, float y, float z);
+/* Scaled evenly so its box is mm along axis (0 X, 1 Y, 2 Z), where kept.
+ * 0, or -1 (no part, no axis, no size, or one too thin to scale). */
+int ge_fit(gs_mesh *m, int axis, float mm);
+
 #endif

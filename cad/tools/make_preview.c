@@ -11,6 +11,7 @@
  * held to the first printer; SIDE: the side's tab (1, Print, to start);
  * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
  * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
+ * FIT=axis:mm and AT=x,y[,z]: Place's Size and At on the added shape first.
  * OPEN: a select's id, shown open (the side on Model for "shape").
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
@@ -96,7 +97,18 @@ int main(int argc, char **argv)
         memset(&sc, 0, sizeof sc);
         sc.stock = part;
         sc.has_added = sc.on_added = 1;
-        if (ge_shape(&sc.added, atoi(getenv("SHAPE")), &part) ||
+        if (ge_shape(&sc.added, atoi(getenv("SHAPE")), &part) == 0 && getenv("FIT")) {
+            int axis;
+            float mm; /* as Place's Size, before the Join or Cut */
+            if (sscanf(getenv("FIT"), "%d:%f", &axis, &mm) != 2 || ge_fit(&sc.added, axis, mm)) return 2;
+        }
+        if (sc.added.n && getenv("AT")) {
+            float pos[3], size[3]; /* as Place's At: x,y[,z] */
+            ge_where(&sc.added, pos, size);
+            if (sscanf(getenv("AT"), "%f,%f,%f", &pos[0], &pos[1], &pos[2]) < 2) return 2;
+            ge_place(&sc.added, pos[0], pos[1], pos[2]);
+        }
+        if (!sc.added.n ||
             ge_bool(&sc, getenv("OP") ? atoi(getenv("OP")) : 0, NULL)) {
             fprintf(stderr, "SHAPE: that did not build or did not meet the part\n");
             return 1;
@@ -149,6 +161,16 @@ int main(int argc, char **argv)
         int k; /* as make.c fills Parts' list, showing the shape added */
         for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
         olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
+    }
+    {
+        static const char *const ids[6] = {"sx", "sy", "sz", "px", "py", "pz"};
+        float pos[3], size[3];
+        int k; /* as make.c's Place: the part's box and bottom middle */
+        ge_where(&part, pos, size);
+        for (k = 0; k < 3; k++) {
+            olui_set_number(ui, olui_find(ui, ids[k]), (int)(size[k] * 10.f + 0.5f));
+            olui_set_number(ui, olui_find(ui, ids[3 + k]), (int)(pos[k] < 0.f ? pos[k] * 10.f - 0.5f : pos[k] * 10.f + 0.5f));
+        }
     }
     if (!olui_layout(ui, w, h)) return 1;
     if (getenv("OPEN")) {

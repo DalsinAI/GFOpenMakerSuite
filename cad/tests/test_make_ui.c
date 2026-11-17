@@ -154,6 +154,37 @@ int main(void)
             expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
                        r.w >= 90 && !overlap(&r, &box[10]) && r.x < box[10].x,
                    "the shape select is beside Add, wide enough for a name");
+            {
+                /* Place: a row for X, Y and Z, its Size then its At, as the bench's
+                 * Size and place, with room for "-999.9" beside the arrows. */
+                static const char *const nums[6] = {"sx", "sy", "sz", "px", "py", "pz"};
+                olui_rect n[6], side;
+                int a, b;
+                char what[80];
+                olui_box(ui, olui_find(ui, "side"), &side);
+                for (a = 0; a < 6; a++) {
+                    olui_el *el = olui_find(ui, nums[a]);
+                    snprintf(what, sizeof what, "%s: a number field in the side, room for -999.9", nums[a]);
+                    expect(el && !strcmp(olui_tag(el), "spinner") && olui_box(ui, el, &n[a]) && inside(&n[a], w, h) &&
+                               n[a].x >= side.x && n[a].x + n[a].w <= side.x + side.w && n[a].w >= 72 && olui_number_decimals(el) == 1,
+                           what);
+                    for (b = 0; b < NBUTTONS; b++) {
+                        if (TAB_OF(b) != 0) continue;
+                        snprintf(what, sizeof what, "%s is clear of %s", nums[a], buttons[b]);
+                        expect(!overlap(&n[a], &box[b]), what);
+                    }
+                    for (b = 0; b < a; b++) {
+                        snprintf(what, sizeof what, "%s is clear of %s", nums[a], nums[b]);
+                        expect(!overlap(&n[a], &n[b]), what);
+                    }
+                }
+                expect(n[0].y == n[3].y && n[1].y == n[4].y && n[2].y == n[5].y && n[0].y < n[1].y && n[1].y < n[2].y &&
+                           n[0].x < n[3].x && n[0].x == n[1].x && n[3].x == n[5].x,
+                       "a row each for X, Y, Z: Size, then At");
+                expect(olui_box(ui, olui_find(ui, "status"), &status) && n[2].y + n[2].h < status.y &&
+                           n[2].y + n[2].h <= side.y + side.h,
+                       "Place still clear of the status line");
+            }
             break;
         }
         for (i = 0; i < omv_settings_tabs(); i++) {
