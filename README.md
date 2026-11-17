@@ -14,6 +14,7 @@ as the fallback.
 | `burn/` | A laser app: `openmake-burn` and the OpenMakeBurn window (SVG to Grbl G-code); the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
 | `cnc/` | A CNC app, not started | OpenMakeCNC |
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
+| `workshop/` | A project drawer for one product: CAD, print, laser, CNC and KiCad work together; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
 The binaries keep their names (GFOpenSlicer, GFOpenMake). `make test` builds
 and runs every host test.
