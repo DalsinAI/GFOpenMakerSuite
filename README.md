@@ -40,8 +40,12 @@ We already have OpenGPU. This tree does not grow a second GPU.
 From the shell:
 
 ```
-gfopenslicer in.stl out.gcode LAYER=0.2 INFILL=20 LINE=0.4 FILAMENT=1.75 HOTEND=200 BED=60 SKIRT=1
+gfopenslicer in.stl out.gcode SETTINGS=settings/standard pattern=grid around=brim loops=3
 ```
+
+`SETTINGS=` names a print settings profile (`settings/standard` is the
+built-in defaults, written out to copy); any of its keys can be given as
+`key=value` after it. The older `LAYER=`, `INFILL=`, `SKIRT=` ... still work.
 
 ## Where the view comes from
 

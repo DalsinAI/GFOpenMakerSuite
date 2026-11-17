@@ -3,7 +3,8 @@
 STL to G-code for 3D printers, in the GFOpenMake suite. The binary is still
 GFOpenSlicer.
 
-- `src/cli.c`: `gfopenslicer`, the slice from the shell: the window's job (`sl_job`) for the generic Marlin printer, or `DRIVER=`/`PROFILE=`, checked against it first; the same G-code as `openmake-slice`. `SKIRT=` is gone (the engine makes a brim).
+- `src/cli.c`: `gfopenslicer`, the slice from the shell: the window's job (`sl_job`) for the generic Marlin printer, or `DRIVER=`/`PROFILE=`, checked against it first; the same G-code as `openmake-slice`.
+- `include/sl_args.h`, `src/sl_args.c`: both commands' print settings: `SETTINGS=profile` (`../settings/standard`, the defaults), the older `LAYER=` ... `SKIRT=` names over it, and any profile key as `key=value` over those.
 - `include/sl_job.h`, `src/sl_job.c`: the slicer's job on OpenMakeCore's toolpath engine: a part loaded onto the bed, sliced on several tasks (`gp_part_par`), estimated, checked against the printer and written. The window and `openmake-slice` both run it.
 - `src/amiga.c`, `src/markup.h`, `src/slicer_ui.c`: the Amiga window (GFOpenLayout, Clear): Open, Slice, the settings, the printer picker, the layer slider and Save G-code, resizable from 640 by 480 inside, on core/ui's helpers.
 - `src/openmake_slice.c`: `openmake-slice`, the new slice from the shell: OpenMakeCore's

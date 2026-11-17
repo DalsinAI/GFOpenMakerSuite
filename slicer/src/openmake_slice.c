@@ -2,8 +2,11 @@
  * checked against the machine before it is written: the window's job
  * (sl_job.h), from the shell.
  *   openmake-slice in.stl out.gcode DRIVER=driver.om PROFILE=profile.om
- *       [LAYER=0.2] [LINE=0.4] [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=3]
+ *       [SETTINGS=settings/standard] [key=value ...] [LAYER=0.2] [LINE=0.4]
+ *       [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=n] [SKIRT=n] [FILAMENT=1.75]
  *       [HOTEND=200] [BED=60] [TASKS=cores] [PREVIEW=picture.ppm] [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part]
+ * The print settings: a profile, the older names over it, key=value over
+ * those (sl_args.h).
  * TASKS: the layers made on that many tasks at once (gp_part_par); the
  * G-code is the same on any number. By default one a core (gs_par_cores).
  * PREVIEW also draws the toolpath (gt_paint) to a PPM picture: ZOOM times
@@ -12,6 +15,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_layer.h"
 #include "gs_par.h"
+#include "sl_args.h"
 #include "sl_job.h"
 
 #include <stdio.h>
@@ -73,23 +77,19 @@ int main(int argc, char **argv)
     const char *driver = arg(argc, argv, "DRIVER"), *profile = arg(argc, argv, "PROFILE");
     int rc = 1, tasks = gs_par_cores();
     if (argc < 3 || !driver) {
-        fprintf(stderr, "usage: openmake-slice in.stl out.gcode DRIVER=driver.om [PROFILE=profile.om] [LAYER=0.2] [LINE=0.4]\n"
-                        "       [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=3] [HOTEND=200] [BED=60] [TASKS=cores] [PREVIEW=out.ppm]\n"
-                        "       [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
+        fprintf(stderr, "usage: openmake-slice in.stl out.gcode DRIVER=driver.om [PROFILE=profile.om]\n"
+                        "       [SETTINGS=settings/standard] [key=value ...] [LAYER=0.2] [LINE=0.4] [WALLS=2]\n"
+                        "       [SKINS=3] [INFILL=20] [BRIM=n] [SKIRT=n] [FILAMENT=1.75] [HOTEND=200] [BED=60]\n"
+                        "       [TASKS=cores] [PREVIEW=out.ppm] [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
         return 2;
     }
-    gs_settings_default(&set);
-    num(argc, argv, "LAYER", &set.layer_h);
-    num(argc, argv, "LINE", &set.line_w);
-    num(argc, argv, "INFILL", &set.infill);
-    whole(argc, argv, "WALLS", &set.walls);
-    if (arg(argc, argv, "SKINS")) whole(argc, argv, "SKINS", &set.top), set.bottom = set.top;
-    if (arg(argc, argv, "BRIM")) whole(argc, argv, "BRIM", &set.loops), set.around = set.loops > 0 ? GS_BRIM : GS_NONE;
+    if (sl_args(&set, argc, argv, 3, err, (int)sizeof err)) {
+        fprintf(stderr, "openmake-slice: %s\n", err);
+        return 2;
+    }
     whole(argc, argv, "TASKS", &tasks);
     if (tasks < 1) tasks = 1;
     if (tasks > 64) tasks = 64;
-    num(argc, argv, "HOTEND", &set.hotend);
-    num(argc, argv, "BED", &set.bed);
 
     om_clear(&m);
     if (om_load(&m, driver, err, (int)sizeof err) || (profile && om_load(&m, profile, err, (int)sizeof err))) {

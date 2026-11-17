@@ -12,10 +12,10 @@ LAYOUT ?= ../gfopenlayout
 
 # OpenMakeCore's slice: a part's layers as a toolpath.
 PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/src/toolpath.c core/src/layer.c core/src/loops.c
-SL_JOB = slicer/src/sl_job.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
+SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/openmake-slice
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/openmake-slice
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -136,6 +136,11 @@ $(BUILD)/test_plan_one: $(PAR_TEST) core/src/par_one.c core/include/gs_par.h cor
 $(BUILD)/test_toolpath_paint: core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_toolpath.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
+# The slicing commands' settings arguments (slicer/src/sl_args.c).
+$(BUILD)/test_sl_args: slicer/tests/test_sl_args.c slicer/src/sl_args.c slicer/include/sl_args.h core/src/settings.c settings/standard | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Islicer/include -Imachines/include -o $@ slicer/tests/test_sl_args.c \
+	    slicer/src/sl_args.c core/src/settings.c $(PLAN) core/src/gcode.c machines/src/machine.c core/src/view.c core/src/solid.c -lm
+
 # A part to G-code for a machine, from the shell.
 $(BUILD)/openmake-slice: slicer/src/openmake_slice.c slicer/include/sl_job.h $(SL_JOB) core/src/toolpath_paint.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Islicer/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(sort $(SL_JOB)) core/src/toolpath_paint.c -lm
@@ -169,7 +174,7 @@ $(BUILD)/test_task_lib: core/tests/test_task_lib.c core/src/par_posix.c core/inc
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/openmake-slice $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/openmake-slice $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -199,6 +204,7 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit
 	$(BUILD)/test_toolpath_paint
 	$(BUILD)/test_settings
 	$(BUILD)/test_settings_ui
+	$(BUILD)/test_sl_args
 	$(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/wrench.gcode \
 	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om \
 	    PREVIEW=$(BUILD)/wrench.ppm SIZE=320x240
@@ -213,9 +219,20 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit
 	    grep -q "layers made on $$t task" $(BUILD)/wrench-$$t.txt || exit 1; done
 	@echo "slice command ok"
 	# gfopenslicer: the same engine and the same G-code, for the generic
-	# Marlin printer unless DRIVER/PROFILE say otherwise; SKIRT is gone.
-	$(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli.gcode SKIRT=1 > $(BUILD)/cli.txt 2>&1
-	cmp $(BUILD)/wrench.gcode $(BUILD)/cli.gcode && grep -q 'SKIRT is gone' $(BUILD)/cli.txt && grep -q 'wrote .*cli.gcode' $(BUILD)/cli.txt
+	# Marlin printer unless DRIVER/PROFILE say otherwise. The shipped
+	# profile, and SKIRT=2, are the defaults' G-code; key=value changes it;
+	# a key that is not a setting is refused.
+	$(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli.gcode > $(BUILD)/cli.txt 2>&1
+	cmp $(BUILD)/wrench.gcode $(BUILD)/cli.gcode && grep -q 'wrote .*cli.gcode' $(BUILD)/cli.txt
+	$(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-std.gcode SETTINGS=settings/standard SKIRT=2 > /dev/null
+	cmp $(BUILD)/wrench.gcode $(BUILD)/cli-std.gcode
+	$(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-kv.gcode pattern=grid around=brim hotend=210 > /dev/null
+	! cmp -s $(BUILD)/wrench.gcode $(BUILD)/cli-kv.gcode && grep -q '^M109 S210' $(BUILD)/cli-kv.gcode
+	$(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/kv.gcode DRIVER=machines/printer/marlin/driver.om \
+	    PROFILE=machines/printer/marlin/profiles/generic-220.om pattern=grid around=brim hotend=210 > /dev/null
+	cmp $(BUILD)/cli-kv.gcode $(BUILD)/kv.gcode
+	! $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-bad.gcode spped=60 2> $(BUILD)/cli-bad.txt
+	grep -q 'spped=60: no such setting' $(BUILD)/cli-bad.txt && test ! -e $(BUILD)/cli-bad.gcode
 	! $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-tiny.gcode PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/cli-tiny.txt
 	grep -q 'Tiny 50 cannot print this' $(BUILD)/cli-tiny.txt && test ! -e $(BUILD)/cli-tiny.gcode
 	! $(BUILD)/gfopenslicer 2> $(BUILD)/cli-usage.txt && grep -q 'usage: gfopenslicer' $(BUILD)/cli-usage.txt
