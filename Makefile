@@ -105,7 +105,7 @@ $(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c ma
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
 
 # OpenMakeBurn: an SVG to Grbl laser G-code (line mode).
-BURN_JOB = burn/src/burn_job.c burn/src/material.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
+BURN_JOB = burn/src/burn_job.c burn/src/material.c burn/src/image.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
 $(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h burn/include/burn_material.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/tests/test_burn.c $(BURN_JOB) -lm
 
@@ -358,6 +358,10 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-matbad.gcode \
 	    material=materials/laser/no-such.om 2> $(BUILD)/burn-matbad.txt
 	grep -q 'cannot open' $(BUILD)/burn-matbad.txt && test ! -e $(BUILD)/burn-matbad.gcode
+	$(BUILD)/openmake-burn burn/tests/data/bars-8x2.pgm $(BUILD)/burn-img.gcode \
+	    interval=1 power=100 > /dev/null
+	grep -q '^M4' $(BUILD)/burn-img.gcode && grep -q '^S1000' $(BUILD)/burn-img.gcode && \
+	    grep -q '^G0 ' $(BUILD)/burn-img.gcode && grep -q '^G1 ' $(BUILD)/burn-img.gcode
 	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview

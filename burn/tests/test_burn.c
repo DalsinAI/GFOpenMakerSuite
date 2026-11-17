@@ -2,6 +2,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 #include "burn_material.h"
+#include "burn_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -528,6 +529,59 @@ int main(void)
                    !strcmp(lib.at[2].name, "Draft engrave"),
                "the library is sorted by name");
         burn_materials_free(&lib);
+    }
+
+    {
+        burn_image im;
+        float *spd = NULL;
+        burn_image_init(&im);
+        expect(burn_is_image("burn/tests/data/bars-8x2.pgm") && !burn_is_image("core/tests/data/rect-10mm.svg"),
+               "a PGM is a picture, an SVG is not");
+        expect(burn_image_load(&im, "burn/tests/data/bars-8x2.pgm", err, (int)sizeof err) == 0 && im.cols == 8 &&
+                   im.rows == 2 && im.grey[0] == 1.f && im.grey[4] == 0.f,
+               "the 8 by 2 bars, black then white on the top row");
+        burn_defaults(&o);
+        o.power = 100.f;
+        o.interval = 1.f;
+        gt_init(&p);
+        expect(burn_image_path(&p, &spd, &im, &o) == 0 && p.n == 4 && spd && p.m[0].kind == GT_TRAVEL &&
+                   p.m[0].w == 0.f && p.m[0].x == 0.f && p.m[0].y == 1.f && p.m[1].kind == GT_CUT && p.m[1].w == 100.f &&
+                   p.m[1].x == 4.f && p.m[1].y == 1.f,
+               "top row: travel to 0,1, cut to 4,1 at 100%");
+        expect(p.m[2].kind == GT_TRAVEL && p.m[2].w == 0.f && p.m[2].x == 8.f && p.m[2].y == 0.f &&
+                   p.m[3].kind == GT_CUT && p.m[3].w == 100.f && p.m[3].x == 4.f && p.m[3].y == 0.f && spd[1] == 20.f,
+               "bottom row snakes: travel to 8,0, cut to 4,0, laser off on the travel");
+        free(spd);
+        o.invert = 1;
+        expect(burn_image_path(&p, NULL, &im, &o) == 0 && p.n == 4 && p.m[1].x == 8.f && p.m[1].y == 1.f &&
+                   p.m[0].x == 4.f && p.m[3].x == 0.f,
+               "invert burns the other half");
+        o.invert = 0;
+        o.width = 16.f;
+        expect(burn_image_px(&o, 8) == 2.f && burn_image_path(&p, NULL, &im, &o) == 0 && p.m[1].x == 8.f,
+               "width=16 mm makes each pixel 2 mm");
+        memset(&st, 0, sizeof st);
+        o.width = 0.f;
+        expect(burn_write("burn/tests/data/bars-8x2.pgm", "build/bars.gcode", &m, &o, &st, err, (int)sizeof err) == 0 &&
+                   st.moves == 4 && (g = slurp("build/bars.gcode")) && strstr(g, "M4") && strstr(g, "S1000") &&
+                   strstr(g, "G0") && strstr(g, "G1 "),
+               "wrote G-code from a PGM");
+        expect(g && strstr(g, "G0") && strstr(g, "S0"), "travels are G0, and S0 appears for a dark travel");
+        free(g);
+        {
+            FILE *f = fopen("build/white.pgm", "w");
+            expect(f != NULL, "a white picture");
+            if (f) {
+                fputs("P2\n1 1\n255\n255\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_write("build/white.pgm", "build/white.gcode", &m, &o, NULL, err, (int)sizeof err) == -1 &&
+                       strstr(err, "no paths to burn") && !exists("build/white.gcode"),
+                   "an all-white picture has nothing to burn");
+        }
+        burn_image_free(&im);
+        gt_free(&p);
     }
 
     if (fails) {

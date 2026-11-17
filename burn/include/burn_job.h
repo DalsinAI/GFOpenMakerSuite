@@ -54,6 +54,8 @@ typedef struct {
     int cuts_last;     /* 1: fills first, heavier lines last; 0: seq or file order */
     const int *seq;    /* 0-based document layers, nseq long; NULL: file order */
     int nseq;
+    int invert;   /* 1: white is more power on a picture */
+    float width;  /* picture width mm; 0: interval times the columns */
 } burn_opts;
 
 void burn_defaults(burn_opts *o);

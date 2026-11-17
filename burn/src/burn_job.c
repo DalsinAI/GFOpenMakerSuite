@@ -1,6 +1,7 @@
 /* An SVG to a laser toolpath and its Grbl G-code (burn_job.h).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_image.h"
 
 #include "gs_layer.h"
 #include "gs_toolpath.h"
@@ -652,6 +653,32 @@ int burn_write(const char *drawing, const char *gcode, const om_machine *m, cons
     }
     gv_doc_init(&d);
     gt_init(&p);
+    if (burn_is_image(drawing)) {
+        burn_image im;
+        burn_image_init(&im);
+        if (burn_image_load(&im, drawing, err, errlen)) {
+            burn_image_free(&im);
+            return -1;
+        }
+        if (burn_image_path(&p, &speeds, &im, o)) {
+            snprintf(err, (size_t)errlen, "out of memory");
+            burn_image_free(&im);
+            gt_free(&p);
+            return -1;
+        }
+        if (p.n < 2) {
+            snprintf(err, (size_t)errlen, "no paths to burn");
+            burn_image_free(&im);
+            gt_free(&p);
+            free(speeds);
+            return -1;
+        }
+        rc = burn_write_path(&p, speeds, gcode, m, o, st, err, errlen);
+        burn_image_free(&im);
+        gt_free(&p);
+        free(speeds);
+        return rc;
+    }
     if (gv_load(&d, drawing, err, errlen)) {
         gv_doc_free(&d);
         return -1;

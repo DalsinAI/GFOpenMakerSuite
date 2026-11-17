@@ -10,7 +10,7 @@ MIT.
 
 ## The first cut
 
-A command that reads an SVG or a DXF, applies layer settings, and writes Grbl laser
+A command that reads an SVG, a DXF or a Netpbm picture, applies layer settings, and writes Grbl laser
 G-code, with tests. Then a window: OpenLayout in the Clear look, the picture
 drawn with OpenGPU and a pen fallback. The window fits 640×512 PAL at its
 smallest, is resizable, and opens filling the screen. It has a layer list
@@ -148,10 +148,18 @@ The first window has:
 
 ## Not in the first cut
 
-Pictures (raster engraving), text that is still a font, DXF, Ruida, sending
-over serial or the network, a rotary axis, air assist as a live control,
-galvo marking heads, and the user's own start and end G-code in the window
-(the profile already has start and end).
+Text that is still a font, PNG or JPEG pictures, pictures inside an SVG,
+Ruida, sending over serial or the network, a rotary axis, air assist as a
+live control, galvo marking heads, and the user's own start and end G-code
+in the window (the profile already has start and end).
+
+### Pictures
+
+A Netpbm PBM, PGM or PPM (plain or raw, 8-bit) is engraved as scan lines:
+black is more power, white is skipped, travels stay off. The command takes
+`in.pgm`, `width=` (the picture width in mm; otherwise the gap times the
+columns) and `invert=1` to burn white instead. PNG, JPEG, and pictures
+inside an SVG are later.
 
 ### Materials
 
