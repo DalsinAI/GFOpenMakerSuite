@@ -310,8 +310,8 @@ int main(void)
          * Add, On top and Cut; Face's distance, Pull, Chamfer and Drag (drag to pull); and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
-        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer", "fdrag", "sect", "sectz", "split"};
-        static const char tags[] = "snnnbbbnbbbcnb"; /* select, number, button, checkbox */
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "xdraw", "fmm", "pull", "chamfer", "fdrag", "sect", "sectz", "split"};
+        static const char tags[] = "snnnbbbbnbbbcnb"; /* select, number, button, checkbox */
         const int nx = (int)(sizeof ids / sizeof ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;

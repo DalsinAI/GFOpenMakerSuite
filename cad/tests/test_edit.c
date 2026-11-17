@@ -445,6 +445,22 @@ int main(void)
         expect(ge_extrude(&part, GM_RECT, GM_FROM_TOP, 40, 40, 30, &out, line, (int)sizeof line) == -1 &&
                    !strcmp(line, "That cut takes the whole part."),
                "a cut wider than the part is refused");
+        {
+            float cx, cy, w, d;
+            expect(ge_footprint(GM_RECT, 0.f, 0.f, 20.f, 10.f, &cx, &cy, &w, &d, line, (int)sizeof line) == 0 &&
+                       near(cx, 10.f) && near(cy, 5.f) && near(w, 20.f) && near(d, 10.f),
+                   "a dragged block is the box between the two points");
+            expect(ge_footprint(GM_ROUND, 40.f, 50.f, 40.f, 55.f, &cx, &cy, &w, &d, line, (int)sizeof line) == 0 &&
+                       near(cx, 40.f) && near(cy, 50.f) && near(w, 10.f),
+                   "a dragged round is centred on the first point, the diameter twice the radius");
+            expect(ge_footprint(GM_RECT, 0.f, 0.f, 0.4f, 10.f, &cx, &cy, &w, &d, line, (int)sizeof line) == -1 &&
+                       strstr(line, "under 1 mm"),
+                   "a drag under 1 mm is refused");
+            expect(ge_extrude_at(&part, GM_RECT, GM_ON_BED, 40.f, 50.f, 20.f, 10.f, 5.f, &out, line, (int)sizeof line) == 0 &&
+                       near((out.min.x + out.max.x) * 0.5f, 40.f) && near((out.min.y + out.max.y) * 0.5f, 50.f) &&
+                       near(out.min.z, 0.f),
+                   "extrude at a dragged place, not the middle of the plate");
+        }
         gs_mesh_free(&part);
         gs_mesh_free(&out);
     }

@@ -30,14 +30,15 @@
  * bench's Extrude: a block, round or slot added on the bed, stood on the
  * picked part's top, or cut down from it; Face: the picked face pulled
  * by a distance, chamfered, or dragged; and Section: hide what is above
- * a height, or split the part there into two) and Print (Layers, and Slice
+ * a height, or split the part there into two. Draw drags that footprint
+ * on the bed) and Print (Layers, and Slice
  * with core/ui's print settings panel, omview_settings.h, put in
  * "settings" by make.c), as wide as that panel. Place's Size and At, a row
  * for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
 /* A key no field took. With Amiga held (command): Amiga-Z undoes,
  * Amiga-Shift-Z and Amiga-Y redo, as the Amiga's programs. Without: P
- * drags the picked face to pull it, Escape leaves that, as the bench's.
+ * drags the picked face to pull it, Escape leaves that and Draw, as the bench's.
  * C hides what is above a height. [ and ] move that height. Anything
  * else is ignored. */
 enum { GM_KEY_UNDO = 1, GM_KEY_REDO, GM_KEY_PULL, GM_KEY_LEAVE, GM_KEY_SECTION, GM_KEY_SECT_DOWN, GM_KEY_SECT_UP };
@@ -131,6 +132,7 @@ static const char gm_markup_b[] =
     "</fieldset>"
     "<fieldset><legend>Extrude</legend>"
     "<row><button id=\"xadd\">Add</button><button id=\"xon\">On top</button><button id=\"xcut\">Cut</button></row>"
+    "<row><button id=\"xdraw\" title=\"Drag the footprint on the bed. Escape leaves\">Draw</button></row>"
     "</fieldset>"
     "<fieldset><legend>Face</legend>"
     "<row><label for=\"fmm\">By</label><spinner id=\"fmm\" min=\"-99.9\" max=\"99.9\" step=\"0.1\" value=\"5.0\"><span class=\"unit\">mm</span></row>"

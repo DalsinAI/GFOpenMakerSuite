@@ -215,4 +215,16 @@ int ge_solo(gs_parts *ps, char *line, int len);
  * with what was done in line, or -1 with why. */
 int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h, gs_mesh *out, char *line, int len);
 
+/* The same, stood at x, y instead of the plate's middle or the part's.
+ * A dragged footprint uses this. */
+int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
+                  char *line, int len);
+
+/* Two points on the bed, as the bench's drag, to a tenth of a millimetre.
+ * A block or a slot is the box between them. A round is centred on the
+ * first point; w is the diameter. Under 1 mm (a round: under 1 mm of
+ * radius) is refused. 0, with the centre and the size, or -1 with why. */
+int ge_footprint(int kind, float x0, float y0, float x1, float y1, float *cx, float *cy, float *w, float *d, char *line,
+                 int len);
+
 #endif

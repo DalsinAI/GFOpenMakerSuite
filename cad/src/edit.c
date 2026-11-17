@@ -586,11 +586,11 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
     return 0;
 }
 
-int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h, gs_mesh *out, char *line, int len)
+int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
+                  char *line, int len)
 {
     static const char *const names[3] = {"block", "round", "slot"};
     gs_mesh tool, r;
-    float pos[3], size[3], x = GS_BED * 0.5f, y = GS_BED * 0.5f;
     char foot[32];
     int rc;
     if (kind < GM_RECT || kind > GM_SLOT || op < GM_ON_BED || op > GM_FROM_TOP || !out) {
@@ -605,14 +605,9 @@ int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h,
         snprintf(line, (size_t)len, "The height has to be 0.4 to 120 mm.");
         return -1;
     }
-    if (op != GM_ON_BED) { /* about the middle of the part, as the bench */
-        if (!part || !part->t || !part->n) {
-            snprintf(line, (size_t)len, "There is no part to stand it on or cut.");
-            return -1;
-        }
-        ge_where(part, pos, size);
-        x = pos[0];
-        y = pos[1];
+    if (op != GM_ON_BED && (!part || !part->t || !part->n)) {
+        snprintf(line, (size_t)len, "There is no part to stand it on or cut.");
+        return -1;
     }
     memset(&tool, 0, sizeof tool);
     memset(&r, 0, sizeof r);
@@ -643,6 +638,62 @@ int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h,
     else if (part->max.z - part->min.z - 0.05f <= h)
         snprintf(line, (size_t)len, "A %s %s cut right through.", names[kind], foot);
     else snprintf(line, (size_t)len, "A %s %s cut %.1f mm down from the top.", names[kind], foot, (double)h);
+    return 0;
+}
+
+int ge_extrude(const gs_mesh *part, int kind, int op, float w, float d, float h, gs_mesh *out, char *line, int len)
+{
+    float pos[3], size[3], x = GS_BED * 0.5f, y = GS_BED * 0.5f;
+    if (op != GM_ON_BED && part && part->t && part->n) {
+        ge_where(part, pos, size);
+        x = pos[0];
+        y = pos[1];
+    }
+    return ge_extrude_at(part, kind, op, x, y, w, d, h, out, line, len);
+}
+
+/* A tenth of a millimetre, as the bench's drag with snap off. */
+static float tenth(float v)
+{
+    return (float)(long)(v < 0.f ? v * 10.f - 0.5f : v * 10.f + 0.5f) / 10.f;
+}
+
+int ge_footprint(int kind, float x0, float y0, float x1, float y1, float *cx, float *cy, float *w, float *d, char *line,
+                 int len)
+{
+    float a, b, c, e, ww, dd;
+    if (kind < GM_RECT || kind > GM_SLOT || !cx || !cy || !w || !d) {
+        snprintf(line, (size_t)len, "There is no such extrude.");
+        return -1;
+    }
+    a = tenth(x0);
+    b = tenth(y0);
+    c = tenth(x1);
+    e = tenth(y1);
+    if (kind == GM_ROUND) {
+        float r = hypotf(c - a, e - b);
+        *cx = a;
+        *cy = b;
+        *w = r * 2.f;
+        *d = r * 2.f;
+        if (!(r >= 1.f)) {
+            snprintf(line, (size_t)len, "That footprint is under 1 mm. Drag a larger one.");
+            return -1;
+        }
+        return 0;
+    }
+    ww = c - a;
+    dd = e - b;
+    if (ww < 0.f) ww = -ww;
+    if (dd < 0.f) dd = -dd;
+    *cx = (a + c) * 0.5f;
+    *cy = (b + e) * 0.5f;
+    *w = ww;
+    *d = dd;
+    if (!(ww >= 1.f && dd >= 1.f)) {
+        snprintf(line, (size_t)len, "That footprint is under 1 mm. Drag a larger one.");
+        return -1;
+    }
     return 0;
 }
 
