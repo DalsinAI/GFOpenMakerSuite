@@ -1,0 +1,12 @@
+# Original Prusa i3 MK3S+: a bed-slinger on Prusa's Marlin-based firmware.
+# From Prusa Research's published specifications only: 250 x 210 x 210 mm,
+# the hotend up to 300 C, the heatbed up to 120 C, travel 200+ mm/s, and
+# automatic mesh bed levelling with its SuperPINDA probe.
+# Z and E speeds and the accelerations are not on the sheet: 0 here, so
+# they are not checked and the time is worked out at the set speeds.
+name = Original Prusa i3 MK3S+
+area = 250 210 210
+speed = 200 200 0 0
+hotend = 300
+bed = 120
+features += bed-levelling probing

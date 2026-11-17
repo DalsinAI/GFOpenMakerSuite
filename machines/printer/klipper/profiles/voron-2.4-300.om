@@ -1,0 +1,14 @@
+# Voron 2.4, the 300 mm one: an enclosed CoreXY on Klipper. From the Voron
+# project's public documentation only (docs.vorondesign.com): 300 x 300 x
+# 280 mm; its stock configuration's most speed 350 mm/s, acceleration
+# 3000 mm/s^2, Z 50 mm/s at 350 mm/s^2, square corner velocity 10 mm/s.
+# The hotend up to 300 C and the bed up to 110 C, as the kits are sold.
+# Its gantry is levelled (QUAD_GANTRY_LEVEL) by a probe.
+name = Voron 2.4 300
+area = 300 300 280
+speed = 350 350 50 0
+accel = 3000 3000 350 0
+jerk = 10 10 0 0
+hotend = 300
+bed = 110
+features += bed-levelling probing

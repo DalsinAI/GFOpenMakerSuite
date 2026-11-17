@@ -1,0 +1,11 @@
+# A generic RepRapFirmware printer with a 300 mm bed: not any one maker's.
+# Change these to the machine's own numbers (its config.g says them:
+# M208 the axes' limits, M203 the speeds, M201 the accelerations, M143
+# the heaters' most).
+name = Generic RepRapFirmware 300
+area = 300 300 300
+speed = 300 300 10 50
+accel = 2000 2000 200 3000
+jerk = 10 10 0.5 5
+hotend = 280
+bed = 110

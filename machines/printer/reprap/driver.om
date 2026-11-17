@@ -1,0 +1,29 @@
+# RepRapFirmware (Duet boards). Written from the public RepRapFirmware
+# G-code documentation (docs.duet3d.com, "G-code dictionary"), no
+# firmware source.
+#
+# G28 homes (with the board's homing files), M140/M190 set the bed and
+# wait, M104/M109 the hotend, M82 measures E from the start, G92 E0 sets
+# E, M107 stops the fan, M84 lets the motors go. A job is a file, sent
+# over the network to the board.
+family = printer
+dialect = reprap
+send = file network
+features = heated-bed homing
+extruders = 1
+start = G21 ; mm
+start += G90 ; absolute moves
+start += M82 ; absolute extrusion
+start += M140 S{bed}
+start += M104 S{hotend}
+start += G28 ; home
+start += M190 S{bed}
+start += M109 S{hotend}
+start += G92 E0
+end = M104 S0
+end += M140 S0
+end += M107
+end += G91
+end += G1 Z5 F600 ; lift clear of the part
+end += G90
+end += M84

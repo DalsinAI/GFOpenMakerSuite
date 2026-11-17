@@ -39,13 +39,14 @@ int main(void)
     memset(&own, 0, sizeof own);
 
     /* Printers: Marlin's three .om (not notes.txt), Klipper's that loads,
-     * nothing from a directory with no driver.om; by name. */
+     * nothing from a directory with no driver.om; the suite's generic
+     * starting points first, then by name. */
     expect(omv_machines_scan(&l, "core/tests/data/machines", "printer") == 4, "four printers");
-    expect(l.n == 4 && !strcmp(l.at[0].name, "anon-180") && !strcmp(l.at[1].name, "Big Marlin 300") &&
-               !strcmp(l.at[2].name, "Fast Klipper 250") && !strcmp(l.at[3].name, "Generic Marlin 220"),
-           "sorted by name; a profile with none named by its file");
+    expect(l.n == 4 && !strcmp(l.at[0].name, "Generic Marlin 220") && !strcmp(l.at[1].name, "anon-180") &&
+               !strcmp(l.at[2].name, "Big Marlin 300") && !strcmp(l.at[3].name, "Fast Klipper 250"),
+           "the generic one first, then by name; a profile with none named by its file");
     expect(l.skipped == 1 && strstr(l.why, "broken.om") && strstr(l.why, "area"), "the broken one skipped, and why");
-    expect(omv_machines_load(&l, 2, &m, err, (int)sizeof err) == 0 && !strcmp(m.name, "Fast Klipper 250") &&
+    expect(omv_machines_load(&l, 3, &m, err, (int)sizeof err) == 0 && !strcmp(m.name, "Fast Klipper 250") &&
                !strcmp(m.dialect, "klipper") && m.area[0] == 250.f && m.family == OM_PRINTER,
            "the Klipper printer loaded over its driver");
     expect(omv_machines_load(&l, 4, &m, err, (int)sizeof err) == -1 && err[0], "no machine 4");
@@ -55,8 +56,9 @@ int main(void)
     omv_machines_free(&none);
     expect(omv_machines_scan(&none, "core/tests/data/machines", "cnc") == 0 && none.n == 0, "no CNC machines");
     expect(omv_machines_scan(&none, "core/tests/data/nowhere", "printer") == 0, "no machines directory: none");
-    expect(omv_machines_scan(&own, "machines", "printer") >= 1 && !strcmp(own.at[0].name, "Generic Marlin 220"),
-           "the suite's own printers: the generic Marlin");
+    expect(omv_machines_scan(&own, "machines", "printer") >= 5 && !strcmp(own.at[0].name, "Generic Marlin 220") &&
+               !strcmp(own.at[1].name, "Generic RepRapFirmware 300"),
+           "the suite's own printers: the generic Marlin first, so the windows start on it");
     {
         int n = own.n;
         expect(omv_machines_scan(&own, "machines/", "printer") == n && own.n == n, "scanned again: the same, not twice");
@@ -66,7 +68,7 @@ int main(void)
     expect(olui_load(ui, markup, "", err, sizeof err), "the window loads");
     sel = olui_find(ui, "machine");
     expect(omv_machines_fill(ui, "machine", &l, "No printers") == 4 && olui_select_count(sel) == 4 &&
-               !strcmp(olui_select_option_text(sel, 1), "Big Marlin 300") && olui_select_index(sel) == 0,
+               !strcmp(olui_select_option_text(sel, 2), "Big Marlin 300") && olui_select_index(sel) == 0,
            "the select filled, the first chosen");
     olui_select_set(ui, sel, 3);
     expect(omv_machines_chosen(ui, "machine", &l) == 3, "and the one chosen");
