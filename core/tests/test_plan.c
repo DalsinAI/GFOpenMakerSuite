@@ -4,6 +4,7 @@
 #include "gs_plan.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -67,6 +68,109 @@ int main(void)
     layer(&holed, &o, 97, mm, 19.4f, &flat);
     expect(mm[GT_SKIN] == 0.f, "four from the top is not");
 
+    {
+        /* The more: top and bottom apart, a grid, a skirt and a gap. */
+        gp_more x, part;
+        gt_path g;
+        int i, along_x = 0, along_y = 0;
+        gp_more_defaults(&x);
+        expect(x.size == (int)sizeof x && x.pattern == GP_LINES && x.top == -1 && x.bottom == -1 && x.skirt == 0 &&
+                   x.gap == 0.f,
+               "the more's defaults: as gp_opts alone");
+        layer(&holed, &o, 1, mm, 0.2f, &flat);
+        {
+            float plain[GT_KINDS];
+            gt_path q;
+            int k;
+            memcpy(plain, mm, sizeof plain);
+            gt_init(&q);
+            expect(gp_layer_more(&q, &holed, &o, &x, 1) == 0, "a layer with the more's defaults");
+            for (k = 0; k < GT_KINDS; k++) expect(gt_length(&q, k) == plain[k], "the same as without");
+            gt_free(&q);
+            gt_init(&q);
+            expect(gp_layer_more(&q, &holed, &o, NULL, 1) == 0 && gt_length(&q, GT_SKIN) == plain[GT_SKIN], "NULL: the same");
+            gt_free(&q);
+        }
+        x.top = 1;
+        x.bottom = 5;
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 5) == 0 && gt_length(&g, GT_SKIN) > 400.f, "five at the bottom: layer 5 solid");
+        gt_free(&g);
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 6) == 0 && gt_length(&g, GT_SKIN) == 0.f, "but not 6");
+        gt_free(&g);
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 99) == 0 && gt_length(&g, GT_SKIN) == 0.f, "one at the top: 99 not solid");
+        gt_free(&g);
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 100) == 0 && gt_length(&g, GT_SKIN) > 400.f, "100 is");
+        gt_free(&g);
+
+        /* A grid: the sparse lines go both ways on every layer, half as
+         * close, so about as much as lines. */
+        gp_more_defaults(&x);
+        x.pattern = GP_GRID;
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 50) == 0, "a grid layer");
+        for (i = 1; i < g.n; i++)
+            if (g.m[i].kind == GT_INFILL) {
+                if (g.m[i].y == g.m[i - 1].y) along_x++;
+                if (g.m[i].x == g.m[i - 1].x) along_y++;
+            }
+        layer(&holed, &o, 50, mm, 10.f, &flat);
+        expect(along_x > 3 && along_y > 3, "infill along x and along y on the one layer");
+        expect(gt_length(&g, GT_INFILL) > 0.7f * mm[GT_INFILL] && gt_length(&g, GT_INFILL) < 1.3f * mm[GT_INFILL],
+               "about as much infill as lines");
+        gt_free(&g);
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 1) == 0 && gt_length(&g, GT_INFILL) == 0.f,
+               "a grid's bottom is only skin");
+        {
+            gt_path q;
+            float lines_skin;
+            gt_init(&q);
+            gp_layer(&q, &holed, &o, 1);
+            lines_skin = gt_length(&q, GT_SKIN);
+            gt_free(&q);
+            expect(fabsf(gt_length(&g, GT_SKIN) - lines_skin) < 1e-3f, "the same skin as lines");
+        }
+        gt_free(&g);
+
+        /* A skirt of two, 3 mm out, and the brim set 1 mm out. */
+        gp_more_defaults(&x);
+        x.skirt = 2;
+        x.gap = 3.f;
+        o.brim = 0;
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 1) == 0, "a first layer with a skirt");
+        expect(fabsf(gt_length(&g, GT_BRIM) - 4 * (20.f + 2 * 3.2f) - 4 * (20.f + 2 * 3.6f)) < 0.05f,
+               "two loops round the outside at 3.2 and 3.6 mm, none in the hole");
+        gt_free(&g);
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 2) == 0 && gt_length(&g, GT_BRIM) == 0.f, "only on the first layer");
+        gt_free(&g);
+        x.skirt = 0;
+        x.gap = 1.f;
+        o.brim = 1;
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &x, 1) == 0 && fabsf(gt_length(&g, GT_BRIM) - 4 * (20.f + 2 * 1.2f)) < 0.05f,
+               "a brim 1 mm out");
+        gt_free(&g);
+        o.brim = 2;
+
+        /* An older program's smaller gp_more: the rest as the defaults. */
+        gp_more_defaults(&part);
+        part.size = (int)offsetof(gp_more, skirt);
+        part.pattern = GP_GRID;
+        part.skirt = 9;
+        part.gap = 99.f;
+        gt_init(&g);
+        expect(gp_layer_more(&g, &holed, &o, &part, 1) == 0 &&
+                   fabsf(gt_length(&g, GT_BRIM) - 4 * 20.4f - 4 * 21.2f) < 0.01f,
+               "a gp_more cut short at its size: no skirt, no gap");
+        gt_free(&g);
+    }
+
     gt_init(&two);
     expect(gp_layer(&two, &holed, &o, 50) == 0 && gp_layer(&two, &holed, &o, 51) == 0 && two.nlayers == 2,
            "two layers in one path");
@@ -99,6 +203,16 @@ int main(void)
                "on the bed, from 0.2 up to 26");
         printf("wrench: %d moves; walls %.0f, skin %.0f, infill %.0f mm\n", all.n,
                gt_length(&all, GT_OUTER) + gt_length(&all, GT_INNER), gt_length(&all, GT_SKIN), gt_length(&all, GT_INFILL));
+        {
+            /* gp_part_more on the wrench: a grid and a skirt. */
+            gp_more x;
+            gp_more_defaults(&x);
+            x.pattern = GP_GRID;
+            x.skirt = 1;
+            x.gap = 3.f;
+            expect(gp_part_more(&all, &wrench, &o, &x) == 0 && all.nlayers == 130 && gt_length(&all, GT_INFILL) > 0.f,
+                   "gp_part_more: a grid and a skirt");
+        }
         gt_free(&all);
         gs_mesh_free(&wrench);
     }

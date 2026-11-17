@@ -127,3 +127,23 @@ int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o)
 {
     return GP_Part(p, m, o);
 }
+
+void gp_more_defaults(gp_more *x)
+{
+    GP_MoreDefaults(x);
+}
+
+int gp_layer_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x, int n)
+{
+    return GP_LayerMore(p, m, o, x, n);
+}
+
+int gp_part_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x)
+{
+    return GP_PartMore(p, m, o, x);
+}
+
+int gt_fill_grid(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)
+{
+    return GT_FillGrid(p, region, solid, nsolid, z, w, every, cross);
+}

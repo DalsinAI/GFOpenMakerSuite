@@ -18,6 +18,22 @@ typedef struct {
 
 void gp_defaults(gp_opts *o);
 
+enum { GP_LINES, GP_GRID };     /* infill patterns */
+
+/* More for a layer than gp_opts says, taken by the _more calls. A
+ * program sets size to sizeof (gp_more) as it was built: fields past its
+ * size are as gp_more_defaults gives them, so this may grow at its end. */
+typedef struct {
+    int size;
+    int pattern;        /* GP_LINES: one way, across each layer the next's; GP_GRID: both ways on each */
+    int top, bottom;    /* solid layers at the top and the bottom, 0 to 8; -1: gp_opts' skins */
+    int skirt;          /* loops round the part on the first layer, apart from it */
+    float gap;          /* mm between the part and its brim or skirt */
+} gp_more;
+
+/* As gp_opts alone: lines, its skins top and bottom, no skirt, no gap. */
+void gp_more_defaults(gp_more *x);
+
 /* The part's layers at o's height. */
 int gp_layers(const gs_mesh *m, const gp_opts *o);
 
@@ -36,5 +52,10 @@ int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o);
  * toolpath, move for move. tasks 1 or less, or no memory for the layers
  * apart: gp_part itself. 0, or -1 out of memory. */
 int gp_part_par(gt_path *p, const gs_mesh *m, const gp_opts *o, int tasks);
+
+/* gp_layer, gp_part and gp_part_par with the more x (NULL: none). */
+int gp_layer_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x, int n);
+int gp_part_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x);
+int gp_part_par_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x, int tasks);
 
 #endif

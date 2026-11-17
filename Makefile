@@ -111,8 +111,8 @@ $(BUILD)/test_fill: core/tests/test_fill.c core/src/fill.c core/src/toolpath.c c
 $(BUILD)/test_gcode: core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c core/include/gs_gcode.h core/include/gs_toolpath.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DGC_CALLOC=no_room_calloc -Icore/include -Imachines/include -o $@ core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c -lm
 
-$(BUILD)/test_settings: core/tests/test_settings.c core/src/settings.c core/src/gcode.c machines/src/machine.c core/include/gs_settings.h core/include/gs_gcode.h core/include/gs_plan.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ core/tests/test_settings.c core/src/settings.c core/src/gcode.c machines/src/machine.c -lm
+$(BUILD)/test_settings: core/tests/test_settings.c core/src/settings.c core/src/gcode.c $(PLAN) machines/src/machine.c core/include/gs_settings.h core/include/gs_gcode.h core/include/gs_plan.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ core/tests/test_settings.c core/src/settings.c core/src/gcode.c $(PLAN) machines/src/machine.c -lm
 
 $(BUILD)/test_plan: core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c core/include/gs_plan.h core/include/gs_toolpath.h core/tests/data/nasa-wrench.stl | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c -lm

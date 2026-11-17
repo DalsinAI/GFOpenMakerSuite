@@ -1,4 +1,4 @@
-==id $Id: openmakepath_lib.sfd 1.2 (16.11.2026) $
+==id $Id: openmakepath_lib.sfd 1.3 (17.11.2026) $
 * "openmakepath.library": OpenMakeCore's paths (gs_layer.h): a part cut
 * into layers, the pieces of wall welded into loops, and the toolpath
 * (gs_toolpath.h) the slicer and the laser and CNC apps fill, and a
@@ -37,9 +37,14 @@ float GT_Length(const gt_path *p, int kind)(a0,d0)
 int GT_Bounds(const gt_path *p, float *min, float *max)(a0,a1,a2)
 int GT_Fill(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)(a0,a1,a2,d0,d1,d2,d3,d4)
 * 1.2: a printer's layers as a toolpath
+* 1.3: more for a layer (gp_more: top and bottom apart, a grid, a skirt, a gap)
 void GP_Defaults(gp_opts *o)(a0)
 int GP_Layers(const gs_mesh *m, const gp_opts *o)(a0,a1)
 int GP_Layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)(a0,a1,a2,d0)
 void GP_Place(gs_mesh *m, float bed_x, float bed_y)(a0,d0,d1)
 int GP_Part(gt_path *p, const gs_mesh *m, const gp_opts *o)(a0,a1,a2)
+void GP_MoreDefaults(gp_more *x)(a0)
+int GP_LayerMore(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x, int n)(a0,a1,a2,a3,d0)
+int GP_PartMore(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x)(a0,a1,a2,a3)
+int GT_FillGrid(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)(a0,a1,a2,d0,d1,d2,d3,d4)
 ==end
