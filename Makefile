@@ -286,6 +286,13 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	    grep -q '^G0 ' $(BUILD)/burn-rect.gcode && grep -q '^G1 ' $(BUILD)/burn-rect.gcode
 	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-m3.gcode constant=1 power=100 > /dev/null
 	grep -q '^M3' $(BUILD)/burn-m3.gcode && grep -q '^S1000' $(BUILD)/burn-m3.gcode && ! grep -q '^M4' $(BUILD)/burn-m3.gcode
+	$(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-layers.gcode \
+	    layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
+	grep -q '^S1000' $(BUILD)/burn-layers.gcode && grep -q '^S250' $(BUILD)/burn-layers.gcode && \
+	    grep -q ' F600' $(BUILD)/burn-layers.gcode && grep -q ' F2400' $(BUILD)/burn-layers.gcode
+	! $(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-lybad.gcode layer=#ff0000,spped=10 \
+	    2> $(BUILD)/burn-lybad.txt
+	grep -q 'spped=10' $(BUILD)/burn-lybad.txt && test ! -e $(BUILD)/burn-lybad.gcode
 	! $(BUILD)/openmake-burn 2> $(BUILD)/burn-usage.txt && grep -q 'usage: openmake-burn' $(BUILD)/burn-usage.txt
 	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-bad.gcode spped=20 2> $(BUILD)/burn-bad.txt
 	grep -q 'spped=20: no such setting' $(BUILD)/burn-bad.txt && test ! -e $(BUILD)/burn-bad.gcode
