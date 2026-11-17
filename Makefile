@@ -13,7 +13,7 @@ LAYOUT ?= ../gfopenlayout
 # OpenMakeCore's slice: a part's layers as a toolpath.
 PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/layer.c core/src/loops.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -81,6 +81,14 @@ $(BUILD)/test_gcode: core/tests/test_gcode.c core/src/gcode.c core/src/toolpath.
 $(BUILD)/test_plan: core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c core/include/gs_plan.h core/include/gs_toolpath.h core/tests/data/nasa-wrench.stl | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_plan.c $(PLAN) core/src/model.c core/src/stl.c -lm
 
+# The layers on several tasks: on threads, and all on the caller.
+PAR_TEST = core/tests/test_plan_par.c core/src/plan_par.c $(PLAN) core/src/model.c core/src/stl.c
+$(BUILD)/test_plan_par: $(PAR_TEST) core/src/par_posix.c core/include/gs_par.h core/include/gs_plan.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -o $@ $(PAR_TEST) core/src/par_posix.c -lm
+
+$(BUILD)/test_plan_one: $(PAR_TEST) core/src/par_one.c core/include/gs_par.h core/include/gs_plan.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ $(PAR_TEST) core/src/par_one.c -lm
+
 $(BUILD)/test_toolpath_paint: core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_toolpath.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
@@ -104,7 +112,7 @@ $(BUILD)/test_gcode_lib: core/tests/test_gcode_lib.c core/src/gcode.c core/src/t
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -122,6 +130,8 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	$(BUILD)/test_fill
 	$(BUILD)/test_gcode
 	$(BUILD)/test_plan
+	$(BUILD)/test_plan_par
+	$(BUILD)/test_plan_one
 	$(BUILD)/test_toolpath_paint
 	$(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/wrench.gcode \
 	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om \
