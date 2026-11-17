@@ -1,6 +1,7 @@
-/* Every printer profile under machines/printer, loaded over its driver:
- * the numbers its maker publishes, its dialect, and start and end G-code
- * that heat, home and let go. The Makefile slices a part with each.
+/* Every machine profile under machines/, loaded over its driver: a
+ * printer's numbers and start and end G-code that heat, home and let go
+ * (the Makefile slices a part with each), and a laser's area, power and
+ * start and end G-code that leave the laser off.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "om_machine.h"
 
@@ -36,33 +37,63 @@ static const struct {
 };
 #define KNOWN ((int)(sizeof known / sizeof known[0]))
 
-/* Each profile file in the tree is one of the known. */
-static int count_files(void)
+static const struct {
+    const char *driver, *profile, *name;
+    float x, y, z, laser;
+    unsigned features, send;
+} lasers[] = {
+    {"grbl", "generic-diode-400", "Generic Diode 400", 400, 400, 40, 100, OM_LASER_POWER | OM_HOMING, OM_SEND_FILE},
+};
+#define LASERS ((int)(sizeof lasers / sizeof lasers[0]))
+
+/* Each profile file in the tree is one of the known printers or lasers. */
+static int count_in(const char *family, const char *const *drivers, int ndrivers, int (*is_known)(const char *, const char *, int))
 {
-    static const char *const drivers[] = {"marlin", "klipper", "reprap"};
-    int d, n = 0, k;
-    char dir[64], what[400];
-    for (d = 0; d < 3; d++) {
+    int d, n = 0;
+    char dir[80], what[400];
+    for (d = 0; d < ndrivers; d++) {
         DIR *h;
         struct dirent *e;
-        snprintf(dir, sizeof dir, "machines/printer/%s/profiles", drivers[d]);
+        snprintf(dir, sizeof dir, "machines/%s/%s/profiles", family, drivers[d]);
         h = opendir(dir);
         if (!h) continue;
         while ((e = readdir(h)) != NULL) {
             size_t len = strlen(e->d_name);
-            int found = 0;
             if (len < 4 || strcmp(e->d_name + len - 3, ".om")) continue;
             n++;
-            for (k = 0; k < KNOWN; k++)
-                if (!strcmp(known[k].driver, drivers[d]) && !strncmp(known[k].profile, e->d_name, len - 3) &&
-                    strlen(known[k].profile) == len - 3)
-                    found = 1;
             snprintf(what, sizeof what, "%s/%s is tested here", dir, e->d_name);
-            expect(found, what);
+            expect(is_known(drivers[d], e->d_name, (int)len), what);
         }
         closedir(h);
     }
     return n;
+}
+
+static int printer_known(const char *driver, const char *file, int len)
+{
+    int k;
+    for (k = 0; k < KNOWN; k++)
+        if (!strcmp(known[k].driver, driver) && !strncmp(known[k].profile, file, len - 3) &&
+            (int)strlen(known[k].profile) == len - 3)
+            return 1;
+    return 0;
+}
+
+static int laser_known(const char *driver, const char *file, int len)
+{
+    int k;
+    for (k = 0; k < LASERS; k++)
+        if (!strcmp(lasers[k].driver, driver) && !strncmp(lasers[k].profile, file, len - 3) &&
+            (int)strlen(lasers[k].profile) == len - 3)
+            return 1;
+    return 0;
+}
+
+static int count_files(void)
+{
+    static const char *const printers[] = {"marlin", "klipper", "reprap"};
+    static const char *const ldrv[] = {"grbl"};
+    return count_in("printer", printers, 3, printer_known) + count_in("laser", ldrv, 1, laser_known);
 }
 
 int main(void)
@@ -103,11 +134,46 @@ int main(void)
                    strstr(code, "M140 S0") && strstr(code, "M84"),
                what);
     }
-    expect(count_files() == KNOWN, "every printer profile in the tree is here");
+    {
+        int k;
+        for (k = 0; k < LASERS; k++) {
+            om_machine m;
+            char path[160], err[160], code[OM_CODE], what[200];
+            om_clear(&m);
+            err[0] = 0;
+            snprintf(path, sizeof path, "machines/laser/%s/driver.om", lasers[k].driver);
+            expect(om_load(&m, path, err, (int)sizeof err) == 0, path);
+            snprintf(path, sizeof path, "machines/laser/%s/profiles/%s.om", lasers[k].driver, lasers[k].profile);
+            snprintf(what, sizeof what, "%s loads over its driver", path);
+            expect(om_load(&m, path, err, (int)sizeof err) == 0, what);
+            if (err[0]) printf("%s\n", err);
+            snprintf(what, sizeof what, "%s: its name, a laser, the %s dialect", lasers[k].profile, lasers[k].driver);
+            expect(!strcmp(m.name, lasers[k].name) && m.family == OM_LASER && !strcmp(m.dialect, lasers[k].driver),
+                   what);
+            snprintf(what, sizeof what, "%s: %g by %g by %g mm, laser %g%%", lasers[k].profile, (double)lasers[k].x,
+                     (double)lasers[k].y, (double)lasers[k].z, (double)lasers[k].laser);
+            expect(m.area[0] == lasers[k].x && m.area[1] == lasers[k].y && m.area[2] == lasers[k].z &&
+                       m.laser == lasers[k].laser,
+                   what);
+            snprintf(what, sizeof what, "%s: its features and how a job is sent", lasers[k].profile);
+            expect(m.features == lasers[k].features && m.send == lasers[k].send, what);
+            snprintf(what, sizeof what, "%s: a travel of 150 mm/s is within its most", lasers[k].profile);
+            expect(m.speed[OM_X] <= 0.f || m.speed[OM_X] >= 150.f, what);
+            snprintf(what, sizeof what, "%s: the start is mm, absolute, laser off", lasers[k].profile);
+            expect(om_code(m.start, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "G21") &&
+                       strstr(code, "G90") && strstr(code, "M5") && !strstr(code, "M104") && !strstr(code, "G28"),
+                   what);
+            snprintf(what, sizeof what, "%s: the end leaves the laser off and goes to the origin", lasers[k].profile);
+            expect(om_code(m.end, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "M5") &&
+                       strstr(code, "G0 X0 Y0"),
+                   what);
+        }
+    }
+    expect(count_files() == KNOWN + LASERS, "every profile in the tree is here");
     if (failed) {
         printf("%d failed\n", failed);
         return 1;
     }
-    printf("printer profiles ok\n");
+    printf("profiles ok\n");
     return 0;
 }
