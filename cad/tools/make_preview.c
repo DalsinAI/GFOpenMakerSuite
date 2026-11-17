@@ -18,6 +18,8 @@
  * PARTS=n: a list of n parts (2 to 24), the holed cube and the shapes in
  * turn on a grid on the bed, each a metal in turn, the 6th and 18th
  * hidden, the last picked and named "Bracket", as the Parts tab shows it.
+ * KEYS: then, in turn, d (Delete the picked part), z (Amiga-Z, Undo), and
+ * Z or y (Amiga-Shift-Z or Amiga-Y, Redo), as make.c's steps.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_model.h"
@@ -37,6 +39,7 @@
 
 static FILE *ops;
 static gs_parts *listed; /* the parts the Parts tab lists, when more than one */
+static ge_steps *steps;  /* Undo's and Redo's, with KEYS */
 
 static int measure(void *userdata, const char *utf8, size_t length, const ol_style *style, ol_text_metrics *metrics)
 {
@@ -222,6 +225,26 @@ int main(int argc, char **argv)
         model = 1;
         printf("%s\n", said);
     }
+    if (listed && getenv("KEYS")) { /* as make.c's Delete, Undo and Redo, and their keys */
+        const char *k;
+        if (!(steps = ge_steps_new())) return 1;
+        for (k = getenv("KEYS"); *k; k++) {
+            int key = gm_command_key((unsigned char)*k, 1, *k == 'Z');
+            gs_parts *was = NULL;
+            if (*k == 'd' && gs_parts_count(listed) > 1) {
+                ge_steps_push(steps, listed);
+                gs_parts_remove(listed, gs_parts_picked(listed));
+            } else if (key)
+                was = key == GM_KEY_REDO ? ge_steps_redo(steps, listed) : ge_steps_undo(steps, listed);
+            if (was) listed = was;
+        }
+        gs_mesh_free(&part);
+        if (gs_parts_scene(listed, &part)) return 1;
+        ge_where(gs_parts_mesh(listed, gs_parts_picked(listed)), wpos, wsize);
+        snprintf(said, sizeof said, "%s, %d triangles. Orbit. Drag turns the view. A click picks a face.",
+                 gs_parts_name(listed, gs_parts_picked(listed)), gs_parts_mesh(listed, gs_parts_picked(listed))->n);
+        printf("%s\n", said);
+    }
     if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
         ge_holes hs;
         char why[96];
@@ -301,6 +324,8 @@ int main(int argc, char **argv)
         olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
         olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
         if (listed) gm_parts_list(ui, listed);
+        olui_set_disabled(ui, olui_find(ui, "undo"), !ge_steps_back(steps));
+        olui_set_disabled(ui, olui_find(ui, "redo"), !ge_steps_ahead(steps));
     }
     {
         static const char *const ids[6] = {"sx", "sy", "sz", "px", "py", "pz"};

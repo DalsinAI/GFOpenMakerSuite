@@ -35,12 +35,12 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
 /* Every button make.c hands to olui_on: the Model tab's, the Parts tab's
  * from PARTS_BUTTONS on, then the Print tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
-    "open", "save", "undo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
+    "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
     "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
     "prev", "next", "slice", "gcode"
 };
-#define PARTS_BUTTONS 11
-#define PRINT_BUTTONS 23
+#define PARTS_BUTTONS 12
+#define PRINT_BUTTONS 24
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -162,13 +162,13 @@ int main(void)
             olui_el *shape = olui_find(ui, "shape");
             olui_rect r;
             expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
-                       r.w >= 90 && !overlap(&r, &box[11]) && r.x < box[11].x,
+                       r.w >= 90 && !overlap(&r, &box[12]) && r.x < box[12].x,
                    "the shape select is beside Add, wide enough for a name");
             continue;
         }
         if (t == GM_TAB_MODEL) {
             /* Measure beside Rotate and Scale, wide enough for its name. */
-            expect(box[6].y == box[5].y && box[7].y == box[5].y && box[7].x > box[6].x && box[7].w >= 7 * 8,
+            expect(box[7].y == box[6].y && box[8].y == box[6].y && box[8].x > box[7].x && box[8].w >= 7 * 8,
                    "Measure is in the Tool group's second row, after Scale");
             {
                 /* Place: a row for X, Y and Z, its Size then its At, as the bench's
@@ -386,7 +386,7 @@ int main(void)
             for (a = PARTS_BUTTONS; a < PRINT_BUTTONS; a++) {
                 snprintf(what, sizeof what, "%s in the side at %d by %d, clear", buttons[a], at[s][0], at[s][1]);
                 expect(olui_box(ui, olui_find(ui, buttons[a]), &b[a]) && b[a].x >= side.x &&
-                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 17 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
+                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 18 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
                            !overlap(&b[a], &r[0]) && !overlap(&b[a], &r[1]) && !overlap(&b[a], &r[2]),
                        what);
                 for (c = PARTS_BUTTONS; c < a; c++) {
@@ -438,6 +438,25 @@ int main(void)
                strcmp(olui_get_text(olui_find(ui, "gcode")), "Save G-code") == 0,
            "the Slice group: Slice, and Save G-code");
     expect(strcmp(olui_get_text(olui_find(ui, "save")), "Save STL") == 0, "the primary button says Save STL");
+    {
+        /* File: Open and Save STL, then Undo and Redo, each on one line
+         * (no name wrapped) and wide enough for its name in Topaz 8. */
+        static const char *const file[4] = {"open", "save", "undo", "redo"};
+        olui_rect f[4];
+        int a, ok = 1;
+        for (a = 0; a < 4; a++)
+            ok &= olui_box(ui, olui_find(ui, file[a]), &f[a]) && f[a].h == f[0].h && f[a].h <= 22 &&
+                  f[a].w >= 8 * (int)strlen(olui_get_text(olui_find(ui, file[a]))) + 2;
+        expect(ok && f[1].y == f[0].y && f[1].x > f[0].x && f[3].y == f[2].y && f[3].x > f[2].x && f[2].y > f[0].y &&
+                   !strcmp(olui_get_text(olui_find(ui, "redo")), "Redo"),
+               "File: Open and Save STL, then Undo and Redo, none wrapped");
+    }
+    /* The keys, as the Amiga's: Amiga-Z undoes, Amiga-Shift-Z and Amiga-Y redo;
+     * without Amiga they are a field's letters. */
+    expect(gm_command_key('z', 1, 0) == GM_KEY_UNDO && gm_command_key('Z', 1, 1) == GM_KEY_REDO &&
+               gm_command_key('y', 1, 0) == GM_KEY_REDO && gm_command_key('Y', 1, 0) == GM_KEY_REDO &&
+               gm_command_key('z', 0, 0) == 0 && gm_command_key('x', 1, 0) == 0,
+           "Amiga-Z undoes; Amiga-Shift-Z and Amiga-Y redo");
     expect(seen.save_bg == ACCENT && seen.save_text == 0xffffffffu, "Save STL is the accent primary button");
     expect(seen.open_bg == 0xfffefefeu && seen.open_border == 0xffd0d0d0u && seen.open_radius == 4,
            "the other buttons are Clear's, with radius 4");
