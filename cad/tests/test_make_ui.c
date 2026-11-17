@@ -154,6 +154,7 @@ int main(void)
     expect(olui_box(ui, olui_find(ui, "status"), &status) && inside(&status, w, h) && status.y >= view.y + view.h,
            "the status line is under the view");
     expect(status.y + status.h >= h - 16, "the status line is along the bottom");
+    expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
     /* The Clear look (docs/HANDOVER.md). */
     olui_draw(ui, NULL, collect, NULL);
