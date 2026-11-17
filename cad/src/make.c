@@ -51,6 +51,8 @@ static const char version[] = "$VER: GFOpenMake 0.1.0 (8.11.2026) AmiCradle Team
  * shown part's triangles, for the view, picking and the slicer. */
 static gs_parts *parts;
 static gs_mesh shown, none;
+static gs_tint tints[GS_PARTS_MAX]; /* shown's faces in each part's metal */
+static int ntints;
 static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift, drag_moved;
@@ -90,6 +92,7 @@ static const char *work_name(void)
 static void rebuild_shown(void)
 {
     gs_parts_scene(parts, &shown);
+    ntints = gm_tints(parts, tints, GS_PARTS_MAX);
 }
 
 static void say(olui *ui, const char *text)
@@ -110,7 +113,7 @@ static int draw_gpu(int x, int y, int w, int h)
         nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
     } else {
         verts_fit(show_layer ? walls.n * 6 : 0);
-        nv = gs_gpu_vertices_plate(&shown, &cam, w, h, gpu.verts, gpu.vert_cap);
+        nv = gs_gpu_vertices_plate_tint(&shown, &cam, w, h, tints, ntints, gpu.verts, gpu.vert_cap);
     }
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
@@ -148,8 +151,10 @@ static void draw_pens(int x, int y, int w, int h)
         return;
     }
     if (!has_slice && show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
-    /* Grey goes to the three greys, the walls' blue to the window's fourth
-     * pen, the Workbench blue. */
+    /* The pens keep the way-coloured picture, not the metals: four pens
+     * cannot hold six metals, and a dark metal's faces would go to the
+     * background's pen. Grey goes to the three greys, the walls' blue to
+     * the window's fourth pen, the Workbench blue. */
     at[0] = x;
     at[1] = y;
     omv_pens(rgb, w, h, put_run, at);

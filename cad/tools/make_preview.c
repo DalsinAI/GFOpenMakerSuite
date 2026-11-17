@@ -423,8 +423,12 @@ int main(int argc, char **argv)
     fprintf(ops, "W %d %d\n", w, h);
     olui_draw(ui, NULL, draw, NULL);
     if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
+        /* Each part in its metal, as make.c's view: the one part in the first. */
+        gs_tint tints[GS_PARTS_MAX] = {{0, 0}};
+        int ntints = listed ? gm_tints(listed, tints, GS_PARTS_MAX) : 1;
+        if (!listed) tints[0].n = part.n, tints[0].rgb = gs_parts_rgb(0);
         rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
-        if (rgb && (getenv("MEASURE") || getenv("EXTRUDE") || model ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
+        if (rgb && (getenv("MEASURE") || getenv("EXTRUDE") || model ? !gs_view_bed_tint(&part, &cam, tints, ntints, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
                                       : !gt_paint_part(&path, &cam, upto, rgb, box.w, box.h))) {
             snprintf(ppm, sizeof ppm, "%s.ppm", argv[1]);
             pf = fopen(ppm, "wb");
