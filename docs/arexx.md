@@ -258,9 +258,19 @@ length, as the window's Size.
 Template: `HOLE KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K`
 
 Cuts holes in the picked part, as the Holes tab. `KIND` is `circle` (a
-bolt circle: `D`, `N`, `PCD`), `row` (`D`, `N`, `PITCH`) or `counterbore`
-(`D`, `CB`, `DEEP`). `RESULT` says what was done. RC 10 if the values are
-out of range or the cut cannot be made, with why in `RESULT`.
+bolt circle: `D`, `N`, `PCD`), `row` (`D`, `N`, `PITCH`), `counterbore`
+(`D`, `CB`, `DEEP`), `drill` (one hole, `D` wide, through the middle) or
+`countersink` (`D` the hole, `CB` the 90 degree mouth). `RESULT` says
+what was done. RC 10 if the values are out of range or the cut cannot
+be made, with why in `RESULT`.
+
+### WASHER
+
+Template: `WASHER`
+
+Adds the bench's washer: 32 mm across, a 14 mm hole, 8 mm thick, on the
+bed past the parts shown. `RESULT` says so. RC 10 if the list is full or
+the washer does not build.
 
 ### PULL
 

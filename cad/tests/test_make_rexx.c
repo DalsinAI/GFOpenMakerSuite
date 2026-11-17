@@ -140,6 +140,14 @@ int main(void)
     expect(run(&g, "ADD potato", &io) == 0 && io.rc == OMR_ERROR, "ADD unknown shape");
     expect(run(&g, "PULL MM 2 FACE 0", &io) == 0, "PULL runs (rc depends on the face)");
     expect(run(&g, "HOLE KIND circle D 3 N 4 PCD 10", &io) == 0, "HOLE circle runs");
+    expect(run(&g, "HOLE KIND drill D 6", &io) == 0 && io.rc == OMR_OK, "HOLE drill through the box");
+    expect(run(&g, "HOLE KIND countersink D 6 CB 12", &io) == 0 && io.rc == OMR_OK, "HOLE countersink");
+    {
+        int n = gs_parts_count(ps);
+        expect(run(&g, "WASHER", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 1 &&
+                   strstr(buf, "32 mm washer") && !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Washer"),
+               "WASHER adds a part");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);

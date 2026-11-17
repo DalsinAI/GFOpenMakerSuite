@@ -98,11 +98,11 @@ the line width and the filament diameter. A hotend or a bed of 0 leaves that
 temperature command out.
 
 The solid editor is `cad/src/make.c`. It starts from a 20 mm cube with a
-cylinder cut out, on a 220 mm plate. Cube and Cylinder add a second part.
-Join, Cut and Intersect combine the selected part with the other one.
-Move, Rotate and Scale drag the selected part. Drop, Centre and Lay flat
-place it. Open, Save and Undo are there. The picture is fitted to the
-plate, so a move is visible.
+hole, on a 220 mm plate. The window has the bench's move, turn, scale,
+place, extrude, pull, chamfer, arrange, one layer of walls, and the hole
+tools, including one drill, a 90 degree countersink and a washer. Split,
+the section clip and dragging a sketch onto the bed are still only on
+the bench.
 
 ## Preview bench
 
@@ -112,13 +112,14 @@ Add drops a block or a round on a 220 mm bed. On stands that shape on the select
 
 Layers draw the walls of the selected part at one height. The segments are not joined, and there is no infill and no G-code. The window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
 
-The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. The Amiga window does not have these tools yet.
+The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut, so they stay on the bench.
 
 ## Not in this release
 
-One wall, not several. The skirt is a rectangle, not the outline. There is no
-brim, no support, and no start or end G-code of your own. The view is the solid. It does not yet lay the toolpaths back onto the
-model.
+Support, and start or end G-code of your own. A skirt can still be a
+rectangle rather than the outline. The view shows the solid and one
+layer's walls. It does not yet lay a sliced toolpath back onto the model.
+Split and the section clip are still only on the bench.
 
 ## Building
 

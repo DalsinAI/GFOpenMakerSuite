@@ -276,12 +276,12 @@ int main(void)
         /* The Holes tab: drill, holes, the patterns and the counterbore,
          * each field with its label and unit in the side, every button
          * clear, above the status line, at 640 by 480 and sized up. */
-        static const char *const hole_ids[] = {"hd", "hn", "hpcd", "hpitch", "hcb", "hdeep", "bolt", "row", "cbore"};
+        static const char *const hole_ids[] = {"hd", "hn", "hpcd", "hpitch", "hcb", "hdeep", "bolt", "row", "drill", "cbore", "csink", "washer"};
         const int nh = (int)(sizeof hole_ids / sizeof hole_ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[9];
+            olui_rect side, st, r[12];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_HOLES);

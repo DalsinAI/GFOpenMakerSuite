@@ -735,10 +735,67 @@ static void on_place(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
-/* Holes: the bench's bolt circle, hole row or counterbore, cut through the
- * picked part about its middle (ge_drill), with Undo; refused, the status
- * line says why and nothing changes. */
-/* The Parts tab's list: the picked part. */
+/* Holes: the bench's bolt circle, hole row, counterbore, one drill or
+ * countersink, cut through the picked part (ge_drill), with Undo; refused,
+ * the status line says why and nothing changes. Washer is a new part. */
+static void on_holes(olui *ui, const olui_event *ev, void *userdata)
+{
+    int kind = (int)(intptr_t)userdata;
+    ge_holes h;
+    gs_mesh copy;
+    char why[96];
+    (void)ev;
+    why[0] = 0;
+    memset(&h, 0, sizeof h);
+    h.d = omv_number(ui, "hd");
+    h.n = (int)(omv_number(ui, "hn") + 0.5f);
+    h.pcd = omv_number(ui, "hpcd");
+    h.pitch = omv_number(ui, "hpitch");
+    h.cb = omv_number(ui, "hcb");
+    h.deep = omv_number(ui, "hdeep");
+    h.mouth = h.cb; /* the countersink's mouth is the Bore field, as the bench */
+    memset(&copy, 0, sizeof copy);
+    if (ge_copy(&copy, work()) || ge_drill(&copy, kind, &h, why, (int)sizeof why)) {
+        gs_mesh_free(&copy);
+        say(ui, why[0] ? why : "Not enough memory for the holes.");
+        return;
+    }
+    remember();
+    gs_mesh_free(work());
+    *work() = copy;
+    picked = -1;
+    refresh(ui);
+    if (kind == GE_BOLT_CIRCLE)
+        snprintf(why, sizeof why, "%d holes %.1f mm on a %.1f mm circle, cut.", h.n, (double)h.d, (double)h.pcd);
+    else if (kind == GE_HOLE_ROW)
+        snprintf(why, sizeof why, "%d holes %.1f mm, %.1f mm apart, cut.", h.n, (double)h.d, (double)h.pitch);
+    else if (kind == GE_DRILL)
+        snprintf(why, sizeof why, "A %.1f mm hole, cut through.", (double)h.d);
+    else if (kind == GE_COUNTERSINK)
+        snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm countersink, cut.", (double)h.d, (double)h.mouth);
+    else
+        snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm counterbore %.1f deep, cut.", (double)h.d, (double)h.cb,
+                 (double)h.deep);
+    say(ui, why);
+}
+
+/* The bench's washer: a new part on the bed, past the parts shown. */
+static void on_washer(olui *ui, const olui_event *ev, void *userdata)
+{
+    char line[120];
+    (void)ev;
+    (void)userdata;
+    remember();
+    if (ge_washer(parts, line, (int)sizeof line) < 0) {
+        forget();
+        say(ui, line[0] ? line : "The washer did not build.");
+        return;
+    }
+    picked = -1;
+    verts_fit(0);
+    refresh(ui);
+    say(ui, line);
+}
 static void on_plist(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)userdata;
@@ -782,41 +839,6 @@ static void on_part(olui *ui, const olui_event *ev, void *userdata)
     } else
         gs_parts_set_colour(parts, at, what);
     refresh(ui);
-}
-
-static void on_holes(olui *ui, const olui_event *ev, void *userdata)
-{
-    int kind = (int)(intptr_t)userdata;
-    ge_holes h;
-    gs_mesh copy;
-    char why[96];
-    (void)ev;
-    why[0] = 0;
-    h.d = omv_number(ui, "hd");
-    h.n = (int)(omv_number(ui, "hn") + 0.5f);
-    h.pcd = omv_number(ui, "hpcd");
-    h.pitch = omv_number(ui, "hpitch");
-    h.cb = omv_number(ui, "hcb");
-    h.deep = omv_number(ui, "hdeep");
-    memset(&copy, 0, sizeof copy);
-    if (ge_copy(&copy, work()) || ge_drill(&copy, kind, &h, why, (int)sizeof why)) {
-        gs_mesh_free(&copy);
-        say(ui, why[0] ? why : "Not enough memory for the holes.");
-        return;
-    }
-    remember();
-    gs_mesh_free(work());
-    *work() = copy;
-    picked = -1;
-    refresh(ui);
-    if (kind == GE_BOLT_CIRCLE)
-        snprintf(why, sizeof why, "%d holes %.1f mm on a %.1f mm circle, cut.", h.n, (double)h.d, (double)h.pcd);
-    else if (kind == GE_HOLE_ROW)
-        snprintf(why, sizeof why, "%d holes %.1f mm, %.1f mm apart, cut.", h.n, (double)h.d, (double)h.pitch);
-    else
-        snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm counterbore %.1f deep, cut.", (double)h.d, (double)h.cb,
-                 (double)h.deep);
-    say(ui, why);
 }
 
 /* A new part, picked: Parts' Add, Extrude's Add. */
@@ -1139,6 +1161,9 @@ int main(int argc, char **argv)
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
     olui_on(ui, "cbore", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERBORE);
+    olui_on(ui, "drill", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_DRILL);
+    olui_on(ui, "csink", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERSINK);
+    olui_on(ui, "washer", OLUI_CLICK, on_washer, NULL);
     {
         int k;
         for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);
