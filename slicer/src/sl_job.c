@@ -46,35 +46,48 @@ int sl_load(sl_job *j, const char *stl, float bed_x, float bed_y, char *err, int
     return 0;
 }
 
-int sl_slice(sl_job *j, const gp_opts *po, const gc_opts *go, const om_machine *m, int tasks, char *err, int errlen)
+int sl_slice(sl_job *j, const gs_settings *s, const om_machine *m, int tasks, char *err, int errlen)
 {
-    gp_opts o = *po;
-    gc_opts g = *go;
+    gp_opts o;
+    gp_more x;
+    gc_opts g;
+    gc_more gx;
     int layers;
     drop_slice(j);
     if (!j->have_part) {
         snprintf(err, (size_t)errlen, "Open an STL first");
         return -1;
     }
-    o.layer_h = gl_height(o.layer_h);
-    g.layer_h = o.layer_h;
+    j->set = *s;
+    j->set.layer_h = gl_height(s->layer_h);
+    gs_settings_opts(&j->set, &o, &g);
+    gs_settings_more(&j->set, &x);
     layers = gp_layers(&j->part, &o);
     if (tasks > layers) tasks = layers; /* as gp_part_par does */
     if (tasks < 1) tasks = 1;
-    if (gp_part_par(&j->path, &j->part, &o, tasks) || !j->path.n) {
+    if (gp_part_par_more(&j->path, &j->part, &o, &x, tasks) || !j->path.n) {
         drop_slice(j);
         snprintf(err, (size_t)errlen, "That did not slice: out of memory, or nothing to slice");
         return -1;
     }
-    j->how = gc_estimate_how(&j->path, m, &g, &j->st);
+    gs_settings_gc_more(&j->set, &g, &gx);
+    j->how = gc_estimate_more(&j->path, m, &gx, &j->st);
     j->sliced = 1;
     j->tasks = tasks;
     return 0;
 }
 
-int sl_write(sl_job *j, const char *out, const om_machine *m, const gc_opts *go, char *err, int errlen)
+static long to_file(const char *s, long n, void *ud)
+{
+    return (long)fwrite(s, 1, (size_t)n, (FILE *)ud);
+}
+
+int sl_write(sl_job *j, const char *out, const om_machine *m, char *err, int errlen)
 {
     om_job job;
+    gp_opts o;
+    gc_opts g;
+    gc_more gx;
     char why[128];
     FILE *f;
     int rc;
@@ -82,7 +95,9 @@ int sl_write(sl_job *j, const char *out, const om_machine *m, const gc_opts *go,
         snprintf(err, (size_t)errlen, "Slice first");
         return -1;
     }
-    gc_job(&j->path, m, go, &job);
+    gs_settings_opts(&j->set, &o, &g);
+    gs_settings_gc_more(&j->set, &g, &gx);
+    gc_job(&j->path, m, &g, &job);
     if (om_check(m, &job, why, (int)sizeof why) & ~OM_TOO_FAST) {
         snprintf(err, (size_t)errlen, "%.60s cannot print this: %s", m->name, why);
         return -1;
@@ -92,7 +107,7 @@ int sl_write(sl_job *j, const char *out, const om_machine *m, const gc_opts *go,
         snprintf(err, (size_t)errlen, "%.120s: cannot write", out);
         return -1;
     }
-    rc = gc_write(f, &j->path, m, go, &j->st, err, errlen);
+    rc = gc_write_more(to_file, f, &j->path, m, &gx, &j->st, err, errlen);
     if (fclose(f) && !rc) {
         snprintf(err, (size_t)errlen, "%.120s: cannot write", out);
         rc = -1;

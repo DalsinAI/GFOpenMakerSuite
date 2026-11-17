@@ -139,8 +139,7 @@ int main(int argc, char **argv)
     omv_machines_fill(ui, "machine", &printers, "No printers");
     sl_init(&job);
     if (strcmp(argv[1], "sliced") == 0) {
-        gp_opts po;
-        gc_opts go;
+        gs_settings set;
         om_machine m;
         char name[64], status[180];
         const char *base;
@@ -149,8 +148,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "%s\n", argc < 4 ? "need an stl" : err);
             return 1;
         }
-        sl_ui_opts(ui, &po, &go);
-        if (sl_slice(&job, &po, &go, &m, 4, err, (int)sizeof err)) {
+        sl_ui_settings(ui, &set);
+        if (sl_slice(&job, &set, &m, 4, err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", err);
             return 1;
         }

@@ -92,22 +92,20 @@ int main(void)
     expect(!strcmp(olui_get_text(olui_find(ui, "status")), "Sliced: 100 layers"), "omv_say says it on the status line");
     expect(olui_find(ui, "layers") == NULL && olui_find(ui, "skirt") == NULL, "no layer list or skirt: a slider, a brim");
     {
-        /* The settings as the engine's options: its defaults, then the
-         * window's numbers over them. */
-        gp_opts po, pd;
-        gc_opts go, gd;
-        gp_defaults(&pd);
-        gc_defaults(&gd);
-        sl_ui_opts(ui, &po, &go);
-        expect(po.layer_h == 0.2f && po.infill == 20.f && po.line_w == 0.4f && po.walls == 2 && po.brim == 3 &&
-                   po.skins == pd.skins,
-               "gp_opts: 0.20 mm layers, 20 % infill, 0.40 mm lines, 2 walls, 3 brim loops, the skins as ever");
-        expect(go.hotend == 200.f && go.bed == 60.f && go.layer_h == po.layer_h && go.filament == gd.filament,
-               "gc_opts: 200 and 60 degrees, the layers' height, the filament as ever");
+        /* The window's settings: the shared defaults, then the window's
+         * numbers over them. */
+        gs_settings s, d;
+        gs_settings_default(&d);
+        sl_ui_settings(ui, &s);
+        expect(s.layer_h == 0.2f && s.infill == 20.f && s.line_w == 0.4f && s.walls == 2 && s.around == GS_BRIM &&
+                   s.loops == 3 && s.top == d.top && s.filament == d.filament,
+               "0.20 mm layers, 20 % infill, 0.40 mm lines, 2 walls, 3 brim loops, the rest the defaults");
+        expect(s.hotend == 200.f && s.bed == 60.f, "200 and 60 degrees");
         olui_set_number(ui, olui_find(ui, "layer"), 30);
         olui_set_number(ui, olui_find(ui, "walls"), 4);
-        sl_ui_opts(ui, &po, &go);
-        expect(po.layer_h == 0.3f && go.layer_h == 0.3f && po.walls == 4, "and as they are changed");
+        olui_set_number(ui, olui_find(ui, "brim"), 0);
+        sl_ui_settings(ui, &s);
+        expect(s.layer_h == 0.3f && s.walls == 4 && s.around == GS_NONE, "and as they are changed; no brim, none");
     }
     olui_free(ui);
     printf(fails ? "slicer ui: %d failed\n" : "slicer ui ok\n", fails);
