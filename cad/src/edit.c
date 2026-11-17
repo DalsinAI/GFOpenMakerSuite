@@ -1203,7 +1203,12 @@ int ge_ring(gs_parts *ps, int count, char *line, int len)
     r = sqrtf(x * x + y * y);
     big = size[0] > size[1] ? size[0] : size[1];
     lifted = r < (big > 8.f ? big : 8.f) * 0.55f;
-    if (lifted) r = big * 0.65f + 10.f;
+    if (lifted) { /* the bench's circle, out far enough to clear the part and each other, 6 mm apart */
+        float clear = big * 1.42f + 6.f, apart = clear / (2.f * sinf(pi2 * 0.5f / (float)n));
+        r = big * 0.65f + 10.f;
+        if (r < clear) r = clear;
+        if (r < apart) r = apart;
+    }
     a0 = lifted ? 0.f : atan2f(y, x);
     for (i = 1; i < n; i++) {
         float t = (float)i * pi2 / (float)n, a = a0 + t;

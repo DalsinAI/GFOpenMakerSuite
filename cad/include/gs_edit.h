@@ -176,8 +176,8 @@ int ge_chamfer(gs_mesh *m, int face, float mm, char *line, int len);
  * X, picked. Line: count (2 to 8) in all along axis (0 X, 1 Y, 2 Z), gap
  * (0 to 80) mm apart, the last picked. Ring: count (3 to 12) in all round
  * the bed's middle, each turned with its place; a part on the middle has
- * its copies round it. Mirror: through X about its middle. Turn: deg about
- * axis through its middle. Stack: on the part before it in the list (the
+ * its copies round it, clear of it and of each other. Mirror: through X
+ * about its middle. Turn: deg about axis through its middle. Stack: on the part before it in the list (the
  * second, for the first), over its middle. Solo: the others hidden, or
  * with them hidden already, every part shown. */
 int ge_duplicate(gs_parts *ps, char *line, int len);
