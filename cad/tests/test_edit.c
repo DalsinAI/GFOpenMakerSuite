@@ -217,6 +217,55 @@ int main(void)
         gs_mesh_free(&part);
         gs_mesh_free(&got);
     }
+    {
+        /* Parts' shapes: each closed, outside out, about the stock. */
+        gs_mesh stock, part;
+        int k;
+        char what[80];
+        memset(&stock, 0, sizeof stock);
+        memset(&part, 0, sizeof part);
+        expect(gm_cube(&stock, 100.f, 100.f, 0.f, 20.f, 20.f, 20.f) == 0, "a stock cube");
+        expect(ge_shape_name(GE_BOX) && !strcmp(ge_shape_name(GE_BOX), "Box") &&
+                   !strcmp(ge_shape_name(GE_SLOT), "Slot") && !ge_shape_name(GE_SHAPES) && !ge_shape_name(-1),
+               "the shapes' names");
+        for (k = 0; k < GE_SHAPES; k++) {
+            snprintf(what, sizeof what, "%s: closed, outside out, at the stock", ge_shape_name(k));
+            expect(ge_shape(&part, k, &stock) == 0 && gm_open_edges(&part) == 0 && signed_volume(&part) > 0.f &&
+                       part.max.x > 100.f && part.min.x < 128.f && part.max.y > 100.f && part.min.y < 120.f,
+                   what);
+        }
+        expect(ge_shape(&part, GE_CYLINDER, &stock) == 0 && part.min.z < 0.f && part.max.z > 20.f, "the cylinder goes through");
+        expect(ge_shape(&part, GE_SLOT, &stock) == 0 && part.min.z < 0.f && part.max.z > 20.f &&
+                   part.max.x - part.min.x > part.max.y - part.min.y,
+               "the slot goes through, along X");
+        expect(ge_shape(&part, GE_SPHERE, &stock) == 0 && near(part.min.z, 0.f), "the sphere sits on the plate");
+        expect(ge_shape(&part, GE_SHAPES, &stock) == -1, "no such shape");
+        {
+            /* Each shape cuts and joins the holed starting part cleanly. */
+            gs_mesh start, out;
+            char e[80];
+            memset(&start, 0, sizeof start);
+            memset(&out, 0, sizeof out);
+            expect(ge_start(&start, NULL, e, (int)sizeof e) == 0, "the starting part");
+            for (k = 0; k < GE_SHAPES; k++) {
+                int c, j;
+                expect(ge_shape(&part, k, &start) == 0, "a shape at the start");
+                c = gm_subtract(&out, &start, &part) == 0 && gm_open_edges(&out) == 0 &&
+                    signed_volume(&out) <= signed_volume(&start) + 1.f;
+                gs_mesh_free(&out);
+                j = gm_union(&out, &start, &part) == 0 && gm_open_edges(&out) == 0 &&
+                    signed_volume(&out) >= signed_volume(&start) - 1.f &&
+                    signed_volume(&out) <= signed_volume(&start) + signed_volume(&part) + 1.f;
+                gs_mesh_free(&out);
+                snprintf(what, sizeof what, "%s cuts and joins the start, closed", ge_shape_name(k));
+                expect(c && j, what);
+            }
+            gs_mesh_free(&start);
+        }
+        gs_mesh_free(&stock);
+        expect(ge_shape(&part, GE_CONE, &stock) == 0 && part.n > 0, "with no stock, at the plate's origin");
+        gs_mesh_free(&part);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

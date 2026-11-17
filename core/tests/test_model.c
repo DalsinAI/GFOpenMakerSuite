@@ -110,6 +110,37 @@ int main(void)
         gs_mesh_free(&miss);
     }
     {
+        /* A holed block far out on the plate: a second boolean on it once
+         * lost its faces, for a float there has few digits left. */
+        static const float at[3] = {0.f, 64.f, 100.f};
+        float first = 0.f;
+        int k;
+        for (k = 0; k < 3; k++) {
+            gs_mesh blk, peg, holed, box, out;
+            char what[64];
+            float o = at[k], d;
+            int ok;
+            memset(&blk, 0, sizeof blk), memset(&peg, 0, sizeof peg), memset(&holed, 0, sizeof holed);
+            memset(&box, 0, sizeof box), memset(&out, 0, sizeof out);
+            expect(gm_cube(&blk, o, o, 8.f, 20, 20, 20) == 0 && gm_cylinder(&peg, o + 10, o + 10, 7.f, 6, 22, 32) == 0 &&
+                       gm_subtract(&holed, &blk, &peg) == 0 && gm_cube(&box, o + 12, o + 4, 8.f, 16, 16, 16) == 0,
+                   "a holed block and a box");
+            snprintf(what, sizeof what, "at %.0f: the join is closed and the same", o);
+            /* The box less its 8 x 16 x 16 overlap, plus the hole's share
+             * of that overlap, and the same wherever it is. */
+            ok = gm_union(&out, &holed, &box) == 0 && gm_open_edges(&out) == 0;
+            d = volume(&out) - volume(&holed) - 2048.f;
+            if (k == 0) first = d;
+            expect(ok && d > 0.f && d < 1000.f && fabsf(d - first) < 1.f, what);
+            fprintf(stderr, "chained join at %.0f: %.1f\n", o, volume(&out));
+            gs_mesh_free(&out);
+            snprintf(what, sizeof what, "at %.0f: the cut is closed", o);
+            expect(gm_subtract(&out, &holed, &box) == 0 && gm_open_edges(&out) == 0 && volume(&out) < volume(&holed),
+                   what);
+            gs_mesh_free(&blk), gs_mesh_free(&peg), gs_mesh_free(&holed), gs_mesh_free(&box), gs_mesh_free(&out);
+        }
+    }
+    {
         /* A sliver from a cut once made its own plane split it again, for
          * ever: r = 5 and 5.5 on 32 sides overflowed the stack. */
         static const int sides[2] = {32, 24};
