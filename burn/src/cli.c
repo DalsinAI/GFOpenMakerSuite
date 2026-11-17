@@ -37,7 +37,7 @@ static int known_key(const char *s)
                                        "passes", "PASSES", "constant", "CONSTANT", "s100", "S100",
                                        "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER",
                                        "cuts_last", "CUTS_LAST", "order", "ORDER", "material", "MATERIAL",
-                                       "invert", "INVERT", "width", "WIDTH", "kerf", "KERF", "tabs", "TABS", "tabw", "TABW", NULL};
+                                       "invert", "INVERT", "width", "WIDTH", "kerf", "KERF", "tabs", "TABS", "tabw", "TABW", "frame", "FRAME", NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -53,7 +53,7 @@ static void usage(void)
     fprintf(stderr, "usage: openmake-burn in.svg|in.dxf|in.pgm out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
-                    "       [mode=line] [interval=0.2] [kerf=0] [tabs=0] [tabw=1] [cuts_last=1] [order=1,2]\n"
+                    "       [mode=line] [interval=0.2] [kerf=0] [tabs=0] [tabw=1] [frame=0] [cuts_last=1] [order=1,2]\n"
                     "       [material=materials/laser/card.om]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
                     "mode=fill scans inside closed shapes, mode=offset follows them inwards; interval is the gap in mm.\n"
@@ -63,6 +63,7 @@ static void usage(void)
                     "kerf= (mm) grows closed cuts by half the kerf and shrinks holes; 0 leaves them.\n"
                     "tabs= is how many holding tabs to leave on each closed cut, after the kerf; 0 leaves none.\n"
                     "tabw= is each tab's width in mm (default 1). Fill, offset, open paths and pictures are unchanged.\n"
+                    "frame=1 writes a travel around the job's box with the laser off, never a cut.\n"
                     "A Netpbm PBM, PGM or PPM is engraved as scan lines (black is more power).\n"
                     "width= is the picture width in mm; invert=1 burns white.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
@@ -185,10 +186,14 @@ int main(int argc, char **argv)
         fprintf(stderr, "openmake-burn: %s\n", err);
         return 1;
     }
-    memset(&st, 0, sizeof st);
-    if (burn_write(argv[1], argv[2], &m, &o, &st, err, (int)sizeof err)) {
-        fprintf(stderr, "openmake-burn: %s\n", err);
-        return 1;
+    {
+        int frame = 0;
+        if ((v = arg2(argc, argv, "frame", "FRAME")) != NULL) frame = atoi(v) ? 1 : 0;
+        memset(&st, 0, sizeof st);
+        if ((frame ? burn_write_frame : burn_write)(argv[1], argv[2], &m, &o, &st, err, (int)sizeof err)) {
+            fprintf(stderr, "openmake-burn: %s\n", err);
+            return 1;
+        }
     }
     printf("openmake-burn: wrote %s: %d moves for %s", argv[2], st.moves, m.name);
     if (st.seconds > 0.f && st.seconds < 60.f)

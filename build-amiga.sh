@@ -64,7 +64,7 @@ build() {
     mkdir -p "$dir"
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
-    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/parts.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
+    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/make_rexx.c cad/src/edit.c core/src/rexx.c core/src/rexx_amiga.c core/src/parts.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
         core/ui/view_ui.c core/ui/window_amiga.c core/ui/view_gpu_amiga.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c core/src/plan_par.c core/src/par_exec.c core/src/gcode.c \
         machines/src/machine.c $PLAN $CORE "$OLUI" -lm
     # The machines, as PROGDIR:machines, for the printer picker: every
