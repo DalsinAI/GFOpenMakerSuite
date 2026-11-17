@@ -348,6 +348,35 @@ int main(void)
         gs_mesh_free(&tool);
         gs_mesh_free(&before);
     }
+    {
+        /* Measure: a point on the part under the pointer, where a point
+         * shows in the view, and the lines said. */
+        gs_mesh cube;
+        gs_cam cam;
+        gs_v top = {110, 104, 20}, side = {100, 112, 6}, at;
+        float x, y, x2, y2;
+        char line[100];
+        int face;
+        memset(&cube, 0, sizeof cube);
+        gs_cam_home(&cam);
+        expect(gm_cube(&cube, 100, 100, 0, 20, 20, 20) == 0 && ge_project(&cube, &cam, 320, 240, top, &x, &y) == 0 &&
+                   x > 0.f && x < 320.f && y > 0.f && y < 240.f,
+               "a point on the top shows in the view");
+        face = ge_pick_at(&cube, &cam, 320, 240, (int)x, (int)y, &at);
+        expect(face >= 0 && fabsf(at.x - 110.f) < 2.f && fabsf(at.y - 104.f) < 2.f && near(at.z, 20.f),
+               "and picked there is that point to a pixel, on the top");
+        expect(ge_pick(&cube, &cam, 320, 240, (int)x, (int)y) == face, "the same face as ge_pick");
+        expect(ge_project(&cube, &cam, 320, 240, side, &x2, &y2) == 0 && (x2 != x || y2 != y), "another point elsewhere");
+        expect(ge_pick_at(&cube, &cam, 320, 240, 2, 2, &at) == -1, "nothing under a corner of the view");
+        ge_measure_line(line, (int)sizeof line, top, side);
+        expect(!strcmp(line, "19.0 mm between the two points (X 10.0, Y 8.0, Z 14.0)."), "the distance said");
+        ge_facts_line(line, (int)sizeof line, &cube);
+        expect(!strcmp(line, "8.00 cm3, 9.9 g of PLA. 20.0 x 20.0 x 20.0 mm, 12 triangles."), "the part's facts said");
+        expect(strlen(line) <= 78, "in the status line's 78 characters");
+        gs_mesh_free(&cube);
+        ge_facts_line(line, (int)sizeof line, &cube);
+        expect(!strcmp(line, "No part to measure."), "no part");
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

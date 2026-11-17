@@ -32,6 +32,14 @@ int ge_lay_face(gs_mesh *m, int face);
 
 /* The front triangle under a pixel of the plate view, or -1. */
 int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y);
+/* The same, with the point on it under the pixel in at. */
+int ge_pick_at(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y, gs_v *at);
+/* Where p shows in that view. 0, or -1. */
+int ge_project(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_v p, float *x, float *y);
+/* Measure's lines: the distance between two points and along each axis;
+ * a part's volume, its PLA (1.24 g/cm3, as the bench), size and triangles. */
+void ge_measure_line(char *buf, int len, gs_v a, gs_v b);
+void ge_facts_line(char *buf, int len, const gs_mesh *m);
 
 /* Reads an STL for the editor: welded, empty triangles dropped, the
  * outside turned out, and sitting on z = 0. It does not close cracks.

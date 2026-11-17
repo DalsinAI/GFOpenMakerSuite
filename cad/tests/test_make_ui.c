@@ -34,10 +34,10 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
 /* Every button make.c hands to olui_on: the Model tab's, then the Print
  * tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
-    "open", "save", "undo", "orbit", "move", "rot", "scale", "drop", "centre", "lay",
+    "open", "save", "undo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
     "add", "join", "cut", "meet", "prev", "next", "slice", "gcode"
 };
-#define PRINT_BUTTONS 14
+#define PRINT_BUTTONS 15
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -152,8 +152,11 @@ int main(void)
             olui_el *shape = olui_find(ui, "shape");
             olui_rect r;
             expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
-                       r.w >= 90 && !overlap(&r, &box[10]) && r.x < box[10].x,
+                       r.w >= 90 && !overlap(&r, &box[11]) && r.x < box[11].x,
                    "the shape select is beside Add, wide enough for a name");
+            /* Measure beside Rotate and Scale, wide enough for its name. */
+            expect(box[6].y == box[5].y && box[7].y == box[5].y && box[7].x > box[6].x && box[7].w >= 7 * 8,
+                   "Measure is in the Tool group's second row, after Scale");
             {
                 /* Place: a row for X, Y and Z, its Size then its At, as the bench's
                  * Size and place, with room for "-999.9" beside the arrows. */
