@@ -443,3 +443,36 @@ int ge_shape(gs_mesh *m, int kind, const gs_mesh *stock)
     }
     return -1;
 }
+
+void ge_where(const gs_mesh *m, float pos[3], float size[3])
+{
+    int k;
+    for (k = 0; k < 3; k++) pos[k] = size[k] = 0.f;
+    if (!m || !m->t || !m->n) return;
+    pos[0] = (m->min.x + m->max.x) * 0.5f;
+    pos[1] = (m->min.y + m->max.y) * 0.5f;
+    pos[2] = m->min.z;
+    size[0] = m->max.x - m->min.x;
+    size[1] = m->max.y - m->min.y;
+    size[2] = m->max.z - m->min.z;
+}
+
+void ge_place(gs_mesh *m, float x, float y, float z)
+{
+    float pos[3], size[3];
+    if (!m || !m->t || !m->n) return;
+    ge_where(m, pos, size);
+    ge_move(m, x - pos[0], y - pos[1], z - pos[2]);
+}
+
+int ge_fit(gs_mesh *m, int axis, float mm)
+{
+    float pos[3], size[3], s;
+    if (!m || !m->t || !m->n || axis < 0 || axis > 2 || !(mm > 0.f)) return -1;
+    ge_where(m, pos, size);
+    if (size[axis] < 0.05f) return -1;
+    s = mm / size[axis];
+    ge_scale(m, s, s, s);
+    ge_place(m, pos[0], pos[1], pos[2]);
+    return 0;
+}
