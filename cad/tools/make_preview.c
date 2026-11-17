@@ -25,6 +25,7 @@
 #include "omview_settings.h"
 #include "omview_ui.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,6 +63,38 @@ static void draw(void *userdata, const olui_draw_op *op)
     }
 }
 
+/* As make.c's draw_marks: a blue line between the points, each a white
+ * square ringed in black, 5 pixels, as the pens draw them. */
+static void put(unsigned char *rgb, int w, int h, int x, int y, int r, int g, int b)
+{
+    unsigned char *p;
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    p = rgb + ((size_t)y * (size_t)w + (size_t)x) * 3;
+    p[0] = (unsigned char)r, p[1] = (unsigned char)g, p[2] = (unsigned char)b;
+}
+
+static int paint_marks(unsigned char *rgb, int w, int h, const gs_mesh *m, const gs_cam *cam, const gs_v *pt, int n)
+{
+    float px[2], py[2];
+    int i, dx, dy;
+    for (i = 0; i < n; i++)
+        if (ge_project(m, cam, w, h, pt[i], &px[i], &py[i])) return -1;
+    if (n == 2) {
+        int steps = (int)(fabsf(px[1] - px[0]) > fabsf(py[1] - py[0]) ? fabsf(px[1] - px[0]) : fabsf(py[1] - py[0])) + 1;
+        for (i = 0; i <= steps; i++) {
+            float t = (float)i / (float)steps;
+            put(rgb, w, h, (int)(px[0] + (px[1] - px[0]) * t), (int)(py[0] + (py[1] - py[0]) * t), 0x66, 0x88, 0xbb);
+        }
+    }
+    for (i = 0; i < n; i++)
+        for (dy = -2; dy <= 2; dy++)
+            for (dx = -2; dx <= 2; dx++) {
+                int edge = dx == -2 || dx == 2 || dy == -2 || dy == 2;
+                put(rgb, w, h, (int)px[i] + dx, (int)py[i] + dy, edge ? 0 : 255, edge ? 0 : 255, edge ? 0 : 255);
+            }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     olui *ui;
@@ -78,6 +111,8 @@ int main(int argc, char **argv)
     gc_stats st;
     gt_path path;
     char err[160], status[180], ppm[256];
+    gs_v mark[2];
+    int nmark = 0;
     unsigned char *rgb;
     int w = 640, h = 480, upto = argc > 2 ? atoi(argv[2]) : 0;
     FILE *pf;
@@ -207,14 +242,38 @@ int main(int argc, char **argv)
         olui_select_open(ui, olui_find(ui, "machine"), 1);
         if (!olui_layout(ui, w, h)) return 1;
     }
+    gs_cam_home(&cam);
+    if (getenv("MEASURE")) { /* as make.c's Measure: the tool lit, then each click */
+        const char *q = getenv("MEASURE");
+        olui_set_selected(ui, olui_find(ui, "orbit"), 0);
+        olui_set_selected(ui, olui_find(ui, "measure"), 1);
+        ge_facts_line(status, (int)sizeof status, &part);
+        /* Each world point to its pixel, then picked there as a click is. */
+        while (olui_box(ui, olui_find(ui, "view"), &box) && nmark < 2 &&
+               sscanf(q, "%f,%f,%f", &mark[nmark].x, &mark[nmark].y, &mark[nmark].z) == 3) {
+            float fx, fy;
+            if (ge_project(&part, &cam, box.w, box.h, mark[nmark], &fx, &fy) ||
+                ge_pick_at(&part, &cam, box.w, box.h, (int)fx, (int)fy, &mark[nmark]) < 0) {
+                fprintf(stderr, "MEASURE: no part under point %d\n", nmark + 1);
+                return 2;
+            }
+            nmark++;
+            q = strchr(q, ';');
+            if (!q) break;
+            q++;
+        }
+        if (nmark == 2) ge_measure_line(status, (int)sizeof status, mark[0], mark[1]);
+        else if (nmark == 1) snprintf(status, sizeof status, "First point set. Click the second.");
+        omv_say(ui, status);
+    }
     ops = fopen(argv[1], "w");
     if (!ops) return 1;
     fprintf(ops, "W %d %d\n", w, h);
     olui_draw(ui, NULL, draw, NULL);
     if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
         rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
-        gs_cam_home(&cam);
-        if (rgb && !gt_paint_part(&path, &cam, upto, rgb, box.w, box.h)) {
+        if (rgb && (getenv("MEASURE") ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
+                                      : !gt_paint_part(&path, &cam, upto, rgb, box.w, box.h))) {
             snprintf(ppm, sizeof ppm, "%s.ppm", argv[1]);
             pf = fopen(ppm, "wb");
             if (pf) {
