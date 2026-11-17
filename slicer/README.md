@@ -9,7 +9,8 @@ GFOpenSlicer.
 - `src/cli.c`: the same from the shell.
 - `src/openmake_slice.c`: `openmake-slice`, the new slice from the shell: OpenMakeCore's
   layers (brim, walls, skin, infill) to G-code for a machine from `../machines`,
-  checked against the machine first.
+  checked against the machine first. `TASKS=n` makes the layers on n tasks at once
+  (one a core by default); the G-code is the same on any number.
 - `tools/preview.c`, `tools/paint.py`: a host picture of the window.
 - `tests/`: the host tests.
 

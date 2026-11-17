@@ -93,8 +93,8 @@ $(BUILD)/test_toolpath_paint: core/tests/test_toolpath_paint.c core/src/toolpath
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath_paint.c core/src/toolpath_paint.c $(PLAN) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # A part to G-code for a machine, from the shell.
-$(BUILD)/openmake-slice: slicer/src/openmake_slice.c $(PLAN) core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(PLAN) core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c -lm
+$(BUILD)/openmake-slice: slicer/src/openmake_slice.c $(PLAN) core/src/plan_par.c core/src/par_posix.c core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c core/include/gs_plan.h core/include/gs_gcode.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Imachines/include -o $@ slicer/src/openmake_slice.c $(PLAN) core/src/plan_par.c core/src/par_posix.c core/src/toolpath_paint.c core/src/view.c core/src/solid.c core/src/gcode.c core/src/model.c core/src/stl.c machines/src/machine.c -lm
 
 # openmakemesh.library's calls, the same way.
 MESH_LIB = core/library/openmakemesh_lib.sfd
@@ -141,6 +141,10 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	! $(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/tiny.gcode \
 	    DRIVER=machines/printer/marlin/driver.om PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/tiny.txt
 	grep -q 'Tiny 50 cannot print this: [XY] runs to' $(BUILD)/tiny.txt && test ! -e $(BUILD)/tiny.gcode
+	for t in 1 4; do $(BUILD)/openmake-slice core/tests/data/nasa-wrench.stl $(BUILD)/wrench-$$t.gcode TASKS=$$t \
+	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om \
+	    > $(BUILD)/wrench-$$t.txt && cmp $(BUILD)/wrench.gcode $(BUILD)/wrench-$$t.gcode && \
+	    grep -q "layers made on $$t task" $(BUILD)/wrench-$$t.txt || exit 1; done
 	@echo "slice command ok"
 
 preview: $(BUILD)/preview
