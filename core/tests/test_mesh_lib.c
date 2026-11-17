@@ -87,6 +87,12 @@ int main(void)
            "GM_Counterbore, seven floats");
     expect(GM_BoltCircle(&x[1], 0, 0, 0, 10, 6, 10, 6) == -1 && GM_Counterbore(&x[1], 0, 0, 0, 10, 6, 11, 10) == -1,
            "the hole tools refuse holes that meet and a bore as deep as the drill");
+    {
+        /* 1.5: a part's facts, the same through the library. */
+        gs_facts f0, f1;
+        expect(gm_facts(&x[1], &f0) == 0 && GM_Facts(&x[1], &f1) == 0 && !memcmp(&f0, &f1, sizeof f0) && f1.volume > 0.f,
+               "GM_Facts, a pointer each way");
+    }
     GS_MeshFree(&x[0]);
     GS_MeshFree(&x[1]);
 
@@ -121,8 +127,8 @@ int main(void)
             expect(all[k]->n == 0 && all[k]->t == NULL, "GS_MeshFree");
         }
     }
-    expect(calls == 34, "every call went through the table");
-    if (calls != 34)
+    expect(calls == 35, "every call went through the table");
+    if (calls != 35)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);

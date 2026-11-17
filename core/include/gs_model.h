@@ -53,6 +53,18 @@ int gm_bolt_circle(gs_mesh *m, float x, float y, float z, float h, float d, floa
 int gm_hole_row(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n);
 int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep);
 
+/* What Measure shows of a part: its volume (mm3, inside out negative),
+ * its surface (mm2), the size of its box (mm) and its triangles. Fields
+ * are only ever added at the end (openmakemesh.library hands it out). */
+typedef struct {
+    float volume, area;
+    float sx, sy, sz;
+    int tris;
+} gs_facts;
+
+/* m's facts into f; an empty part's are all nought. 0, or -1. */
+int gm_facts(const gs_mesh *m, gs_facts *f);
+
 /* dst = a and b joined. a and b are not changed. 0, or -1. */
 int gm_union(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);
 

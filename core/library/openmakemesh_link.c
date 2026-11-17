@@ -92,3 +92,8 @@ int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, floa
 {
     return GM_Counterbore(m, x, y, z, h, d, cb, deep);
 }
+
+int gm_facts(const gs_mesh *m, gs_facts *f)
+{
+    return GM_Facts(m, f);
+}

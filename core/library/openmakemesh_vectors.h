@@ -111,7 +111,13 @@ static int LIB_GM_Counterbore(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULO
     return gm_counterbore(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(h), om_lib_float(d), om_lib_float(cb), om_lib_float(deep));
 }
 
-#define OPENMAKEMESH_LAST_BIAS 132
+static int LIB_GM_Facts(REG(a0, const gs_mesh *m), REG(a1, gs_facts *f), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_facts(m, f);
+}
+
+#define OPENMAKEMESH_LAST_BIAS 138
 #define OPENMAKEMESH_VECTORS \
     (APTR)LIB_GS_StlLoad, \
     (APTR)LIB_GS_MeshFree, \
@@ -130,4 +136,5 @@ static int LIB_GM_Counterbore(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULO
     (APTR)LIB_GM_Slot, \
     (APTR)LIB_GM_BoltCircle, \
     (APTR)LIB_GM_HoleRow, \
-    (APTR)LIB_GM_Counterbore
+    (APTR)LIB_GM_Counterbore, \
+    (APTR)LIB_GM_Facts

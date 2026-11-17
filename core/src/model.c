@@ -549,6 +549,33 @@ int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg
     return rod(m, x, y, z, r, h, seg);
 }
 
+int gm_facts(const gs_mesh *m, gs_facts *f)
+{
+    double v = 0.0, a = 0.0;
+    int i;
+    if (!m || !f) return -1;
+    memset(f, 0, sizeof *f);
+    if (!m->t || m->n <= 0) return 0;
+    /* About the box's corner, so a part far out on the plate keeps its
+     * digits; double sums, the same with or without an FPU. */
+    for (i = 0; i < m->n; i++) {
+        double ax = m->t[i].a.x - m->min.x, ay = m->t[i].a.y - m->min.y, az = m->t[i].a.z - m->min.z;
+        double bx = m->t[i].b.x - m->min.x, by = m->t[i].b.y - m->min.y, bz = m->t[i].b.z - m->min.z;
+        double cx = m->t[i].c.x - m->min.x, cy = m->t[i].c.y - m->min.y, cz = m->t[i].c.z - m->min.z;
+        double ux = bx - ax, uy = by - ay, uz = bz - az, wx = cx - ax, wy = cy - ay, wz = cz - az;
+        double nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+        v += ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx);
+        a += sqrtf((float)(nx * nx + ny * ny + nz * nz));
+    }
+    f->volume = (float)(v / 6.0);
+    f->area = (float)(a / 2.0);
+    f->sx = m->max.x - m->min.x;
+    f->sy = m->max.y - m->min.y;
+    f->sz = m->max.z - m->min.z;
+    f->tris = m->n;
+    return 0;
+}
+
 /* The hole tools' drills have the bench's 28 sides, a counterbore 32. */
 #define DRILL_SIDES 28
 #define BORE_SIDES 32
