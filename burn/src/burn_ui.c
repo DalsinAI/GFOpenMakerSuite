@@ -81,7 +81,8 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
             if (sel) {
                 olui_select_add(ui, sel, "Line", "line");
                 olui_select_add(ui, sel, "Fill", "fill");
-                olui_select_set(ui, sel, ly.mode == BURN_FILL ? 1 : 0);
+                olui_select_add(ui, sel, "Offset", "offset");
+                olui_select_set(ui, sel, ly.mode == BURN_OFFSET ? 2 : ly.mode == BURN_FILL ? 1 : 0);
             }
         }
     }
@@ -139,7 +140,10 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         store[i].set |= BURN_SET_ON;
         id_of(id, (int)sizeof id, i, "mode");
         el = olui_find(ui, id);
-        store[i].mode = (el && olui_select_index(el) == 1) ? BURN_FILL : BURN_LINE;
+        {
+            int idx = el ? olui_select_index(el) : 0;
+            store[i].mode = idx == 2 ? BURN_OFFSET : idx == 1 ? BURN_FILL : BURN_LINE;
+        }
         store[i].set |= BURN_SET_MODE;
         id_of(id, (int)sizeof id, i, "interval");
         store[i].interval = omv_number(ui, id);

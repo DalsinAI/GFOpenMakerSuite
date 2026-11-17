@@ -246,14 +246,15 @@ int main(void)
         int i, cuts = 0, trav = 0, off = 0;
         float ymin = 1e9f, ymax = -1e9f, xmin = 1e9f, xmax = -1e9f;
         expect(burn_mode_parse("fill") == BURN_FILL && burn_mode_parse("line") == BURN_LINE &&
-                   burn_mode_parse("offset") == -1 && !strcmp(burn_mode_name(BURN_FILL), "fill"),
+                   burn_mode_parse("offset") == BURN_OFFSET && !strcmp(burn_mode_name(BURN_OFFSET), "offset"),
                "mode names");
         expect(burn_parse_layer("#000000,mode=fill,interval=0.2", &ly, err, (int)sizeof err) == 0 &&
                    ly.mode == BURN_FILL && ly.interval == 0.2f && (ly.set & BURN_SET_MODE) &&
                    (ly.set & BURN_SET_INTERVAL),
                "parse a fill layer");
-        expect(burn_parse_layer("1,mode=offset", &ly, err, (int)sizeof err) == -1 && strstr(err, "mode="),
-               "offset fill is not in this cut");
+        expect(burn_parse_layer("1,mode=offset,interval=2", &ly, err, (int)sizeof err) == 0 &&
+                   ly.mode == BURN_OFFSET && ly.interval == 2.f,
+               "parse an offset layer");
 
         gv_doc_init(&d);
         expect(gv_load_svg(&d, "burn/tests/data/square-fill.svg", err, (int)sizeof err) == 0 && d.n == 1 &&
@@ -339,6 +340,49 @@ int main(void)
                 off = 1000; /* reuse off as a flag */
         }
         expect(off != 1000, "no cut inside the hole");
+        gt_free(&p);
+
+        expect(gv_load_svg(&d, "burn/tests/data/square-fill.svg", err, (int)sizeof err) == 0, "the square, for offset fill");
+        o.mode = BURN_OFFSET;
+        o.interval = 2.f;
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == 15, "three rings, five moves each");
+        expect(p.n >= 15 && p.m && p.m[0].kind == GT_TRAVEL && p.m[1].kind == GT_CUT && p.m[1].w == 50.f, "offset rings are cuts at 50%");
+        /* The first ring is the 10 mm outline; the last is the 2 mm inner square. */
+        {
+            float mn[3], mx[3];
+            gt_path ring;
+            gt_init(&ring);
+            /* first five moves */
+            for (i = 0; i < 5; i++) gt_add(&ring, p.m[i].kind, p.m[i].x, p.m[i].y, 0.f, p.m[i].w);
+            expect(gt_bounds(&ring, mn, mx) == 0 && mn[0] <= 0.01f && mx[0] >= 9.99f && mn[1] <= 0.01f && mx[1] >= 9.99f,
+                   "the first ring is the 10 mm outline");
+            gt_free(&ring);
+            gt_init(&ring);
+            for (i = 10; i < 15; i++) gt_add(&ring, p.m[i].kind, p.m[i].x, p.m[i].y, 0.f, p.m[i].w);
+            expect(gt_bounds(&ring, mn, mx) == 0 && mn[0] > 3.9f && mn[0] < 4.1f && mx[0] > 5.9f && mx[0] < 6.1f,
+                   "the last ring is 2 mm across, 4 mm in");
+            gt_free(&ring);
+        }
+        memset(&st, 0, sizeof st);
+        expect(burn_write("burn/tests/data/square-fill.svg", "build/square-offset.gcode", &m, &o, &st, err,
+                          (int)sizeof err) == 0 &&
+                   st.moves == 15 && (g = slurp("build/square-offset.gcode")) && strstr(g, "M4") && strstr(g, "G1 "),
+               "wrote the offset fill");
+        free(g);
+        gt_free(&p);
+
+        /* A hole: the outer shrinks, the hole grows, they do not fill the hole. */
+        expect(gv_load_svg(&d, "burn/tests/data/square-hole.svg", err, (int)sizeof err) == 0, "the holed square, offset");
+        o.interval = 1.f;
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n > 10 && p.n < 50, "offset fill round a hole, not a solid square");
+        off = 0;
+        for (i = 0; i < p.n; i++) {
+            if (p.m[i].kind != GT_CUT) continue;
+            /* Strictly inside the 8 mm hole (walls at 6 and 14). Growing the hole
+             * moves later rings into the material, never into the opening. */
+            if (p.m[i].x > 6.5f && p.m[i].x < 13.5f && p.m[i].y > 6.5f && p.m[i].y < 13.5f) off++;
+        }
+        expect(off == 0, "no cut inside the hole");
         gv_doc_free(&d);
         gt_free(&p);
     }

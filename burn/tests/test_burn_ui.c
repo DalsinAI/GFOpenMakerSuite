@@ -127,6 +127,9 @@ int main(void)
                store[0].colour == 0xff0000u && store[1].index == 2 && store[0].mode == BURN_FILL &&
                store[0].interval == 0.1f && store[1].mode == BURN_LINE,
            "the list is read back, including M3 and fill");
+    olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
+    burn_ui_read(ui, &o, store, 8);
+    expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");
 
     /* Sized up, as on an RTG screen: the view takes the room. */
     {

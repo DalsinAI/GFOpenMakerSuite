@@ -25,6 +25,7 @@ int burn_mode_parse(const char *s)
     if (!s || !s[0]) return -1;
     if (!strcmp(s, "line") || !strcmp(s, "LINE")) return BURN_LINE;
     if (!strcmp(s, "fill") || !strcmp(s, "FILL")) return BURN_FILL;
+    if (!strcmp(s, "offset") || !strcmp(s, "OFFSET")) return BURN_OFFSET;
     return -1;
 }
 
@@ -173,7 +174,7 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen)
         } else if (parse_key(buf, "mode", &rest) || parse_key(buf, "MODE", &rest)) {
             int m = burn_mode_parse(rest);
             if (m < 0) {
-                snprintf(err, (size_t)errlen, "layer=: mode=%s: line or fill", rest);
+                snprintf(err, (size_t)errlen, "layer=: mode=%s: line, fill or offset", rest);
                 return -1;
             }
             L->mode = m;
@@ -343,6 +344,129 @@ static int add_fill(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *
     return 0;
 }
 
+
+/* Even-odd as the SVG reader: a loop whose inside sits in an odd number of
+ * others is a hole and must wind clockwise, so gl_union and gl_inset keep
+ * the hole and grow it. An outside winds anticlockwise. */
+static void reverse_loop(gl_loop *l)
+{
+    int i, j;
+    for (i = 0, j = l->n - 1; i < j; i++, j--) {
+        float x = l->xy[i * 2], y = l->xy[i * 2 + 1];
+        l->xy[i * 2] = l->xy[j * 2];
+        l->xy[i * 2 + 1] = l->xy[j * 2 + 1];
+        l->xy[j * 2] = x;
+        l->xy[j * 2 + 1] = y;
+    }
+}
+
+static int loop_contains(const gl_loop *l, float x, float y)
+{
+    int c = 0, i, j;
+    for (i = 0, j = l->n - 1; i < l->n; j = i++) {
+        float xi = l->xy[i * 2], yi = l->xy[i * 2 + 1];
+        float xj = l->xy[j * 2], yj = l->xy[j * 2 + 1];
+        if ((yi > y) != (yj > y)) {
+            float xh = xi + (y - yi) / (yj - yi) * (xj - xi);
+            if (x < xh) c++;
+        }
+    }
+    return c & 1;
+}
+
+static int inside_point(const gl_loop *l, float *px, float *py)
+{
+    int i;
+    for (i = 0; i < l->n; i++) {
+        float x0 = l->xy[i * 2], y0 = l->xy[i * 2 + 1];
+        float x1 = l->xy[((i + 1) % l->n) * 2], y1 = l->xy[((i + 1) % l->n) * 2 + 1];
+        float dx = x1 - x0, dy = y1 - y0, s = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+        float mx, my, nx, ny;
+        if (s < 1e-8f) continue;
+        mx = (x0 + x1) * 0.5f;
+        my = (y0 + y1) * 0.5f;
+        nx = -dy * 0.001f / s;
+        ny = dx * 0.001f / s;
+        if (loop_contains(l, mx + nx, my + ny)) {
+            *px = mx + nx;
+            *py = my + ny;
+            return 0;
+        }
+        if (loop_contains(l, mx - nx, my - ny)) {
+            *px = mx - nx;
+            *py = my - ny;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static void face_even_odd(gl_loops *ls)
+{
+    int i, j, n;
+    float x, y, a;
+    for (i = 0; i < ls->n; i++) {
+        if (!ls->l[i].closed || ls->l[i].n < 3) continue;
+        if (inside_point(&ls->l[i], &x, &y)) continue;
+        n = 0;
+        for (j = 0; j < ls->n; j++) {
+            if (j == i || !ls->l[j].closed) continue;
+            if (loop_contains(&ls->l[j], x, y)) n++;
+        }
+        a = gl_loop_area(&ls->l[i]);
+        if ((n % 2 == 0 && a < 0.f) || (n % 2 == 1 && a > 0.f)) reverse_loop(&ls->l[i]);
+    }
+}
+
+/* Offset fill: the outline, then gl_inset by the interval, until nothing
+ * is left. Open paths of the same colour are still followed. */
+static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
+{
+    gl_loops region, cur, next;
+    int ring, i, start;
+    if (loops_of(d, ly->colour, &region)) return -1;
+    face_even_odd(&region);
+    memset(&cur, 0, sizeof cur);
+    memset(&next, 0, sizeof next);
+    if (region.n) {
+        if (gl_union(&region, &cur)) {
+            gl_loops_free(&region);
+            return -1;
+        }
+        gl_loops_free(&region);
+        for (ring = 0; cur.n > 0 && ring < 10000; ring++) {
+            start = p->n;
+            for (i = 0; i < cur.n; i++) {
+                if (!cur.l[i].closed || cur.l[i].n < 3) continue;
+                if (gt_loop(p, GT_CUT, &cur.l[i], 0.f, ly->power)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (spd && *spd) {
+                if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (gl_inset(&cur, ly->interval, &next)) {
+                gl_loops_free(&cur);
+                return -1;
+            }
+            gl_loops_free(&cur);
+            cur = next;
+            memset(&next, 0, sizeof next);
+        }
+        gl_loops_free(&cur);
+    } else
+        gl_loops_free(&region);
+    for (i = 0; i < d->n; i++) {
+        if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
+        if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
+    }
+    return 0;
+}
+
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
@@ -361,8 +485,11 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
         burn_layer_of(o, d, L, &ly);
         if (!ly.on || ly.colour == GV_NONE) continue;
         for (pass = 0; pass < ly.passes; pass++) {
-            if (ly.mode == BURN_FILL) {
-                if (add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)) {
+            if (ly.mode == BURN_FILL || ly.mode == BURN_OFFSET) {
+                int rc = (ly.mode == BURN_FILL)
+                             ? add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)
+                             : add_offset(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
+                if (rc) {
                     free(spd);
                     if (speed) *speed = NULL;
                     gt_free(p);
