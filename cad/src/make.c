@@ -762,9 +762,9 @@ int main(int argc, char **argv)
     olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     gs_cam_home(&cam);
     w = OpenWindowTags(NULL,
-        WA_Title, (ULONG)"GFOpenMake",
+        WA_Title, (ULONG)"GFOpenMake 0.1.0",
         WA_InnerWidth, 640,
-        WA_InnerHeight, 580, /* the Slice group under Layers */
+        WA_InnerHeight, 480, /* with its borders, a 640 by 512 PAL screen */
         WA_MinWidth, 320,
         WA_MinHeight, 280,
         WA_MaxWidth, (ULONG)~0,

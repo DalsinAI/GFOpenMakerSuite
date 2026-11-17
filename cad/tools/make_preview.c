@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     gt_path path;
     char err[160], status[180], ppm[256];
     unsigned char *rgb;
-    int w = 640, h = 580, upto = argc > 2 ? atoi(argv[2]) : 0;
+    int w = 640, h = 480, upto = argc > 2 ? atoi(argv[2]) : 0;
     FILE *pf;
     omv_machines printers;
     if (argc < 2) return 2;
