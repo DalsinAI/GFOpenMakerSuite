@@ -218,6 +218,29 @@ int main(void)
                "an index past the document is refused");
     }
 
+    {
+        gt_path job, fr;
+        burn_defaults(&o);
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "core/tests/data/rect-10mm.svg", err, (int)sizeof err) == 0, "the square, for a frame");
+        gt_init(&job);
+        gt_init(&fr);
+        expect(burn_path(&job, NULL, &d, &o) == 0 && burn_frame_path(&fr, &job) == 0 && fr.n == 5, "a box of five travels");
+        expect(fr.m[0].kind == GT_TRAVEL && fr.m[4].kind == GT_TRAVEL && fr.m[4].x == fr.m[0].x &&
+                   fr.m[4].y == fr.m[0].y && fr.m[1].w == 0.f,
+               "the frame is closed, laser off");
+        memset(&st, 0, sizeof st);
+        expect(burn_write_path(&fr, NULL, "build/rect-frame.gcode", &m, &o, &st, err, (int)sizeof err) == 0, "wrote the frame");
+        g = slurp("build/rect-frame.gcode");
+        expect(g && strstr(g, "G0 ") && !strstr(g, "G1 ") && !strstr(g, "M4") && !strstr(g, "M3\n") &&
+                   strstr(g, "M5") && st.moves == 5,
+               "framing G-code is travels only, laser off");
+        free(g);
+        gv_doc_free(&d);
+        gt_free(&job);
+        gt_free(&fr);
+    }
+
     if (fails) {
         printf("%d failed\n", fails);
         return 1;

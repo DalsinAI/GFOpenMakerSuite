@@ -6,7 +6,15 @@ G-code. The plan is [docs/burn-plan.md](../docs/burn-plan.md).
 The command, `openmake-burn`, reads an SVG and writes Grbl laser G-code
 in line mode, for the generic 400 mm diode unless DRIVER or PROFILE say
 otherwise. A `layer=` sets power, speed, passes or on for one colour
-(or a 1-based index). The window is not started.
+(or a 1-based index).
+
+The Amiga window (`src/amiga.c`, binary GFOpenBurn) is GFOpenLayout in
+the Clear look: Open an SVG, a layer list with power, speed and passes,
+the laser picker, Preview, Frame (a travel around the job, laser off),
+and Save G-code. The view is OpenGPU with a pen fallback. It fits 640 by
+480 inside (a 640 by 512 PAL screen with its borders), is resizable, and
+opens filling the screen. `tests/test_burn_ui.c` and `tools/preview.c`
+run that layout on the host.
 
 It will share OpenMakeCore's toolpaths, preview and G-code writer with the
 slicer and the CNC app, and the machine drivers in `../machines/laser`.

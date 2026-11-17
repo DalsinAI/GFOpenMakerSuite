@@ -271,13 +271,7 @@ int burn_write(const char *svg, const char *gcode, const om_machine *m, const bu
 {
     gv_doc d;
     gt_path p;
-    gc_laser L;
-    gc_laser_more more;
-    om_job job;
-    gc_stats mine;
     float *speeds = NULL;
-    char why[128];
-    FILE *f;
     int rc;
     if (!m || m->family != OM_LASER) {
         snprintf(err, (size_t)errlen, "%s is not a laser", (m && m->name[0]) ? m->name : "the machine");
@@ -306,30 +300,65 @@ int burn_write(const char *svg, const char *gcode, const om_machine *m, const bu
         free(speeds);
         return -1;
     }
+    rc = burn_write_path(&p, speeds, gcode, m, o, st, err, errlen);
+    gv_doc_free(&d);
+    gt_free(&p);
+    free(speeds);
+    return rc;
+}
+
+int burn_frame_path(gt_path *out, const gt_path *job)
+{
+    float mn[3], mx[3];
+    gt_free(out);
+    gt_init(out);
+    if (gt_bounds(job, mn, mx)) return -1;
+    if (gt_add(out, GT_TRAVEL, mn[0], mn[1], 0.f, 0.f)) return -1;
+    if (gt_add(out, GT_TRAVEL, mx[0], mn[1], 0.f, 0.f)) return -1;
+    if (gt_add(out, GT_TRAVEL, mx[0], mx[1], 0.f, 0.f)) return -1;
+    if (gt_add(out, GT_TRAVEL, mn[0], mx[1], 0.f, 0.f)) return -1;
+    if (gt_add(out, GT_TRAVEL, mn[0], mn[1], 0.f, 0.f)) return -1;
+    return 0;
+}
+
+int burn_write_path(const gt_path *p, const float *speed, const char *gcode, const om_machine *m, const burn_opts *o,
+                    gc_stats *st, char *err, int errlen)
+{
+    gc_laser L;
+    gc_laser_more more;
+    om_job job;
+    gc_stats mine;
+    char why[128];
+    FILE *f;
+    int rc;
+    if (!m || m->family != OM_LASER) {
+        snprintf(err, (size_t)errlen, "%s is not a laser", (m && m->name[0]) ? m->name : "the machine");
+        return -1;
+    }
+    if (!p || p->n < 2) {
+        snprintf(err, (size_t)errlen, "no paths to burn");
+        return -1;
+    }
     gc_laser_defaults(&L);
-    L.constant = o->constant;
-    L.s100 = o->s100;
-    L.speed = o->speed;
-    L.travel = o->travel;
+    if (o) {
+        L.constant = o->constant;
+        L.s100 = o->s100;
+        L.speed = o->speed;
+        L.travel = o->travel;
+    }
     gc_laser_more_defaults(&more, &L);
-    more.speed = speeds;
-    gc_laser_job_more(&p, m, &more, &job);
+    more.speed = speed;
+    gc_laser_job_more(p, m, &more, &job);
     if (om_check(m, &job, why, (int)sizeof why) & ~OM_TOO_FAST) {
         snprintf(err, (size_t)errlen, "%.60s cannot burn this: %s", m->name, why);
-        gv_doc_free(&d);
-        gt_free(&p);
-        free(speeds);
         return -1;
     }
     f = fopen(gcode, "w");
     if (!f) {
         snprintf(err, (size_t)errlen, "%.120s: cannot write", gcode);
-        gv_doc_free(&d);
-        gt_free(&p);
-        free(speeds);
         return -1;
     }
-    rc = gc_laser_write_more(to_file, f, &p, m, &more, st ? st : &mine, err, errlen);
+    rc = gc_laser_write_more(to_file, f, p, m, &more, st ? st : &mine, err, errlen);
     if (fclose(f) && !rc) {
         snprintf(err, (size_t)errlen, "%.120s: cannot write", gcode);
         rc = -1;
@@ -338,8 +367,5 @@ int burn_write(const char *svg, const char *gcode, const om_machine *m, const bu
         remove(gcode);
         rc = -1;
     }
-    gv_doc_free(&d);
-    gt_free(&p);
-    free(speeds);
     return rc;
 }
