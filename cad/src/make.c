@@ -16,6 +16,7 @@
 #include "gs_plan.h"
 #include "make_ui.h"
 #include "omview_gpu.h"
+#include "omview_machines.h"
 #include "omview_ui.h"
 
 #include <devices/inputevent.h>
@@ -59,6 +60,8 @@ static gl_walls walls;
 static gt_path sliced;
 static int has_slice;
 static gc_stats slice_st;
+/* The printers under PROGDIR:machines/printer, for Save G-code. */
+static omv_machines printers;
 /* The view on OpenGPU (core/ui): its picture, depth, vertices and stream. */
 static omv_gpu gpu;
 
@@ -649,12 +652,10 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
-/* The toolpath as G-code for the generic Marlin printer in machines/,
- * checked against it first (the machine picker is to choose it). */
+/* The toolpath as G-code for the printer picked, checked against it
+ * first. */
 static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
 {
-    static const char driver[] = "PROGDIR:machines/printer/marlin/driver.om";
-    static const char profile[] = "PROGDIR:machines/printer/marlin/profiles/generic-220.om";
     struct FileRequester *fr;
     om_machine m;
     om_job job;
@@ -667,8 +668,11 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
         say(ui, "Slice first");
         return;
     }
-    om_clear(&m);
-    if (om_load(&m, driver, err, (int)sizeof err) || om_load(&m, profile, err, (int)sizeof err)) {
+    if (omv_machines_chosen(ui, "machine", &printers) < 0) {
+        say(ui, "No printer: put one in PROGDIR:machines/printer");
+        return;
+    }
+    if (omv_machines_load(&printers, omv_machines_chosen(ui, "machine", &printers), &m, err, (int)sizeof err)) {
         say(ui, err);
         return;
     }
@@ -800,8 +804,12 @@ int main(int argc, char **argv)
     olui_amiga_theme(a, NULL);
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
     light_tool(ui);
+    /* The printer picker: every machines/printer/<driver>/profiles/ .om file. */
+    if (omv_machines_scan(&printers, "PROGDIR:machines", "printer") < 0) printers.n = 0;
+    omv_machines_fill(ui, "machine", &printers, "No printers");
     olui_amiga_layout(a);
     refresh(ui);
+    if (printers.skipped) say(ui, printers.why);
     for (;;) {
         int r, lx, ly;
         WaitPort(w->UserPort);
@@ -868,6 +876,7 @@ done:
     gs_mesh_free(&shown);
     gl_walls_free(&walls);
     drop_slice();
+    omv_machines_free(&printers);
     olui_free(ui);
     omv_gpu_close(&gpu);
     return 0;

@@ -36,9 +36,10 @@ static const char *const buttons[] = {
     "addcube", "addcyl", "join", "cut", "meet", "prev", "next", "slice", "gcode"
 };
 
-/* The Layers group's other controls, and what they are. */
+/* The Layers group's other controls, and the Slice group's machine
+ * picker, and what they are. */
 static const char *const controls[][2] = {
-    {"lh", "spinner"}, {"show", "checkbox"}, {"layer", "slider"}
+    {"lh", "spinner"}, {"show", "checkbox"}, {"layer", "slider"}, {"machine", "select"}
 };
 #define NCONTROLS ((int)(sizeof controls / sizeof controls[0]))
 #define NBUTTONS ((int)(sizeof buttons / sizeof buttons[0]))
@@ -154,6 +155,12 @@ int main(void)
     expect(olui_box(ui, olui_find(ui, "status"), &status) && inside(&status, w, h) && status.y >= view.y + view.h,
            "the status line is under the view");
     expect(status.y + status.h >= h - 16, "the status line is along the bottom");
+    {
+        olui_rect pick, sl;
+        expect(olui_box(ui, olui_find(ui, "machine"), &pick) && olui_box(ui, olui_find(ui, "slice"), &sl) &&
+                   pick.y + pick.h <= sl.y && pick.w >= 150 && pick.y + pick.h <= status.y,
+               "the printer picker is over Slice, wide enough for a name, above the status line");
+    }
     expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
     /* The Clear look (docs/HANDOVER.md). */

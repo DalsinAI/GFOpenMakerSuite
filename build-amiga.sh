@@ -36,12 +36,15 @@ build() {
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
     "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
-        core/ui/view_ui.c core/ui/view_gpu_amiga.c core/src/plan_par.c core/src/par_exec.c core/src/gcode.c \
+        core/ui/view_ui.c core/ui/view_gpu_amiga.c core/ui/machines_ui.c core/src/plan_par.c core/src/par_exec.c core/src/gcode.c \
         machines/src/machine.c $PLAN $CORE "$OLUI" -lm
-    # Save G-code's printer, PROGDIR:machines/printer/marlin (the picker is to choose)
-    mkdir -p "$dir/machines/printer/marlin/profiles"
-    cp machines/printer/marlin/driver.om "$dir/machines/printer/marlin/"
-    cp machines/printer/marlin/profiles/generic-220.om "$dir/machines/printer/marlin/profiles/"
+    # The machines, as PROGDIR:machines, for the printer picker: every
+    # driver.om and profile, nothing else
+    for f in machines/*/*/driver.om machines/*/*/profiles/*.om; do
+        [ -f "$f" ] || continue
+        mkdir -p "$dir/$(dirname "$f")"
+        cp "$f" "$dir/$f"
+    done
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
