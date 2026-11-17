@@ -25,7 +25,7 @@ WARN="-Wall -Wextra -Werror"
 LIBF="-O2 -std=gnu99 -fno-builtin -fno-toplevel-reorder -fomit-frame-pointer -nostartfiles $WARN -Icore/library -I$SDK/Include"
 
 fpu_count() {
-    "$OBJDUMP" -m m68k:68040 -d "$1" | awk -F'\t' 'NF >= 3 && $3 ~ /^f/ && $3 !~ /d0,%?fpcr$/' | wc -l | tr -d ' '
+    OBJDUMP=$OBJDUMP sh "$HERE/fpu-count.sh" "$@"
 }
 
 # name: the library; its include and sources
@@ -50,7 +50,7 @@ lib() {
         echo "build-libraries: soft/$name has $n FPU instructions" >&2
         exit 1
     fi
-    t=$("$OBJDUMP" -m m68k:68040 -d "$dir/$name" | awk -F'\t' 'NF >= 3 && $3 ~ /^f(sin|cos|tan|atan|asin|acos|etox|twotox|tentox|log|sinh|cosh|tanh|getexp|getman|rem|mod|scale)/' | wc -l | tr -d ' ')
+    t=$(fpu_count "$dir/$name" traps)
     if [ "$t" != 0 ]; then
         echo "build-libraries: $v/$name has $t FPU instructions a 68040 traps" >&2
         exit 1
