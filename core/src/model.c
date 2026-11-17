@@ -229,16 +229,46 @@ static void node_free(node *n)
     free(n);
 }
 
+/* The plane to split on: of a few polygons spread through the bag, the
+ * one whose plane crosses the fewest others. Taking the first, as before,
+ * let a holed part's hole walls cut its big faces into thousands of
+ * slivers, and the cut after it then left cracks. */
+#define PICKS 12
+static int pick_plane(const bag *src)
+{
+    int c, best = 0, least = -1, step = src->n / PICKS;
+    if (step < 1) step = 1;
+    for (c = 0; c < src->n && c / step < PICKS; c += step) {
+        node t;
+        int i, vi, cross = 0;
+        t.nrm = src->p[c].nrm;
+        t.w = src->p[c].w;
+        for (i = 0; i < src->n && (least < 0 || cross < least); i++) {
+            int out = 0, inn = 0;
+            for (vi = 0; vi < src->p[i].n; vi++) {
+                float d = side(&t, src->p[i].v[vi]);
+                if (d > EPS) out = 1;
+                else if (d < -EPS) inn = 1;
+            }
+            cross += out && inn;
+        }
+        if (least < 0 || cross < least) least = cross, best = c;
+        if (!least) break;
+    }
+    return best;
+}
+
 static int node_build(node *n, const bag *src)
 {
     bag front, back;
-    int i, made = 0;
+    int i, made = 0, pick = 0;
     memset(&front, 0, sizeof front);
     memset(&back, 0, sizeof back);
     if (!src->n) return 0;
     if (!n->has) {
-        n->nrm = src->p[0].nrm;
-        n->w = src->p[0].w;
+        pick = pick_plane(src);
+        n->nrm = src->p[pick].nrm;
+        n->w = src->p[pick].w;
         n->has = 1;
         made = 1;
     }
@@ -247,7 +277,7 @@ static int node_build(node *n, const bag *src)
         int vi, on = 1, out = 0, inn = 0;
         /* The polygon that gave this plane lies on it. Splitting it again
          * would hand the same polygon down for ever. */
-        if (made && i == 0) {
+        if (made && i == pick) {
             if (bag_add(&n->co, p)) goto fail;
             continue;
         }
