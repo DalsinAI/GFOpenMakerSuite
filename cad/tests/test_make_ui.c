@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int failed;
@@ -31,14 +32,16 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
     return 1;
 }
 
-/* Every button make.c hands to olui_on: the Model tab's, then the Print
- * tab's from PRINT_BUTTONS on. */
+/* Every button make.c hands to olui_on: the Model tab's, the Parts tab's
+ * from PARTS_BUTTONS on, then the Print tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
     "open", "save", "undo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
-    "add", "join", "cut", "meet", "prev", "next", "slice", "gcode"
+    "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
+    "prev", "next", "slice", "gcode"
 };
-#define PRINT_BUTTONS 15
-#define TAB_OF(i) ((i) >= PRINT_BUTTONS)
+#define PARTS_BUTTONS 11
+#define PRINT_BUTTONS 23
+#define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
  * group's machine picker, and what they are. The layer height is the
@@ -56,7 +59,9 @@ static struct {
     uint32_t window_bg;     /* the first box, the whole window's */
     int groups;             /* fieldsets edged in Clear's #d0d0d0 */
     const olui_el *last_group;
-    int legends;            /* File, Tool, Parts, Place, Layers */
+    int legends;            /* File, Tool, Place, Layers */
+    olui_rect tabbtn[8];    /* the tab strip's buttons, in order */
+    int tabbtns;
     int layers_legend;
     int slice_legend;
     uint32_t save_bg, save_text;
@@ -84,6 +89,9 @@ static void collect(void *userdata, const olui_draw_op *op)
             seen.groups++;
             seen.last_group = op->el;
         }
+        if (!strcmp(tag, "tabbutton") && seen.tabbtns < 8 &&
+            (!seen.tabbtns || seen.tabbtn[seen.tabbtns - 1].x != op->box.x))
+            seen.tabbtn[seen.tabbtns++] = op->box;
         if (id && !strcmp(id, "save")) seen.save_bg = top;
         if (id && !strcmp(id, "move")) seen.move_bg = top;
         if (id && !strcmp(id, "open")) {
@@ -120,18 +128,20 @@ int main(void)
     olui_rect box[NBUTTONS], view, status;
     /* 640 by 480 inside: with the title bar and the sizing border (about
      * 21 px in Topaz 8) it fits a 640 by 512 PAL screen. */
-    int w = 640, h = 480, i, j, t;
+    int w = 640, h = 480, i, j, t, ti;
     gs_settings d;
     olui_el *side_tabs;
     olui_set_measure(ui, measure, NULL);
-    expect(olui_load(ui, gm_markup, gm_css, err, sizeof err), "the window loads"); if (failed) printf("%s\n", err);
+    expect(olui_load(ui, gm_markup(), gm_css, err, sizeof err), "the window loads"); if (failed) printf("%s\n", err);
     expect(omv_settings_add(ui, "settings", err, (int)sizeof err) == 0, "the settings panel goes in the Slice group");
     gs_settings_default(&d);
     omv_settings_show(ui, &d);
     side_tabs = olui_find(ui, "side-tabs");
-    expect(side_tabs && !strcmp(olui_tag(side_tabs), "tabs"), "the side is two tabs");
+    expect(side_tabs && !strcmp(olui_tag(side_tabs), "tabs"), "the side is tabs");
     /* Each tab's buttons in the window and clear of each other. */
-    for (t = 1; t >= 0; t--) {
+    for (ti = 0; ti < 3; ti++) {
+        static const int order[3] = {GM_TAB_PRINT, GM_TAB_PARTS, GM_TAB_MODEL};
+        t = order[ti];
         olui_tabs_select(ui, side_tabs, t);
         expect(olui_layout(ui, w, h), "the window lays out at 640 by 480, as make.c opens it");
         for (i = 0; i < NBUTTONS; i++) {
@@ -147,13 +157,16 @@ int main(void)
                 expect(!overlap(&box[i], &box[j]), what);
             }
         }
-        if (t == 0) {
-            /* Parts: the shape to add, a select beside Add, wide enough for "Cylinder". */
+        if (t == GM_TAB_PARTS) {
+            /* Make: the shape to add, a select beside Add, wide enough for "Cylinder". */
             olui_el *shape = olui_find(ui, "shape");
             olui_rect r;
             expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
                        r.w >= 90 && !overlap(&r, &box[11]) && r.x < box[11].x,
                    "the shape select is beside Add, wide enough for a name");
+            continue;
+        }
+        if (t == GM_TAB_MODEL) {
             /* Measure beside Rotate and Scale, wide enough for its name. */
             expect(box[6].y == box[5].y && box[7].y == box[5].y && box[7].x > box[6].x && box[7].w >= 7 * 8,
                    "Measure is in the Tool group's second row, after Scale");
@@ -172,7 +185,7 @@ int main(void)
                                n[a].x >= side.x && n[a].x + n[a].w <= side.x + side.w && n[a].w >= 72 && olui_number_decimals(el) == 1,
                            what);
                     for (b = 0; b < NBUTTONS; b++) {
-                        if (TAB_OF(b) != 0) continue;
+                        if (TAB_OF(b) != GM_TAB_MODEL) continue;
                         snprintf(what, sizeof what, "%s is clear of %s", nums[a], buttons[b]);
                         expect(!overlap(&n[a], &box[b]), what);
                     }
@@ -212,7 +225,10 @@ int main(void)
         omv_settings_tab(ui, 0);
         olui_layout(ui, w, h);
     }
-    olui_tabs_select(ui, side_tabs, 1);
+    /* the longest name in machines/printer, as make.c fills the picker */
+    olui_select_add(ui, olui_find(ui, "machine"), "Generic Marlin 220", "Generic Marlin 220");
+    olui_select_add(ui, olui_find(ui, "machine"), "Generic RepRapFirmware 300", "Generic RepRapFirmware 300");
+    olui_tabs_select(ui, side_tabs, GM_TAB_PRINT);
     olui_layout(ui, w, h);
     for (i = 0; i < NCONTROLS; i++) {
         olui_el *el = olui_find(ui, controls[i][0]);
@@ -239,10 +255,11 @@ int main(void)
            "the status line is under the view");
     expect(status.y + status.h >= h - 16, "the status line is along the bottom");
     {
-        olui_rect pick, sl;
+        olui_rect pick, sl, side;
         expect(olui_box(ui, olui_find(ui, "machine"), &pick) && olui_box(ui, olui_find(ui, "slice"), &sl) &&
-                   pick.y + pick.h <= sl.y && pick.w >= 150 && pick.y + pick.h <= status.y,
-               "the printer picker is over Slice, wide enough for a name, above the status line");
+                   olui_box(ui, olui_find(ui, "side"), &side) && pick.y + pick.h <= sl.y && pick.w >= 150 &&
+                   pick.y + pick.h <= status.y && pick.x + pick.w <= side.x + side.w,
+               "the printer picker is over Slice, wide enough for a name, in the side, above the status line");
     }
     {
         olui_rect side;
@@ -266,7 +283,7 @@ int main(void)
             olui_rect side, st, r[9];
             int a, b;
             char what[96];
-            olui_tabs_select(ui, side_tabs, 2);
+            olui_tabs_select(ui, side_tabs, GM_TAB_HOLES);
             expect(olui_layout(ui, at[s][0], at[s][1]), "the Holes tab lays out");
             olui_box(ui, olui_find(ui, "side"), &side);
             olui_box(ui, olui_find(ui, "status"), &st);
@@ -288,7 +305,7 @@ int main(void)
         olui_layout(ui, w, h);
     }
     {
-        /* The Extrude tab: the sketch's shape, width, depth and height, and
+        /* The Shape tab (the bench's Extrude): the sketch's shape, width, depth and height, and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
         static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut"};
@@ -299,8 +316,8 @@ int main(void)
             olui_rect side, st, r[7];
             int a, b;
             char what[96];
-            olui_tabs_select(ui, side_tabs, 3);
-            expect(olui_layout(ui, at[s][0], at[s][1]), "the Extrude tab lays out");
+            olui_tabs_select(ui, side_tabs, GM_TAB_SHAPE);
+            expect(olui_layout(ui, at[s][0], at[s][1]), "the Shape tab lays out");
             olui_box(ui, olui_find(ui, "side"), &side);
             olui_box(ui, olui_find(ui, "status"), &st);
             for (a = 0; a < nx; a++) {
@@ -316,19 +333,96 @@ int main(void)
                     expect(!overlap(&r[a], &r[b]), what);
                 }
             }
-            expect(side.w == OMV_SETTINGS_W, "the side keeps its width on the Extrude tab");
+            expect(side.w == OMV_SETTINGS_W, "the side keeps its width on the Shape tab");
         }
         olui_tabs_select(ui, side_tabs, 0);
         olui_layout(ui, w, h);
+    }
+    {
+        /* The Parts tab: Make's select and buttons, the list (24 parts, the
+         * bench's limit, scrolled), the name field, six swatches, Hide and
+         * Delete, in the side, clear, above the status line, at 640 by 480
+         * and full HD. And the tab strip: five tabs, each in the side, clear
+         * of the next, wide enough for its five letters in Topaz 8. */
+        static const char *const ids[] = {"plist", "pname", "shape"};
+        static const int at[][2] = {{640, 480}, {1912, 1048}};
+        olui_el *list = olui_find(ui, "plist");
+        int s, k;
+        char what[96];
+        expect(list && !strcmp(olui_tag(list), "list") && !strcmp(olui_tag(olui_find(ui, "pname")), "input"),
+               "the parts list is a list, the name a field");
+        gs_parts *ps = gs_parts_new();
+        for (k = 0; ps && k < GS_PARTS_MAX; k++) {
+            gs_mesh m;
+            memset(&m, 0, sizeof m);
+            m.t = calloc(1, sizeof *m.t);
+            m.n = m.cap = 1;
+            gs_parts_add(ps, &m, NULL);
+        }
+        expect(gs_parts_count(ps) == 24, "24 parts, the bench's most");
+        gs_parts_rename(ps, 23, "Bracket");
+        gs_parts_set_colour(ps, 23, 4);
+        gs_parts_show(ps, 23, 0);
+        gm_parts_list(ui, ps);
+        expect(olui_list_selected(list) && !strcmp(olui_get_text(olui_list_selected(list)), "Bracket (hidden)") &&
+                   !strcmp(olui_get_text(olui_find(ui, "pname")), "Bracket") &&
+                   !strcmp(olui_get_text(olui_find(ui, "pshow")), "Show") && olui_is_selected(olui_find(ui, "c4")) &&
+                   !olui_is_selected(olui_find(ui, "c0")),
+               "the list: the picked part selected, its name, Show for a hidden part, its metal lit");
+        for (s = 0; s < 2; s++) {
+            olui_rect side, st, r[3], b[NBUTTONS];
+            int a, c;
+            olui_tabs_select(ui, side_tabs, GM_TAB_PARTS);
+            expect(olui_layout(ui, at[s][0], at[s][1]), "the Parts tab lays out");
+            olui_box(ui, olui_find(ui, "side"), &side);
+            olui_box(ui, olui_find(ui, "status"), &st);
+            for (a = 0; a < 3; a++) {
+                snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", ids[a], at[s][0], at[s][1]);
+                expect(olui_box(ui, olui_find(ui, ids[a]), &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
+                           r[a].y + r[a].h <= st.y,
+                       what);
+            }
+            expect(r[0].h >= 6 * 14 && r[1].w >= 120, "the list shows six rows or more; the name field has room");
+            for (a = PARTS_BUTTONS; a < PRINT_BUTTONS; a++) {
+                snprintf(what, sizeof what, "%s in the side at %d by %d, clear", buttons[a], at[s][0], at[s][1]);
+                expect(olui_box(ui, olui_find(ui, buttons[a]), &b[a]) && b[a].x >= side.x &&
+                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 17 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
+                           !overlap(&b[a], &r[0]) && !overlap(&b[a], &r[1]) && !overlap(&b[a], &r[2]),
+                       what);
+                for (c = PARTS_BUTTONS; c < a; c++) {
+                    snprintf(what, sizeof what, "%s is clear of %s", buttons[a], buttons[c]);
+                    expect(!overlap(&b[a], &b[c]), what);
+                }
+            }
+            expect(!overlap(&r[0], &r[1]) && !overlap(&r[0], &r[2]), "the list clear of the field and the select");
+            memset(&seen, 0, sizeof seen);
+            first_box = 0;
+            olui_draw(ui, NULL, collect, NULL);
+            snprintf(what, sizeof what, "five tabs in the strip at %d by %d", at[s][0], at[s][1]);
+            expect(seen.tabbtns == 5, what);
+            for (a = 0; a < seen.tabbtns; a++) {
+                snprintf(what, sizeof what, "tab %d in the side, clear, room for five Topaz 8 letters at %d by %d", a,
+                         at[s][0], at[s][1]);
+                expect(seen.tabbtn[a].x >= side.x && seen.tabbtn[a].x + seen.tabbtn[a].w <= side.x + side.w &&
+                           seen.tabbtn[a].w >= 5 * 8 + 2 && (!a || !overlap(&seen.tabbtn[a], &seen.tabbtn[a - 1])),
+                       what);
+            }
+        }
+        olui_list_clear(ui, list);
+        gs_parts_free(ps);
+        olui_tabs_select(ui, side_tabs, GM_TAB_MODEL);
+        olui_layout(ui, w, h);
+        memset(&seen, 0, sizeof seen);
+        first_box = 0;
     }
     expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
     /* The Clear look (docs/HANDOVER.md). */
     olui_draw(ui, NULL, collect, NULL);
     expect(seen.window_bg == WINDOW_BG, "the window is Clear's light #f9f9f9");
-    expect(seen.groups == 4 && seen.legends == 4 && !seen.layers_legend && !seen.slice_legend,
-           "the Model tab: four groups with legends, File to Place");
-    olui_tabs_select(ui, side_tabs, 1);
+    expect(seen.groups == 3 && seen.legends == 3 && !seen.layers_legend && !seen.slice_legend,
+           "the Model tab: three groups with legends, File, Tool, Place");
+    olui_tabs_select(ui, side_tabs, GM_TAB_PRINT);
     olui_layout(ui, w, h);
     memset(&seen, 0, sizeof seen);
     first_box = 0;
@@ -374,12 +468,12 @@ int main(void)
             char what[96];
             snprintf(what, sizeof what, "the window lays out at %d by %d", big_w, big_h);
             expect(olui_layout(ui, big_w, big_h), what);
-            for (t = 0; t < 2; t++) {
+            for (t = 0; t < 5; t++) {
                 olui_tabs_select(ui, side_tabs, t);
                 olui_layout(ui, big_w, big_h);
                 for (i = 0; i < NBUTTONS; i++)
                     if (TAB_OF(i) == t) ok &= olui_box(ui, olui_find(ui, buttons[i]), &r) && inside(&r, big_w, big_h);
-                for (i = 0; t && i < NCONTROLS; i++)
+                for (i = 0; t == GM_TAB_PRINT && i < NCONTROLS; i++)
                     ok &= olui_box(ui, olui_find(ui, controls[i][0]), &r) && inside(&r, big_w, big_h);
             }
             snprintf(what, sizeof what, "at %d by %d every control is in the window", big_w, big_h);

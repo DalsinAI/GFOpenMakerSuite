@@ -8,13 +8,16 @@
  * machines: where the printer picker looks (machines/ to start); open:
  * the picker's list shown open; SIZE: the window's inside, 640x480 to start.
  * SETTINGS: a profile's lines put in the settings panel and sliced with,
- * held to the first printer; SIDE: the side's tab (1, Print, to start);
+ * held to the first printer; SIDE: the side's tab (4, Print, to start);
  * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
  * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
  * FIT=axis:mm and AT=x,y[,z]: Place's Size and At on the added shape first.
  * HOLES: 0 bolt circle, 1 hole row, 2 counterbore cut first, with HD, HN,
  * HPCD, HPITCH, HCB and HDEEP for the Holes fields (as shown).
- * OPEN: a select's id, shown open (the side on Model for "shape").
+ * OPEN: a select's id, shown open (with SIDE=1, Parts, for "shape").
+ * PARTS=n: a list of n parts (2 to 24), the holed cube and the shapes in
+ * turn on a grid on the bed, each a metal in turn, the 6th and 18th
+ * hidden, the last picked and named "Bracket", as the Parts tab shows it.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_model.h"
@@ -33,6 +36,7 @@
 #include <string.h>
 
 static FILE *ops;
+static gs_parts *listed; /* the parts the Parts tab lists, when more than one */
 
 static int measure(void *userdata, const char *utf8, size_t length, const ol_style *style, ol_text_metrics *metrics)
 {
@@ -183,7 +187,7 @@ int main(int argc, char **argv)
             if (!ps || gs_parts_add(ps, &sc.stock, "Holed cube") < 0 || gs_parts_add(ps, &sc.added, nm) < 0) return 1;
             memset(&part, 0, sizeof part);
             if (gs_parts_scene(ps, &part)) return 1;
-            gs_parts_free(ps);
+            listed = ps;
             snprintf(said, sizeof said, "%s, %d triangles. Orbit. Drag turns the view. A click picks a face.", nm, n);
             model = 1;
             printf("%s\n", said);
@@ -196,6 +200,27 @@ int main(int argc, char **argv)
         if (!model) printf("%s %s: %d triangles\n", ge_shape_name(atoi(getenv("SHAPE"))),
                getenv("OP") && atoi(getenv("OP")) == 1 ? "cut" : getenv("OP") && atoi(getenv("OP")) == 2 ? "met" : "joined",
                part.n);
+    }
+    if (getenv("PARTS") && !listed) { /* a long list, as several Adds and a rename */
+        int n = atoi(getenv("PARTS")), k;
+        gs_mesh m;
+        if (n < 2 || n > GS_PARTS_MAX || !(listed = gs_parts_new())) return 2;
+        for (k = 0; k < n; k++) {
+            char nm[32];
+            memset(&m, 0, sizeof m);
+            if (k ? ge_shape(&m, (k - 1) % GE_SHAPES, &part) || ge_fit(&m, 0, 16.f) : ge_start(&m, NULL, err, (int)sizeof err)) return 1;
+            ge_place(&m, 25.f + (float)(k % 6) * 34.f, 30.f + (float)(k / 6) * 40.f, 0.f);
+            snprintf(nm, sizeof nm, "%s %d", k ? ge_shape_name((k - 1) % GE_SHAPES) : "Holed cube", k + 1);
+            if (gs_parts_add(listed, &m, k == n - 1 ? "Bracket" : nm) < 0) return 1;
+            if (k == 5 || k == 17) gs_parts_show(listed, k, 0);
+        }
+        ge_where(gs_parts_mesh(listed, n - 1), wpos, wsize);
+        gs_mesh_free(&part);
+        if (gs_parts_scene(listed, &part)) return 1;
+        snprintf(said, sizeof said, "Bracket, %d triangles. Orbit. Drag turns the view. A click picks a face.",
+                 gs_parts_mesh(listed, n - 1)->n);
+        model = 1;
+        printf("%s\n", said);
     }
     if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
         ge_holes hs;
@@ -231,7 +256,7 @@ int main(int argc, char **argv)
     }
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
-    if (!olui_load(ui, gm_markup, gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
+    if (!olui_load(ui, gm_markup(), gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
         fprintf(stderr, "%s\n", err);
         return 1;
     }
@@ -241,7 +266,7 @@ int main(int argc, char **argv)
         return 1;
     }
     omv_settings_show(ui, &set);
-    olui_tabs_select(ui, olui_find(ui, "side-tabs"), getenv("SIDE") ? atoi(getenv("SIDE")) : 1);
+    olui_tabs_select(ui, olui_find(ui, "side-tabs"), getenv("SIDE") ? atoi(getenv("SIDE")) : GM_TAB_PRINT);
     if (getenv("TAB")) omv_settings_tab(ui, atoi(getenv("TAB")));
     omv_machines_scan(&printers, argc > 3 ? argv[3] : "machines", "printer");
     omv_machines_fill(ui, "machine", &printers, "No printers");
@@ -275,6 +300,7 @@ int main(int argc, char **argv)
         olui_select_add(ui, olui_find(ui, "xkind"), "Round", "Round");
         olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
         olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
+        if (listed) gm_parts_list(ui, listed);
     }
     {
         static const char *const ids[6] = {"sx", "sy", "sz", "px", "py", "pz"};

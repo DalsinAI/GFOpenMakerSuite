@@ -239,9 +239,28 @@ static void recut(void)
     else gl_walls_free(&walls);
 }
 
+/* The Parts tab from the list: the list's lines, the picked part's
+ * name, metal and Hide or Show. Remade only when the list has changed. */
+static void sync_parts(olui *ui)
+{
+    static unsigned long was;
+    unsigned long h = 5381;
+    int n = gs_parts_count(parts), at = gs_parts_picked(parts), i;
+    const char *p;
+    for (i = 0; i < n; i++) {
+        for (p = gs_parts_name(parts, i); *p; p++) h = h * 33 + (unsigned char)*p;
+        h = h * 33 + (unsigned long)(gs_parts_shown(parts, i) * 8 + gs_parts_colour(parts, i));
+    }
+    h = h * 33 + (unsigned long)(n * GS_PARTS_MAX + at);
+    if (h == was) return;
+    was = h;
+    gm_parts_list(ui, parts);
+}
+
 static void refresh(olui *ui)
 {
     char status[180];
+    sync_parts(ui);
     recut();
     if (has_slice) {
         omv_slice_status(status, (int)sizeof status, sliced.nlayers, slice_st.moves, slice_st.seconds,
@@ -374,6 +393,8 @@ static void on_save(olui *ui, const olui_event *ev, void *userdata)
     }
     FreeAslRequest(fr);
 }
+
+enum { PART_SHOW = 6, PART_DELETE };
 
 static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 {
@@ -614,6 +635,51 @@ static void on_place(olui *ui, const olui_event *ev, void *userdata)
 /* Holes: the bench's bolt circle, hole row or counterbore, cut through the
  * picked part about its middle (ge_drill), with Undo; refused, the status
  * line says why and nothing changes. */
+/* The Parts tab's list: the picked part. */
+static void on_plist(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)userdata;
+    if (!ev->value || atoi(ev->value) == gs_parts_picked(parts)) return;
+    gs_parts_pick(parts, atoi(ev->value));
+    marks = 0;
+    refresh(ui);
+}
+
+/* Return in the name field: the picked part's new name, a step for Undo. */
+static void on_pname(olui *ui, const olui_event *ev, void *userdata)
+{
+    const char *name = olui_get_text(olui_find(ui, "pname"));
+    (void)ev;
+    (void)userdata;
+    if (!name || !*name || !strcmp(name, work_name())) return;
+    remember();
+    if (gs_parts_rename(parts, gs_parts_picked(parts), name) < 0) {
+        forget();
+        say(ui, "That name can't be used");
+        return;
+    }
+    refresh(ui);
+}
+
+/* A metal, Hide or Show, and Delete for the picked part: each a step. */
+static void on_part(olui *ui, const olui_event *ev, void *userdata)
+{
+    int what = (int)(intptr_t)userdata, at = gs_parts_picked(parts);
+    (void)ev;
+    if (at < 0 || (what == PART_DELETE && gs_parts_count(parts) < 2)) return;
+    remember();
+    if (what == PART_DELETE) {
+        gs_parts_remove(parts, at);
+        picked = -1;
+        verts_fit(0);
+    } else if (what == PART_SHOW) {
+        gs_parts_show(parts, at, !gs_parts_shown(parts, at));
+        verts_fit(0);
+    } else
+        gs_parts_set_colour(parts, at, what);
+    refresh(ui);
+}
+
 static void on_holes(olui *ui, const olui_event *ev, void *userdata)
 {
     int kind = (int)(intptr_t)userdata;
@@ -887,7 +953,7 @@ int main(int argc, char **argv)
     on_chip = gpu.on_chip;
     draw_grid = gpu.grid;
     ui = olui_new();
-    if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err) ||
+    if (!ui || !olui_load(ui, gm_markup(), gm_css, err, sizeof err) ||
         omv_settings_add(ui, "settings", err, (int)sizeof err)) {
         if (ui) olui_free(ui);
         ge_steps_free(steps);
@@ -933,6 +999,15 @@ int main(int argc, char **argv)
     olui_on(ui, "xadd", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_BED);
     olui_on(ui, "xon", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_TOP);
     olui_on(ui, "xcut", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_FROM_TOP);
+    olui_on(ui, "plist", OLUI_SELECT, on_plist, NULL);
+    olui_on(ui, "pname", OLUI_SUBMIT, on_pname, NULL);
+    olui_on(ui, "pshow", OLUI_CLICK, on_part, (void *)(intptr_t)PART_SHOW);
+    olui_on(ui, "pdel", OLUI_CLICK, on_part, (void *)(intptr_t)PART_DELETE);
+    {
+        static const char *const sw[6] = {"c0", "c1", "c2", "c3", "c4", "c5"};
+        int c;
+        for (c = 0; c < 6; c++) olui_on(ui, sw[c], OLUI_CLICK, on_part, (void *)(intptr_t)c);
+    }
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);

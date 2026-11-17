@@ -6,6 +6,9 @@
 #ifndef GS_MAKE_UI_H
 #define GS_MAKE_UI_H
 
+#include <stdio.h>
+#include <string.h>
+#include "gs_parts.h"
 #include "omview_settings.h"
 
 /* OpenLayout Clear (docs/HANDOVER.md): one light window, the tools in
@@ -16,15 +19,23 @@
  * Save G-code writes it for the printer picked (core/ui's machine picker).
  * 640 by 480 inside, to fit a 640 by 512 PAL screen with the window's
  * borders: the name and version are in the title bar, not a heading row,
- * and the groups are a row shorter where they can be. The side is two
- * tabs, Model (File to Place), Print (Layers, and Slice with core/ui's
- * print settings panel, omview_settings.h, put in "settings" by make.c),
- * Holes (the bench's bolt circle, hole row and counterbore, cut through
- * the picked part about its middle) and Extrude (the bench's block, round
- * or slot: added on the bed, stood on the picked part's top, or cut down
- * from it), as wide as that panel. Place's Size and At, a row for each axis, are the
+ * and the groups are a row shorter where they can be. The side is five
+ * tabs, titles of five letters so the strip fits the side in Topaz 8:
+ * Model (File, Tool, Place), Parts (Make: Add, Join, Cut, Intersect; and
+ * the bench's parts list: the list, the picked part's name, its six
+ * metals, Hide and Delete), Holes (the bench's bolt circle, hole row and
+ * counterbore, cut through the picked part about its middle), Shape (the
+ * bench's Extrude: a block, round or slot added on the bed, stood on the
+ * picked part's top, or cut down from it) and Print (Layers, and Slice
+ * with core/ui's print settings panel, omview_settings.h, put in
+ * "settings" by make.c), as wide as that panel. Place's Size and At, a row
+ * for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
-static const char gm_markup[] =
+/* The side's tabs, in order. */
+enum { GM_TAB_MODEL, GM_TAB_PARTS, GM_TAB_HOLES, GM_TAB_SHAPE, GM_TAB_PRINT };
+
+/* In two, each under C99's 4095 a string; gm_markup() joins them. */
+static const char gm_markup_a[] =
     "<row id=\"body\">"
     "<column id=\"side\">"
     "<tabs id=\"side-tabs\"><tab title=\"Model\">"
@@ -36,10 +47,6 @@ static const char gm_markup[] =
     "<row><button id=\"orbit\">Orbit</button><button id=\"move\">Move</button></row>"
     "<row><button id=\"rot\">Rotate</button><button id=\"scale\">Scale</button><button id=\"measure\">Measure</button></row>"
     "</fieldset>"
-    "<fieldset><legend>Parts</legend>"
-    "<row><select id=\"shape\"></select><button id=\"add\">Add</button></row>"
-    "<row><button id=\"join\">Join</button><button id=\"cut\">Cut</button><button id=\"meet\">Intersect</button></row>"
-    "</fieldset>"
     "<fieldset><legend>Place</legend>"
     "<row><button id=\"drop\">Drop</button><button id=\"centre\">Centre</button><button id=\"lay\">Lay flat</button></row>"
     "<row><label></label><span class=\"head\">Size mm</span><span class=\"head\">At mm</span></row>"
@@ -48,16 +55,21 @@ static const char gm_markup[] =
     "<row><label for=\"sz\">Z</label><spinner id=\"sz\" min=\"0.1\" max=\"999.9\" step=\"0.1\" value=\"0.0\"><spinner id=\"pz\" min=\"-999.9\" max=\"999.9\" step=\"0.1\" value=\"0.0\"></row>"
     "<row><label for=\"face\">Face</label><span id=\"face\">no face</span></row>"
     "</fieldset>"
-    "</tab><tab title=\"Print\">"
-    "<fieldset><legend>Layers</legend>"
-    "<row><checkbox id=\"show\">Show a layer</checkbox></row>"
-    "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
+    "</tab><tab title=\"Parts\">"
+    "<fieldset><legend>Make</legend>"
+    "<row><select id=\"shape\"></select><button id=\"add\">Add</button></row>"
+    "<row><button id=\"join\">Join</button><button id=\"cut\">Cut</button><button id=\"meet\">Intersect</button></row>"
     "</fieldset>"
-    "<fieldset><legend>Slice</legend>"
-    "<row><label for=\"machine\">Printer</label><select id=\"machine\"></select></row>"
-    "<div id=\"settings\"></div>"
-    "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
+    "<fieldset><legend>List</legend>"
+    "<list id=\"plist\"></list>"
+    "<row><label for=\"pname\">Name</label><input id=\"pname\" maxlength=\"48\"></row>"
+    "<row><button id=\"c0\" class=\"sw\" title=\"Brass\"></button><button id=\"c1\" class=\"sw\" title=\"Sand\"></button>"
+    "<button id=\"c2\" class=\"sw\" title=\"Copper\"></button><button id=\"c3\" class=\"sw\" title=\"Steel\"></button>"
+    "<button id=\"c4\" class=\"sw\" title=\"Teal\"></button><button id=\"c5\" class=\"sw\" title=\"Sage\"></button></row>"
+    "<row><button id=\"pshow\">Hide</button><button id=\"pdel\">Delete</button></row>"
     "</fieldset>"
+    ;
+static const char gm_markup_b[] =
     "</tab><tab title=\"Holes\">"
     "<fieldset><legend>Drill</legend>"
     "<row><label for=\"hd\">Drill</label><spinner id=\"hd\" min=\"0.5\" max=\"40.0\" step=\"0.1\" value=\"3.0\"><span class=\"unit\">mm</span></row>"
@@ -73,7 +85,7 @@ static const char gm_markup[] =
     "<row><label for=\"hdeep\">Deep</label><spinner id=\"hdeep\" min=\"0.4\" max=\"40.0\" step=\"0.1\" value=\"4.0\"><span class=\"unit\">mm</span></row>"
     "<row><button id=\"cbore\">Counterbore</button></row>"
     "</fieldset>"
-    "</tab><tab title=\"Extrude\">"
+    "</tab><tab title=\"Shape\">"
     "<fieldset><legend>Sketch</legend>"
     "<row><label for=\"xkind\">Shape</label><select id=\"xkind\"></select></row>"
     "<row><label for=\"xw\">Width</label><spinner id=\"xw\" min=\"1.0\" max=\"200.0\" step=\"0.1\" value=\"20.0\"><span class=\"unit\">mm</span></row>"
@@ -83,12 +95,59 @@ static const char gm_markup[] =
     "<fieldset><legend>Extrude</legend>"
     "<row><button id=\"xadd\">Add</button><button id=\"xon\">On top</button><button id=\"xcut\">Cut</button></row>"
     "</fieldset>"
+    "</tab><tab title=\"Print\">"
+    "<fieldset><legend>Layers</legend>"
+    "<row><checkbox id=\"show\">Show a layer</checkbox></row>"
+    "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
+    "</fieldset>"
+    "<fieldset><legend>Slice</legend>"
+    "<row><label for=\"machine\">Printer</label><select id=\"machine\"></select></row>"
+    "<div id=\"settings\"></div>"
+    "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
+    "</fieldset>"
     "</tab></tabs>"
     "</column>"
     "<div id=\"view\"></div>"
     "</row>"
     "<hr>"
     "<div id=\"status\">A 20 mm cube, with a hole.</div>";
+
+static const char *gm_markup(void)
+{
+    static char m[sizeof gm_markup_a + sizeof gm_markup_b];
+    if (!m[0]) {
+        memcpy(m, gm_markup_a, sizeof gm_markup_a - 1);
+        memcpy(m + sizeof gm_markup_a - 1, gm_markup_b, sizeof gm_markup_b);
+    }
+    return m;
+}
+
+/* The Parts tab from a parts list: a line for each part (its name, and
+ * "(hidden)" when hidden), the picked one selected and its name in the
+ * field, Hide or Show, its metal lit; Delete off for the last part. */
+static void gm_parts_list(olui *ui, const gs_parts *ps)
+{
+    olui_el *list = olui_find(ui, "plist"), *field = olui_find(ui, "pname"), *item = NULL;
+    int n = gs_parts_count(ps), at = gs_parts_picked(ps), i;
+    const char *name = at >= 0 ? gs_parts_name(ps, at) : "";
+    olui_list_clear(ui, list);
+    for (i = 0; i < n; i++) {
+        char line[64], v[12];
+        olui_el *el;
+        snprintf(line, sizeof line, "%s%s", gs_parts_name(ps, i), gs_parts_shown(ps, i) ? "" : " (hidden)");
+        snprintf(v, sizeof v, "%d", i);
+        el = olui_list_add(ui, list, NULL, line, v);
+        if (i == at) item = el;
+    }
+    if (item) olui_list_select(ui, list, item);
+    if (field && strcmp(olui_get_text(field), name)) olui_set_text(ui, field, name);
+    olui_set_text(ui, olui_find(ui, "pshow"), at >= 0 && !gs_parts_shown(ps, at) ? "Show" : "Hide");
+    olui_set_disabled(ui, olui_find(ui, "pdel"), n < 2);
+    for (i = 0; i < 6; i++) {
+        char id[4] = {'c', (char)('0' + i), 0};
+        olui_set_selected(ui, olui_find(ui, id), at >= 0 && gs_parts_colour(ps, at) == i);
+    }
+}
 
 static const char gm_css[] =
     "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:6px}"
@@ -106,11 +165,19 @@ static const char gm_css[] =
     "button.primary:active{background:#005ba1}"
     "label{width:40px;color:#616161}"
     "select{flex:1}"
+    "#machine{width:150px}"
     "spinner{flex:1}"
     "span.unit{width:24px;color:#616161}"
     "span.head{flex:1;color:#616161}"
     "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
+    "#side-tabs tabbutton{flex:1;padding:3px 1px}"
+    "#plist{height:112px;overflow:auto;border:1px solid #d0d0d0;background:#ffffff}"
+    "#pname{flex:1;border:1px solid #d0d0d0;padding:3px 4px;background:#ffffff}"
+    "button.sw{flex:1;height:20px;padding:0;border-radius:4px}"
+    "#c0{background:#c4a15a}#c1{background:#d7c4a2}#c2{background:#c47a5a}"
+    "#c3{background:#8aa0a8}#c4{background:#3e8f96}#c5{background:#a3b18a}"
+    "button.sw:selected{border:2px solid #0067c0}"
     "hr{background:#d0d0d0}";
 
 #endif
