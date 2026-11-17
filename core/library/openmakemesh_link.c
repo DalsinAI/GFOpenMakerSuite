@@ -102,3 +102,88 @@ int gm_extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float
 {
     return GM_Extrude(m, part, kind, op, x, y, w, d, h);
 }
+
+gs_parts * gs_parts_new(void)
+{
+    return GS_PartsNew();
+}
+
+void gs_parts_free(gs_parts *ps)
+{
+    GS_PartsFree(ps);
+}
+
+int gs_parts_count(const gs_parts *ps)
+{
+    return GS_PartsCount(ps);
+}
+
+int gs_parts_add(gs_parts *ps, gs_mesh *m, const char *name)
+{
+    return GS_PartsAdd(ps, m, name);
+}
+
+int gs_parts_remove(gs_parts *ps, int i)
+{
+    return GS_PartsRemove(ps, i);
+}
+
+gs_mesh * gs_parts_mesh(gs_parts *ps, int i)
+{
+    return GS_PartsMesh(ps, i);
+}
+
+const char * gs_parts_name(const gs_parts *ps, int i)
+{
+    return GS_PartsName(ps, i);
+}
+
+int gs_parts_rename(gs_parts *ps, int i, const char *name)
+{
+    return GS_PartsRename(ps, i, name);
+}
+
+int gs_parts_colour(const gs_parts *ps, int i)
+{
+    return GS_PartsColour(ps, i);
+}
+
+int gs_parts_set_colour(gs_parts *ps, int i, int colour)
+{
+    return GS_PartsSetColour(ps, i, colour);
+}
+
+unsigned long gs_parts_rgb(int colour)
+{
+    return GS_PartsRgb(colour);
+}
+
+int gs_parts_shown(const gs_parts *ps, int i)
+{
+    return GS_PartsShown(ps, i);
+}
+
+int gs_parts_show(gs_parts *ps, int i, int on)
+{
+    return GS_PartsShow(ps, i, on);
+}
+
+int gs_parts_picked(const gs_parts *ps)
+{
+    return GS_PartsPicked(ps);
+}
+
+int gs_parts_pick(gs_parts *ps, int i)
+{
+    return GS_PartsPick(ps, i);
+}
+
+int gs_parts_scene(const gs_parts *ps, gs_mesh *out)
+{
+    return GS_PartsScene(ps, out);
+}
+
+gs_parts * gs_parts_copy(const gs_parts *ps)
+{
+    return GS_PartsCopy(ps);
+}

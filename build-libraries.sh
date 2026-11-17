@@ -90,7 +90,7 @@ for v in fpu soft; do
         -DLINK_BASE=OpenMakePathBase '-DLINK_NAME="openmakepath.library"' -lm
     echo "$OUT/$v/TestPlanLib: $(wc -c < "$OUT/$v/TestPlanLib") bytes"
     lib "$v" "$flags" openmakemesh.library core/include \
-        core/library/openmakemesh_lib.c core/src/model.c core/src/stl.c
+        core/library/openmakemesh_lib.c core/src/model.c core/src/parts.c core/src/stl.c
     # core/tests/test_model.c, the solids, booleans and STL through the library
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestModelLib" core/tests/test_model.c \
         core/src/view.c core/src/solid.c \
