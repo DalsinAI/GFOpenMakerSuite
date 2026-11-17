@@ -14,6 +14,7 @@ as the fallback.
 | `burn/` | A laser app: `openmake-burn` and the OpenMakeBurn window (SVG to Grbl G-code); the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
 | `cnc/` | A CNC app, not started | OpenMakeCNC |
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
+| `workshop/` | A project drawer for one product: CAD, print, laser, CNC and KiCad work together; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
 The binaries keep their names (GFOpenSlicer, GFOpenMake). `make test` builds
 and runs every host test.
@@ -73,6 +74,15 @@ under MIT, BSD, Apache or BSL.
 its CPU back end: one batch, one retained surface. ASL is the file
 requester. Cura, PrusaSlicer and OrcaSlicer are the picture to aim at, and
 their code stays out. The booleans are ours, not a translation of JSCAD.
+
+## ARexx
+
+Every windowed app hosts a public ARexx port. GFOpenMakerWorkshop is the
+hub (`OPENMAKEWORKSHOP.1`): it starts and controls the others
+(`GFOPENMAKE.1`, `OPENMAKESLICER.1`, `OPENMAKEBURN.1`). The ports, the
+command parser, and a client that finds or starts an app and sends it a
+command live in `openmakerexx.library`. The command set, the return codes
+and the library's shape are in [docs/arexx.md](docs/arexx.md).
 
 ## What a slice does
 

@@ -736,8 +736,8 @@ int main(void)
         expect(ge_ring(ps, 3, line, (int)sizeof line) == 0 && strstr(line, "on the centre") && gs_parts_count(ps) == 4,
                "a part on the centre: the copies on a circle round it");
         ge_where(gs_parts_mesh(ps, 2), pos, size);
-        expect(fabsf(sqrtf((pos[0] - 110.f) * (pos[0] - 110.f) + (pos[1] - 110.f) * (pos[1] - 110.f)) - 23.f) < 0.05f,
-               "on a 20 x 0.65 + 10 mm circle");
+        expect(fabsf(sqrtf((pos[0] - 110.f) * (pos[0] - 110.f) + (pos[1] - 110.f) * (pos[1] - 110.f)) - 34.4f) < 0.05f,
+               "on a circle clear of it: 20 x 1.42 + 6 mm");
         for (k = 3; k >= 2; k--) gs_parts_remove(ps, k);
         gs_parts_pick(ps, 1);
         ge_place(gs_parts_mesh(ps, 1), 50.f, 45.f, 0.f);
