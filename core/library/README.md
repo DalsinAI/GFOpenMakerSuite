@@ -2,7 +2,7 @@
 
 The suite's shared code is built as Amiga shared libraries, each loaded once
 and shared by every app: `openmakemachine.library` first, then
-`openmakepath`, `openmakemesh` and `openmakegcode`.
+`openmakepath`, `openmakemesh`, `openmakegcode`, `openmakeview` and `openmaketask`.
 
 | file | what it is |
 |---|---|
@@ -15,6 +15,7 @@ and shared by every app: `openmakemachine.library` first, then
 | `openmakemesh_lib.*` | openmakemesh.library: STL in and out, repair, and the solids and booleans (`core/src/model.c`, `stl.c`). |
 | `openmakegcode_lib.*` | openmakegcode.library: a printer's G-code from a toolpath, its time and filament, and the job for om_check (`core/src/gcode.c`). It writes to the program's own `gc_put`, not a file, and opens openmakemachine.library at init for the start and end code: without that it does not open. |
 | `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`), the walls and the toolpath drawn (`layer_paint.c`, `toolpath_paint.c`), and the same as OpenGPU batches and streams (`gpu.c`). |
+| `openmaketask_lib.*` | openmaketask.library: work spread over the cores (`gs_par.h`, `core/src/par_exec.c`): n pieces of the program's own code, each run once on exec tasks, returning when all have. The pieces must not use DOS (tasks, not processes), and the program must not be built `-fbaserel`. |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 
 Each library's `.sfd` is the list of its calls, in order. Never reorder or

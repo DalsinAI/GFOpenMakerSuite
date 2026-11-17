@@ -1,0 +1,17 @@
+==id $Id: openmaketask_lib.sfd 1.0 (17.11.2026) $
+* "openmaketask.library": work spread over the machine's cores (gs_par.h),
+* for every OpenMake program: n pieces, each the program's own function,
+* run once each on exec tasks, the call returning when all have. Each call
+* is its C function in snake case (GS_ParRun is gs_par_run). Never
+* reorder or take a call out; add new ones at the end.
+* core/library/gen-library.py writes the rest from this.
+==base _OpenMakeTaskBase
+==basetype struct Library *
+==libname openmaketask.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_par.h>
+int GS_ParRun(int n, gs_par_fn fn, void *arg)(d0,a0,a1)
+int GS_ParCores()()
+==end
