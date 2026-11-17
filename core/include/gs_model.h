@@ -42,6 +42,17 @@ int gm_wedge(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz
  * the sides of a whole round end (4 to 128). */
 int gm_slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz, int seg);
 
+/* The bench's hole tools, as drills to cut from a part with gm_subtract:
+ * each drill d wide, upright from z for h. A bolt circle is n drills
+ * evenly round a pitch circle pcd wide about x, y, the first on +X; a hole
+ * row n drills along X, pitch apart, about x, y. A counterbore is one
+ * drill with a bore cb wide and deep at its top. Replace m; 0, or -1 when
+ * there is no drill, length or hole, the holes would meet, or the bore is
+ * no wider than the drill or as deep as the drill is long. */
+int gm_bolt_circle(gs_mesh *m, float x, float y, float z, float h, float d, float pcd, int n);
+int gm_hole_row(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n);
+int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep);
+
 /* dst = a and b joined. a and b are not changed. 0, or -1. */
 int gm_union(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);
 

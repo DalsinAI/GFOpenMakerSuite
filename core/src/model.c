@@ -495,12 +495,11 @@ int gm_cube(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)
     return 0;
 }
 
-int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg)
+/* An upright round added to m: the cylinder, and each hole tool's drill. */
+static int rod(gs_mesh *m, float x, float y, float z, float r, float h, int seg)
 {
     int i;
     float z1 = z + h;
-    if (seg < 3) seg = 3;
-    mesh_clear(m);
     for (i = 0; i < seg; i++) {
         float a0 = (float)i / (float)seg * 6.2831853f;
         float a1 = (float)(i + 1) / (float)seg * 6.2831853f;
@@ -509,6 +508,66 @@ int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg
         if (tri(m, x0, y0, z, x2, y2, z, x2, y2, z1) || tri(m, x0, y0, z, x2, y2, z1, x0, y0, z1)) return -1;
         if (tri(m, x, y, z1, x0, y0, z1, x2, y2, z1)) return -1;
         if (tri(m, x, y, z, x2, y2, z, x0, y0, z)) return -1;
+    }
+    return 0;
+}
+
+int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg)
+{
+    if (seg < 3) seg = 3;
+    mesh_clear(m);
+    return rod(m, x, y, z, r, h, seg);
+}
+
+/* The hole tools' drills have the bench's 28 sides, a counterbore 32. */
+#define DRILL_SIDES 28
+#define BORE_SIDES 32
+
+int gm_bolt_circle(gs_mesh *m, float x, float y, float z, float h, float d, float pcd, int n)
+{
+    int i;
+    if (!(d > 0.f) || !(h > 0.f) || !(pcd > 0.f) || n < 1) return -1;
+    /* Neighbours a chord apart, so they must not meet. */
+    if (n > 1 && !(pcd * sinf(3.14159265f / (float)n) > d)) return -1;
+    mesh_clear(m);
+    for (i = 0; i < n; i++) {
+        float a = (float)i / (float)n * 6.2831853f;
+        if (rod(m, x + pcd * 0.5f * cosf(a), y + pcd * 0.5f * sinf(a), z, d * 0.5f, h, DRILL_SIDES)) return -1;
+    }
+    return 0;
+}
+
+int gm_hole_row(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n)
+{
+    int i;
+    if (!(d > 0.f) || !(h > 0.f) || n < 1 || (n > 1 && !(pitch > d))) return -1;
+    mesh_clear(m);
+    for (i = 0; i < n; i++)
+        if (rod(m, x + ((float)i - (float)(n - 1) * 0.5f) * pitch, y, z, d * 0.5f, h, DRILL_SIDES)) return -1;
+    return 0;
+}
+
+/* One closed solid, turned: the drill r up to the step, the step facing
+ * down, the bore R to the top. */
+int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep)
+{
+    float r = d * 0.5f, R = cb * 0.5f, zs = z + h - deep, z1 = z + h;
+    int i;
+    if (!(d > 0.f) || !(h > 0.f) || !(cb > d) || !(deep > 0.f) || !(deep < h)) return -1;
+    mesh_clear(m);
+    for (i = 0; i < BORE_SIDES; i++) {
+        float a0 = (float)i / (float)BORE_SIDES * 6.2831853f;
+        float a1 = (float)(i + 1) / (float)BORE_SIDES * 6.2831853f;
+        float c0 = cosf(a0), s0 = sinf(a0), c1 = cosf(a1), s1 = sinf(a1);
+        float ix0 = x + r * c0, iy0 = y + r * s0, ix1 = x + r * c1, iy1 = y + r * s1;
+        float ox0 = x + R * c0, oy0 = y + R * s0, ox1 = x + R * c1, oy1 = y + R * s1;
+        if (tri(m, x, y, z, ix1, iy1, z, ix0, iy0, z)) return -1;
+        if (tri(m, ix0, iy0, z, ix1, iy1, z, ix1, iy1, zs) || tri(m, ix0, iy0, z, ix1, iy1, zs, ix0, iy0, zs)) return -1;
+        if (tri(m, ix0, iy0, zs, ix1, iy1, zs, ox1, oy1, zs) || tri(m, ix0, iy0, zs, ox1, oy1, zs, ox0, oy0, zs))
+            return -1;
+        if (tri(m, ox0, oy0, zs, ox1, oy1, zs, ox1, oy1, z1) || tri(m, ox0, oy0, zs, ox1, oy1, z1, ox0, oy0, z1))
+            return -1;
+        if (tri(m, x, y, z1, ox0, oy0, z1, ox1, oy1, z1)) return -1;
     }
     return 0;
 }
