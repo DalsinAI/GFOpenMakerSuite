@@ -133,11 +133,15 @@ int ge_fit(gs_mesh *m, int axis, float mm);
  * n drills d wide round a pitch circle pcd wide (2 to 12), or along X
  * pitch apart (2 to 8), or one drill with a counterbore cb wide and deep
  * in its top. */
-enum { GE_BOLT_CIRCLE, GE_HOLE_ROW, GE_COUNTERBORE };
+enum { GE_BOLT_CIRCLE, GE_HOLE_ROW, GE_COUNTERBORE, GE_DRILL, GE_COUNTERSINK };
 typedef struct {
     float d;
     int n;
     float pcd, pitch, cb, deep;
+    /* GE_DRILL and GE_COUNTERSINK: aimed (1) at ax, ay, where the face was
+     * clicked, or else the part's middle; and the countersink's mouth. */
+    int aimed;
+    float ax, ay, mouth;
 } ge_holes;
 
 /* The drill to cut (core's gm_bolt_circle, gm_hole_row, gm_counterbore),
@@ -145,6 +149,9 @@ typedef struct {
 int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part, char *why, int whylen);
 /* Those holes cut from part, replacing it. 0, or -1 with why, part kept. */
 int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
+/* The bench's Washer: 32 mm across, a 14 mm hole, 8 mm thick, on the bed
+ * past the parts shown, a new part picked. 0, line saying so; or -1. */
+int ge_washer(gs_parts *ps, char *line, int len);
 
 /* The bench's Pull by a distance: face and every face in its plane (its
  * normal within 7 degrees, its points within 0.4 mm of the plane) moved

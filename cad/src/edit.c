@@ -712,6 +712,48 @@ int ge_fit(gs_mesh *m, int axis, float mm)
     return 0;
 }
 
+/* A solid turned about a line up through cx, cy: the profile's np
+ * (radius, z) points from the bottom up, each ring seg-sided, capped at
+ * both ends, outward. Replaces m. 0, or -1. */
+static int lathe(gs_mesh *m, float cx, float cy, float (*prof)[2], int np, int seg)
+{
+    int n = seg * (2 * (np - 1) + 2), i, k, at = 0;
+    gs_tri *t = (gs_tri *)malloc(sizeof *t * (size_t)n);
+    if (!t) return -1;
+    for (k = 0; k < seg; k++) {
+        float a0 = 6.2831853f * (float)k / (float)seg, a1 = 6.2831853f * (float)(k + 1) / (float)seg;
+        float c0 = cosf(a0), s0 = sinf(a0), c1 = cosf(a1), s1 = sinf(a1);
+        gs_v lo, hi;
+        for (i = 0; i < np; i++) {
+            gs_v p00, p01, p10, p11;
+            if (i + 1 < np) {
+                p00.x = cx + prof[i][0] * c0, p00.y = cy + prof[i][0] * s0, p00.z = prof[i][1];
+                p01.x = cx + prof[i][0] * c1, p01.y = cy + prof[i][0] * s1, p01.z = prof[i][1];
+                p10.x = cx + prof[i + 1][0] * c0, p10.y = cy + prof[i + 1][0] * s0, p10.z = prof[i + 1][1];
+                p11.x = cx + prof[i + 1][0] * c1, p11.y = cy + prof[i + 1][0] * s1, p11.z = prof[i + 1][1];
+                t[at].a = p00, t[at].b = p01, t[at].c = p11, at++;
+                t[at].a = p00, t[at].b = p11, t[at].c = p10, at++;
+            }
+        }
+        lo.x = cx, lo.y = cy, lo.z = prof[0][1];
+        hi.x = cx, hi.y = cy, hi.z = prof[np - 1][1];
+        t[at].a = lo;
+        t[at].b.x = cx + prof[0][0] * c1, t[at].b.y = cy + prof[0][0] * s1, t[at].b.z = lo.z;
+        t[at].c.x = cx + prof[0][0] * c0, t[at].c.y = cy + prof[0][0] * s0, t[at].c.z = lo.z;
+        at++;
+        t[at].a = hi;
+        t[at].b.x = cx + prof[np - 1][0] * c0, t[at].b.y = cy + prof[np - 1][0] * s0, t[at].b.z = hi.z;
+        t[at].c.x = cx + prof[np - 1][0] * c1, t[at].c.y = cy + prof[np - 1][0] * s1, t[at].c.z = hi.z;
+        at++;
+    }
+    free(m->t);
+    memset(m, 0, sizeof *m);
+    m->t = t;
+    m->n = m->cap = at;
+    bound(m);
+    return 0;
+}
+
 int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part, char *why, int whylen)
 {
     float cx, cy, half, thick, z0, len, r = h->d * 0.5f;
@@ -780,6 +822,46 @@ int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part
                    ? (snprintf(why, (size_t)whylen, "The counterbore did not build."), -1)
                    : 0;
     }
+    if (kind == GE_DRILL || kind == GE_COUNTERSINK) {
+        float ax = h->aimed ? h->ax : cx, ay = h->aimed ? h->ay : cy, mouth = h->mouth, deep, top = part->max.z;
+        int rc;
+        if (ax + r < part->min.x || ax - r > part->max.x || ay + r < part->min.y || ay - r > part->max.y) {
+            snprintf(why, (size_t)whylen, "That drill misses the part.");
+            return -1;
+        }
+        if (kind == GE_DRILL) {
+            if (h->d > 80.f) r = 40.f;
+            return gm_cylinder(tool, ax, ay, z0, r, len, 32) ? (snprintf(why, (size_t)whylen, "The drill did not build."), -1) : 0;
+        }
+        if (!(mouth >= h->d + 0.4f)) {
+            snprintf(why, (size_t)whylen, "The countersink has to be wider than the drill.");
+            return -1;
+        }
+        deep = (mouth - h->d) * 0.5f;
+        if (deep >= thick - 0.15f) {
+            snprintf(why, (size_t)whylen, "That 90 degree countersink is deeper than the part.");
+            return -1;
+        }
+        half = ax - part->min.x;
+        if (part->max.x - ax > half) half = part->max.x - ax;
+        if (ay - part->min.y > half) half = ay - part->min.y;
+        if (part->max.y - ay > half) half = part->max.y - ay;
+        if (mouth * 0.5f > half + 0.2f) {
+            snprintf(why, (size_t)whylen, "That countersink is wider than the part.");
+            return -1;
+        }
+        /* The drill through and a 90 degree cone out to the mouth at the
+         * top, 0.2 over it: one solid turned about the hole's axis. */
+        {
+            float prof[4][2];
+            prof[0][0] = r, prof[0][1] = z0;
+            prof[1][0] = r, prof[1][1] = top - deep;
+            prof[2][0] = mouth * 0.5f + 0.2f, prof[2][1] = top + 0.2f;
+            prof[3][0] = prof[2][0], prof[3][1] = top + 0.4f;
+            rc = lathe(tool, ax, ay, prof, 4, 32);
+        }
+        return rc ? (snprintf(why, (size_t)whylen, "The countersink did not form a solid."), -1) : 0;
+    }
     snprintf(why, (size_t)whylen, "No such hole tool.");
     return -1;
 }
@@ -803,6 +885,46 @@ int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen)
     }
     gs_mesh_free(part);
     *part = out;
+    return 0;
+}
+
+int ge_washer(gs_parts *ps, char *line, int len)
+{
+    gs_mesh outer, inner, w;
+    float right = -1e30f;
+    int i, k, rc;
+    if (!ps) return -1;
+    if (gs_parts_count(ps) >= GS_PARTS_MAX) {
+        snprintf(line, (size_t)len, "Twenty-four parts is the limit.");
+        return -1;
+    }
+    memset(&outer, 0, sizeof outer);
+    memset(&inner, 0, sizeof inner);
+    memset(&w, 0, sizeof w);
+    rc = gm_cylinder(&outer, 0.f, 0.f, 0.f, 16.f, 8.f, 48) || gm_cylinder(&inner, 0.f, 0.f, -3.f, 7.f, 14.f, 36) ||
+         gm_subtract(&w, &outer, &inner) || !w.n;
+    gs_mesh_free(&outer);
+    gs_mesh_free(&inner);
+    if (rc) {
+        gs_mesh_free(&w);
+        snprintf(line, (size_t)len, "The washer did not build.");
+        return -1;
+    }
+    /* On the bed's middle, then past the parts shown, 8 mm on in X, as the bench parks it. */
+    bound(&w);
+    ge_centre(&w);
+    ge_drop(&w);
+    for (i = 0; i < gs_parts_count(ps); i++) {
+        gs_mesh *m = gs_parts_mesh(ps, i);
+        if (gs_parts_shown(ps, i) == 1 && m && m->n && m->max.x > right) right = m->max.x;
+    }
+    if (right > -1e29f) ge_move(&w, right + 8.f - w.min.x, 0.f, 0.f);
+    k = gs_parts_add(ps, &w, "Washer");
+    if (k < 0) {
+        gs_mesh_free(&w);
+        return -1;
+    }
+    snprintf(line, (size_t)len, "Washer is on the bed. A 32 mm washer, 14 mm hole, 8 mm thick.");
     return 0;
 }
 
