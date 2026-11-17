@@ -797,6 +797,7 @@ int main(int argc, char **argv)
     {
         int k;
         for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
+        olui_select_set(ui, olui_find(ui, "shape"), 0);
     }
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);

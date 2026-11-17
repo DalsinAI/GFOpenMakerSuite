@@ -145,10 +145,13 @@ int main(int argc, char **argv)
         olui_set_checked(ui, olui_find(ui, "show"), 1);
         olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(upto, path.nlayers));
     }
+    {
+        int k; /* as make.c fills Parts' list, showing the shape added */
+        for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
+        olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
+    }
     if (!olui_layout(ui, w, h)) return 1;
     if (getenv("OPEN")) {
-        int k;
-        for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
         olui_select_open(ui, olui_find(ui, getenv("OPEN")), 1);
         if (!olui_layout(ui, w, h)) return 1;
     }

@@ -433,12 +433,13 @@ int ge_shape(gs_mesh *m, int kind, const gs_mesh *stock)
     case GE_CONE:
         return gm_cone(m, cx, cy, z0, 8.f, 16.f, 24);
     case GE_TORUS:
-        /* Half in the top face: a cut leaves a groove, a join a ring. */
-        return gm_torus(m, cx, cy, zt, 10.f, 3.f, 24, 12);
+        /* Half in the top face, inside its edges: a cut leaves a groove, a
+         * join a ring (8 and 1.5 on the 20 mm start). */
+        return gm_torus(m, cx, cy, zt, r * (8.f / 4.4f), r * (1.5f / 4.4f), 24, 12);
     case GE_WEDGE:
         return gm_wedge(m, cx - 10.f, cy - 8.f, z0, 20.f, 16.f, 12.f);
-    case GE_SLOT: /* through the stock, to cut a slot */
-        return gm_slot(m, cx - 12.f, cy - r, z0 - 2.f, 24.f, 2.f * r, h, 16);
+    case GE_SLOT: /* through the stock and inside its ends, to cut a slot */
+        return gm_slot(m, cx - r * (7.f / 4.4f), cy - r, z0 - 2.f, r * (14.f / 4.4f), 2.f * r, h, 16);
     }
     return -1;
 }
