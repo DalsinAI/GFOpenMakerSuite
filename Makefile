@@ -16,7 +16,7 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/sr
 SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -111,6 +111,10 @@ $(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h burn/include/
 
 $(BUILD)/openmake-burn: burn/src/cli.c burn/include/burn_job.h burn/include/burn_material.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/src/cli.c $(BURN_JOB) -lm
+
+# OpenMakeWorkshop, from the shell: a project drawer and its project.om.
+$(BUILD)/openmake-workshop: workshop/src/cli.c core/src/project.c core/include/gs_project.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ workshop/src/cli.c core/src/project.c
 
 # OpenMakeBurn's window at 640 by 480, its status and layer list.
 $(BUILD)/test_burn_ui: burn/tests/test_burn_ui.c burn/src/markup.h burn/src/burn_ui.c burn/src/burn_ui.h $(BURN_JOB) | $(BUILD)
@@ -240,7 +244,7 @@ $(BUILD)/test_rexx_lib: core/tests/test_rexx_lib.c core/src/rexx.c $(REXX_LIB) c
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_solids
@@ -391,6 +395,32 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	    2> $(BUILD)/burn-kerf-off.txt
 	grep -q 'cannot burn this' $(BUILD)/burn-kerf-off.txt && test ! -e $(BUILD)/burn-kerf-off.gcode
 	@echo "openmake-burn command ok"
+	# openmake-workshop: new, list, add (including an unknown kind).
+	! $(BUILD)/openmake-workshop 2> $(BUILD)/ws-usage.txt && grep -q 'usage: openmake-workshop' $(BUILD)/ws-usage.txt
+	! $(BUILD)/openmake-workshop foo 2> $(BUILD)/ws-badcmd.txt && grep -q 'not new, list or add' $(BUILD)/ws-badcmd.txt
+	rm -rf $(BUILD)/ws-proj
+	$(BUILD)/openmake-workshop new $(BUILD)/ws-proj name=Widget
+	test -f $(BUILD)/ws-proj/project.om && test -d $(BUILD)/ws-proj/cad
+	$(BUILD)/openmake-workshop list $(BUILD)/ws-proj | grep -q '^Widget$$'
+	! $(BUILD)/openmake-workshop new $(BUILD)/ws-proj name=Other 2> $(BUILD)/ws-exists.txt
+	grep -q 'already a project' $(BUILD)/ws-exists.txt
+	printf 'solid x\nendsolid x\n' > $(BUILD)/ws-body.stl
+	$(BUILD)/openmake-workshop add $(BUILD)/ws-proj kind=cad file=$(BUILD)/ws-body.stl name=Body
+	test -f $(BUILD)/ws-proj/cad/ws-body.stl
+	$(BUILD)/openmake-workshop list $(BUILD)/ws-proj | grep -q '1 cad Body cad/ws-body.stl'
+	printf '; gcode\nG28\n' > $(BUILD)/ws-part.gcode
+	$(BUILD)/openmake-workshop add $(BUILD)/ws-proj kind=print file=$(BUILD)/ws-part.gcode name='Body for the printer' from=1 settings=settings/standard
+	test -f $(BUILD)/ws-proj/print/ws-part.gcode
+	$(BUILD)/openmake-workshop list $(BUILD)/ws-proj | grep -q '2 print Body for the printer print/ws-part.gcode from=1 settings=settings/standard'
+	printf 'exr\n' > $(BUILD)/ws-shot.exr
+	$(BUILD)/openmake-workshop add $(BUILD)/ws-proj kind=render file=$(BUILD)/ws-shot.exr name=Shot from=1
+	$(BUILD)/openmake-workshop list $(BUILD)/ws-proj | grep -q '3 render Shot'
+	grep -q 'item.3.kind = render' $(BUILD)/ws-proj/project.om
+	! $(BUILD)/openmake-workshop add $(BUILD)/ws-proj kind=cad file=$(BUILD)/ws-body.stl foo=1 2> $(BUILD)/ws-badkey.txt
+	grep -q 'foo=1: no such setting' $(BUILD)/ws-badkey.txt
+	! $(BUILD)/openmake-workshop add $(BUILD)/ws-proj kind=cad file=$(BUILD)/ws-no-such.stl 2> $(BUILD)/ws-nofile.txt
+	grep -q 'cannot open' $(BUILD)/ws-nofile.txt
+	@echo "openmake-workshop command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview
 
