@@ -50,10 +50,14 @@ be `openmakemachine.library`, loaded once for every app.
 
 | Driver | State |
 | --- | --- |
-| `printer/marlin` | Written, with a generic 220 mm profile |
-| `printer/klipper`, `printer/reprap` | Not yet |
+| `printer/marlin` | Written: a generic 220 mm profile, the Creality Ender-3 V2 and the Original Prusa i3 MK3S+ |
+| `printer/klipper` | Written: the Voron 2.4 (300 mm) |
+| `printer/reprap` | Written (RepRapFirmware, Duet): a generic 300 mm profile |
 | `laser/grbl`, `laser/ruida-later` | Not yet |
 | `cnc/grbl`, `cnc/linuxcnc` | Not yet |
 
 Clean room: every driver is written from the firmware's public G-code
-documentation, never from its source. MIT.
+documentation, never from its source, and every maker's profile from its
+published specifications only; a number the sheet does not give is 0 (not
+checked) and the file says so. `machines/tests/test_profiles.c` loads each
+profile, and `make test` slices a part for each. MIT.

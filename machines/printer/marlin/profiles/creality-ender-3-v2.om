@@ -1,0 +1,12 @@
+# Creality Ender-3 V2: a Marlin bed-slinger. From Creality's published
+# specifications only: 220 x 220 x 250 mm, a 0.4 mm nozzle up to 255 C,
+# the bed up to 100 C (Creality's own comparison; some resellers say 110),
+# printing up to 180 mm/s. Manual bed levelling, no probe as sold.
+# Z and E speeds and the accelerations are not on the sheet: 0 here, so
+# they are not checked and the time is worked out at the set speeds.
+# Read your printer's own with M503 and put them in a copy of this file.
+name = Creality Ender-3 V2
+area = 220 220 250
+speed = 180 180 0 0
+hotend = 255
+bed = 100

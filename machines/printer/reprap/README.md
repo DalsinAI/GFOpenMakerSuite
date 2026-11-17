@@ -1,5 +1,8 @@
 # RepRapFirmware
 
-Not written yet (Duet boards). Its G-code is close to Marlin's; it is sent
-over the network. Clean room: from the public RepRapFirmware G-code
-documentation only.
+`driver.om`: RepRapFirmware (Duet boards), from the public RepRapFirmware
+G-code documentation only (docs.duet3d.com). A job is a file sent over the
+network.
+
+Profiles: `generic-300.om`, not any one maker's: set it from the
+machine's config.g.
