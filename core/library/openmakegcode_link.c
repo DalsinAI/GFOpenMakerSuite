@@ -27,3 +27,18 @@ int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_
 {
     return GC_EstimateHow(p, m, o, st);
 }
+
+void gc_more_defaults(gc_more *x, const gc_opts *o)
+{
+    GC_MoreDefaults(x, o);
+}
+
+int gc_estimate_more(const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st)
+{
+    return GC_EstimateMore(p, m, x, st);
+}
+
+int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st, char *err, int errlen)
+{
+    return GC_WriteMore(put, ud, p, m, x, st, err, errlen);
+}

@@ -90,11 +90,27 @@ int main(void)
     expect(GC_EstimateHow(&p, &m, &ob, &sb) == gc_estimate_how(&p, &m, &oa, &sa) && !memcmp(&sa, &sb, sizeof sa) &&
                GC_EstimateHow(&p, NULL, &ob, &sb) == GC_AT_SPEEDS,
            "GC_EstimateHow: the estimate, and how its time was got");
+    {
+        /* 1.2: the more, a first-layer speed. */
+        gc_more xa, xb;
+        gc_more_defaults(&xa, &oa);
+        memset(&xb, 0xff, sizeof xb);
+        GC_MoreDefaults(&xb, &ob);
+        expect(xb.size == xa.size && xb.o == &ob && xb.first == xa.first, "GC_MoreDefaults");
+        xa.first = xb.first = 15.f;
+        expect(GC_EstimateMore(&p, &m, &xb, &sb) == gc_estimate_more(&p, &m, &xa, &sa) && !memcmp(&sa, &sb, sizeof sa),
+               "GC_EstimateMore");
+        ka.n = kb.n = 0;
+        expect(gc_write_more(into, &ka, &p, &m, &xa, &sa, err, (int)sizeof err) == 0 &&
+                   GC_WriteMore(into, &kb, &p, &m, &xb, &sb, errb, (int)sizeof errb) == 0 && ka.n == kb.n &&
+                   !strcmp(ka.buf, kb.buf) && strstr(kb.buf, " F900\n") && !memcmp(&sa, &sb, sizeof sa),
+               "GC_WriteMore, eight arguments: the first layer at 15 mm/s");
+    }
     m.family = OM_LASER;
     expect(GC_WriteTo(into, &kb, &p, &m, &ob, NULL, errb, (int)sizeof errb) == -1 && strstr(errb, "printer"),
            "GC_WriteTo refuses a laser, and says why");
     printf("through the library: %ld bytes of G-code, %d moves\n", ka.n, sb.moves);
-    expect(calls == 7, "every GC_ call went through the table");
+    expect(calls == 10, "every GC_ call went through the table");
 
     gt_free(&p);
     if (fails) {

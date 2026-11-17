@@ -4,6 +4,7 @@
 #include "gs_gcode.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -141,6 +142,8 @@ typedef struct {
     int bad;
     planner *pl;                /* NULL: no acceleration, distance over speed */
     int how;                    /* GC_AT_SPEEDS and so on */
+    float first;                /* the first layer's most, mm/s; 0: none */
+    int layer;                  /* the layer now, 1 the first */
 } writer;
 
 static void say(writer *w, const char *line)
@@ -170,6 +173,7 @@ static void move(writer *w, const gt_move *a, const gt_move *b)
     float len = sqrtf(dx * dx + dy * dy + dz * dz), v = held(w->m, OM_X, w->o->speed[b->kind]), t = 0.f;
     float area = 3.14159265f * w->o->filament * w->o->filament * 0.25f;
     int travel = b->kind == GT_TRAVEL;
+    if (!travel && w->layer == 1 && w->first > 0.f && v > w->first) v = w->first;
     if (v <= 0.f) v = 10.f;
     if (len > 0.f) {
         float vz = held(w->m, OM_Z, v);
@@ -218,6 +222,7 @@ static void run(writer *w, const gt_path *p)
     for (i = 0; i < p->n; i++) {
         if (layer < p->nlayers && p->layer[layer] == i) {
             layer++;
+            w->layer = layer;
             snprintf(buf, sizeof buf, "; LAYER %d\nG92 E0\n", layer);
             say(w, buf);
             w->e = 0.f;
@@ -232,15 +237,43 @@ static void run(writer *w, const gt_path *p)
     }
 }
 
-int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+void gc_more_defaults(gc_more *x, const gc_opts *o)
+{
+    memset(x, 0, sizeof *x);
+    x->size = (int)sizeof *x;
+    x->o = o;
+}
+
+/* x as far as its size, the rest the defaults. */
+static void more_of(const gc_more *x, gc_more *to)
+{
+    gc_more_defaults(to, x->size >= (int)(offsetof(gc_more, o) + sizeof x->o) ? x->o : NULL);
+    if (x->size >= (int)(offsetof(gc_more, first) + sizeof x->first)) to->first = x->first;
+}
+
+int gc_estimate_more(const gt_path *p, const om_machine *m, const gc_more *more, gc_stats *st)
 {
     writer w;
+    gc_more x;
+    more_of(more, &x);
+    if (!x.o) { /* too short to hold the options */
+        memset(st, 0, sizeof *st);
+        return GC_AT_SPEEDS;
+    }
     memset(&w, 0, sizeof w);
     w.m = m;
-    w.o = o;
+    w.o = x.o;
+    w.first = x.first;
     w.st = st;
     run(&w, p);
     return w.how;
+}
+
+int gc_estimate_how(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
+{
+    gc_more x;
+    gc_more_defaults(&x, o);
+    return gc_estimate_more(p, m, &x, st);
 }
 
 void gc_estimate(const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st)
@@ -283,9 +316,25 @@ int gc_write(FILE *out, const gt_path *p, const om_machine *m, const gc_opts *o,
 int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_opts *o, gc_stats *st, char *err,
                 int errlen)
 {
+    gc_more x;
+    gc_more_defaults(&x, o);
+    return gc_write_more(put, ud, p, m, &x, st, err, errlen);
+}
+
+int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *more, gc_stats *st, char *err,
+                  int errlen)
+{
     char code[OM_CODE + 256];
     gc_stats mine;
     writer w;
+    gc_more x;
+    const gc_opts *o;
+    more_of(more, &x);
+    o = x.o;
+    if (!o) {
+        snprintf(err, (size_t)errlen, "no options: the gc_more is too short");
+        return -1;
+    }
     if (m->family != OM_PRINTER) {
         snprintf(err, (size_t)errlen, "%s is not a printer: G-code here is for a printer", m->name);
         return -1;
@@ -295,6 +344,7 @@ int gc_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, con
     w.ud = ud;
     w.m = m;
     w.o = o;
+    w.first = x.first;
     w.st = st ? st : &mine;
     if (om_code(m->start, o->hotend, o->bed, code, (int)sizeof code)) {
         snprintf(err, (size_t)errlen, "the machine's start code is too long");
