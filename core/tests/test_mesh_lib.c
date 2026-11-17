@@ -75,6 +75,18 @@ int main(void)
                same(&x[0], &x[1]),
            "GM_Slot, six floats and the sides");
     expect(GM_Torus(&x[1], 0, 0, 0, 2, 3, 20, 12) == -1, "GM_Torus refuses a tube wider than its ring");
+    /* 1.3: the hole tools, the same through the library. */
+    expect(gm_bolt_circle(&x[0], 50, 40, -4, 28, 6, 30, 5) == 0 && GM_BoltCircle(&x[1], 50, 40, -4, 28, 6, 30, 5) == 0 &&
+               same(&x[0], &x[1]),
+           "GM_BoltCircle, six floats and the holes");
+    expect(gm_hole_row(&x[0], 50, 40, -4, 28, 6, 10, 3) == 0 && GM_HoleRow(&x[1], 50, 40, -4, 28, 6, 10, 3) == 0 &&
+               same(&x[0], &x[1]),
+           "GM_HoleRow, six floats and the holes");
+    expect(gm_counterbore(&x[0], 50, 40, -4, 24.4f, 6, 11, 5.4f) == 0 &&
+               GM_Counterbore(&x[1], 50, 40, -4, 24.4f, 6, 11, 5.4f) == 0 && same(&x[0], &x[1]),
+           "GM_Counterbore, seven floats");
+    expect(GM_BoltCircle(&x[1], 0, 0, 0, 10, 6, 10, 6) == -1 && GM_Counterbore(&x[1], 0, 0, 0, 10, 6, 11, 10) == -1,
+           "the hole tools refuse holes that meet and a bore as deep as the drill");
     GS_MeshFree(&x[0]);
     GS_MeshFree(&x[1]);
 
@@ -109,8 +121,8 @@ int main(void)
             expect(all[k]->n == 0 && all[k]->t == NULL, "GS_MeshFree");
         }
     }
-    expect(calls == 29, "every call went through the table");
-    if (calls != 29)
+    expect(calls == 34, "every call went through the table");
+    if (calls != 34)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);

@@ -1,4 +1,4 @@
-==id $Id: openmakemesh_lib.sfd 1.2 (17.11.2026) $
+==id $Id: openmakemesh_lib.sfd 1.3 (17.11.2026) $
 * "openmakemesh.library": OpenMakeCore's meshes (gs.h, gs_model.h): STL
 * in and out, repair, and the solids and booleans of a small CAD. Each
 * call is its C function in snake case (GM_OpenEdges is gm_open_edges);
@@ -27,4 +27,8 @@ int GM_Cone(gs_mesh *m, float x, float y, float z, float r, float h, int seg)(a0
 int GM_Torus(gs_mesh *m, float x, float y, float z, float ring, float tube, int seg, int tseg)(a0,d0,d1,d2,d3,d4,d5,d6)
 int GM_Wedge(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)(a0,d0,d1,d2,d3,d4,d5)
 int GM_Slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz, int seg)(a0,d0,d1,d2,d3,d4,d5,d6)
+* 1.3: the bench's hole tools, as drills to cut: a bolt circle, a hole row, a counterbore
+int GM_BoltCircle(gs_mesh *m, float x, float y, float z, float h, float d, float pcd, int n)(a0,d0,d1,d2,d3,d4,d5,d6)
+int GM_HoleRow(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n)(a0,d0,d1,d2,d3,d4,d5,d6)
+int GM_Counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep)(a0,d0,d1,d2,d3,d4,d5,d6)
 ==end
