@@ -286,7 +286,7 @@ static int cmd_set(void *c, void *g0)
     const char *key = omr_arg(c, "KEY"), *val = omr_arg(c, "VALUE");
     char err[80];
     int i, got;
-    float f;
+    float f = 0;
     if (!key || !val) {
         omr_set_result(c, "KEY and VALUE are required");
         return OMR_ERROR;
@@ -567,7 +567,7 @@ static int cmd_place(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
     gs_mesh *m = picked(g);
-    float pos[3], size[3], x, y, z;
+    float pos[3], size[3], x = 0, y = 0, z = 0;
     int hx, hy, hz;
     if (!m) {
         omr_set_result(c, "no part");
@@ -608,7 +608,7 @@ static int cmd_size(void *c, void *g0)
     gm_rexx *g = app(g0);
     gs_mesh *m = picked(g);
     const char *ax = omr_arg(c, "AXIS");
-    float mm, x, y, z;
+    float mm = 0, x = 0, y = 0, z = 0;
     int a, hx, hy, hz, hm;
     if (!m) {
         omr_set_result(c, "no part");
@@ -800,7 +800,7 @@ static int cmd_measure(void *c, void *g0)
     gm_rexx *g = app(g0);
     gs_v a, b;
     char buf[160], nbuf[32];
-    float x1, y1, z1, x2, y2, z2;
+    float x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
     int h1, h2, h3, h4, h5, h6;
     memset(&a, 0, sizeof a);
     memset(&b, 0, sizeof b);
