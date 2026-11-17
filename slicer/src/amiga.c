@@ -3,6 +3,8 @@
  * tasks as there are cores (sl_job.h: gp_part_par, exec tasks here), the
  * slider shows it a layer at a time, and Save G-code writes it for the
  * printer picked (core/ui's machine picker), once the printer says it can.
+ * The view is drawn by OpenGPU when gfopengpu.library can (core/ui's
+ * omview_scene.h and omview_gpu.h, as GFOpenMake), with the pens when not.
  * The status line, the numbers, the pen drawer and the resizable window
  * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -10,7 +12,9 @@
 #include "gs_layer.h"
 #include "gs_par.h"
 #include "markup.h"
+#include "omview_gpu.h"
 #include "omview_machines.h"
+#include "omview_scene.h"
 #include "omview_ui.h"
 #include "omview_window.h"
 #include "sl_job.h"
@@ -41,6 +45,7 @@ static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static int show_layer, layer_no = 1;
 static gc_opts sliced_go; /* the G-code options the slice was made with */
+static omv_gpu gpu;
 
 /* The printer picked, loaded; a 220 mm bed when there is none. 0, or -1. */
 static int printer(olui *ui, om_machine *m, char *err, int errlen)
@@ -74,15 +79,30 @@ static void put_run(void *ud, int x, int y, int n, int pen)
     RectFill(win->RPort, at[0] + x, at[1] + y, at[0] + x + n - 1, at[1] + y);
 }
 
+/* The view on OpenGPU: 1, or 0 when it cannot (no library, no room,
+ * nothing to draw) and the pens draw it. */
+static int draw_gpu(int x, int y, int w, int h)
+{
+    const gs_mesh *part = job.have_part ? &job.part : NULL;
+    const gt_path *path = job.sliced ? &job.path : NULL;
+    int need = omv_scene_need(part, path), n;
+    if (!gpu.on || need <= 0 || !omv_gpu_size(&gpu, w, h) || !omv_gpu_room(&gpu, need)) return 0;
+    n = omv_scene(part, path, &cam, show_layer ? layer_no : 0, gpu.grid, w, h, gpu.verts, gpu.vert_cap, gpu.stream,
+                  gpu.stream_cap, (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
+                  (uint32_t)(uintptr_t)gpu.depth);
+    return n > 0 && omv_gpu_show(&gpu, n, win->RPort, x, y);
+}
+
 /* The toolpath once sliced (layers 1 to the slider's with Show), the part
- * before: drawn by the CPU drawer, put down with the pens a run at a time.
- * Drag turns it, Shift-drag pans. */
+ * before: by OpenGPU when it can, else drawn by the CPU drawer and put down
+ * with the pens a run at a time. Drag turns it, Shift-drag pans. */
 static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, int h)
 {
     unsigned char *rgb;
     int at[2], rc = -1;
     (void)userdata;
     (void)el;
+    if (draw_gpu(x, y, w, h)) return;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     if (job.sliced) rc = gt_paint_part(&job.path, &cam, show_layer ? layer_no : 0, rgb, w, h);
@@ -239,10 +259,13 @@ int main(void)
     olui_on(ui, "layerno", OLUI_CHANGE, on_slide, NULL);
     sl_init(&job);
     gs_cam_home(&cam);
+    /* OpenGPU when the library can draw the view; the pens when not. */
+    omv_gpu_open(&gpu, 4096, 512);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
     w = omv_window_open("GFOpenSlicer 0.1.0", olui_amiga_idcmp());
     if (!w) {
         olui_free(ui);
+        omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenSlicer: the window did not open\n");
         return 20;
     }
@@ -251,6 +274,7 @@ int main(void)
     if (!a) {
         CloseWindow(w);
         olui_free(ui);
+        omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenSlicer: GFOpenLayout could not draw the window\n");
         return 20;
     }
@@ -301,5 +325,6 @@ done:
     sl_free(&job);
     omv_machines_free(&printers);
     olui_free(ui);
+    omv_gpu_close(&gpu);
     return 0;
 }
