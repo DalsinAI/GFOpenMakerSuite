@@ -74,6 +74,15 @@ its CPU back end: one batch, one retained surface. ASL is the file
 requester. Cura, PrusaSlicer and OrcaSlicer are the picture to aim at, and
 their code stays out. The booleans are ours, not a translation of JSCAD.
 
+## ARexx
+
+Every windowed app hosts a public ARexx port. GFOpenMakerWorkshop is the
+hub (`OPENMAKEWORKSHOP.1`): it starts and controls the others
+(`GFOPENMAKE.1`, `OPENMAKESLICER.1`, `OPENMAKEBURN.1`). The ports, the
+command parser, and a client that finds or starts an app and sends it a
+command live in `openmakerexx.library`. The command set, the return codes
+and the library's shape are in [docs/arexx.md](docs/arexx.md).
+
 ## What a slice does
 
 It reads a binary STL or an ASCII one. A binary file is little-endian, which
