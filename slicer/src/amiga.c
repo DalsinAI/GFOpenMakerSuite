@@ -1,12 +1,20 @@
-/* GFOpenSlicer on the Amiga. The window is GFOpenLayout: this file opens
- * it, asks ASL for a file, and fills the list from the slice. The status
- * line, the numbers and the pen drawer are the suite's (core/ui).
+/* GFOpenSlicer on the Amiga. The window is GFOpenLayout (markup.h): Open
+ * asks ASL for an STL, Slice makes its toolpath with the engine on as many
+ * tasks as there are cores (sl_job.h: gp_part_par, exec tasks here), the
+ * slider shows it a layer at a time, and Save G-code writes it for the
+ * printer picked (core/ui's machine picker), once the printer says it can.
+ * The status line, the numbers, the pen drawer and the resizable window
+ * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
-#include "gs_job.h"
-#include "gs_view.h"
+#include "gs.h"
+#include "gs_layer.h"
+#include "gs_par.h"
 #include "markup.h"
+#include "omview_machines.h"
 #include "omview_ui.h"
 #include "omview_window.h"
+#include "sl_job.h"
+#include "slicer_ui.h"
 
 #include <devices/inputevent.h>
 #include <proto/asl.h>
@@ -20,21 +28,41 @@
 #include <gfopenlayout_ui.h>
 #include <gfopenlayout_ui_amiga.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static const char version[] = GS_VERSTR;
-static gs_job job;
+static sl_job job;
+static omv_machines printers;
 static gs_cam cam;
 static struct Window *win;
-static int dragging;
-static int drag_x, drag_y;
-static int drag_shift;
+static int dragging, drag_x, drag_y, drag_shift;
+static int show_layer, layer_no = 1;
+static gc_opts sliced_go; /* the G-code options the slice was made with */
 
-static void show_layer(olui *ui, int index)
+/* The printer picked, loaded; a 220 mm bed when there is none. 0, or -1. */
+static int printer(olui *ui, om_machine *m, char *err, int errlen)
 {
-    (void)index;
+    int i = omv_machines_chosen(ui, "machine", &printers);
+    if (i < 0) {
+        snprintf(err, (size_t)errlen, "No printer: put one in PROGDIR:machines/printer");
+        om_clear(m);
+        m->area[0] = m->area[1] = 220.f;
+        return -1;
+    }
+    return omv_machines_load(&printers, i, m, err, errlen);
+}
+
+static void refresh(olui *ui)
+{
+    char status[180];
+    if (job.sliced) {
+        omv_slice_status(status, (int)sizeof status, job.path.nlayers, job.st.moves, job.st.seconds, job.st.filament,
+                         show_layer ? layer_no : 0);
+        omv_say(ui, status);
+    }
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
@@ -46,17 +74,24 @@ static void put_run(void *ud, int x, int y, int n, int pen)
     RectFill(win->RPort, at[0] + x, at[1] + y, at[0] + x + n - 1, at[1] + y);
 }
 
-/* Drag turns the solid. Shift-drag pans. The picture is the CPU drawer's,
- * drawn with the pens a run at a time (omv_pens). */
+/* The toolpath once sliced (layers 1 to the slider's with Show), the part
+ * before: drawn by the CPU drawer, put down with the pens a run at a time.
+ * Drag turns it, Shift-drag pans. */
 static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, int h)
 {
     unsigned char *rgb;
-    int at[2];
+    int at[2], rc = -1;
     (void)userdata;
     (void)el;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
-    if (!gs_view_solid(&job.mesh, &cam, rgb, w, h)) {
+    if (job.sliced) rc = gt_paint_part(&job.path, &cam, show_layer ? layer_no : 0, rgb, w, h);
+    else if (job.have_part) rc = gs_view_solid(&job.part, &cam, rgb, w, h);
+    else {
+        memset(rgb, 0x14, (size_t)w * (size_t)h * 3);
+        rc = 0;
+    }
+    if (!rc) {
         at[0] = x;
         at[1] = y;
         omv_pens(rgb, w, h, put_run, at);
@@ -64,80 +99,121 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     free(rgb);
 }
 
-static void fill_layers(olui *ui)
+static void path_join(char *path, int n, const char *drawer, const char *file)
 {
-    olui_el *list = olui_find(ui, "layers");
-    char name[32], value[16];
-    int i;
-    olui_list_clear(ui, list);
-    for (i = 0; i < job.layers; i++) {
-        gs_job_layer_name(&job, i, name, (int)sizeof name);
-        snprintf(value, sizeof value, "%d", i);
-        olui_list_add(ui, list, NULL, name, value);
+    size_t len = drawer ? strlen(drawer) : 0;
+    int slash = len && (drawer[len - 1] == '/' || drawer[len - 1] == ':');
+    snprintf(path, (size_t)n, slash ? "%s%s" : "%s/%s", drawer ? drawer : "", file ? file : "");
+}
+
+/* An ASL requester's file, or 0 when none was chosen. */
+static int ask_file(olui *ui, const char *title, int save, const char *pattern, char *path, int n)
+{
+    struct FileRequester *fr;
+    int got = 0;
+    fr = (struct FileRequester *)AllocAslRequestTags(ASL_FileRequest, ASLFR_TitleText, (ULONG)title,
+                                                     ASLFR_DoSaveMode, (ULONG)save, ASLFR_DoPatterns, TRUE,
+                                                     ASLFR_InitialPattern, (ULONG)pattern, TAG_END);
+    if (!fr) {
+        omv_say(ui, "The file requester did not open");
+        return 0;
     }
-    if (job.layers) show_layer(ui, 0);
+    if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
+        path_join(path, n, (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
+        got = 1;
+    }
+    FreeAslRequest(fr);
+    return got;
 }
 
 static void on_open(olui *ui, const olui_event *ev, void *userdata)
 {
-    struct FileRequester *fr;
-    char path[256];
+    char path[256], err[160];
+    om_machine m;
     (void)ev;
     (void)userdata;
-    fr = (struct FileRequester *)AllocAslRequestTags(ASL_FileRequest,
-        ASLFR_TitleText, (ULONG)"Open an STL",
-        ASLFR_DoPatterns, TRUE,
-        ASLFR_InitialPattern, (ULONG)"#?.stl",
-        TAG_END);
-    if (!fr) {
-        omv_say(ui, "The file requester did not open");
+    if (!ask_file(ui, "Open an STL", FALSE, "#?.stl", path, (int)sizeof path)) return;
+    printer(ui, &m, err, (int)sizeof err);
+    if (sl_load(&job, path, m.area[0], m.area[1], err, (int)sizeof err)) {
+        omv_say(ui, err);
         return;
     }
-    if (AslRequest(fr, NULL)) {
-        if (fr->fr_Drawer && fr->fr_File) {
-            size_t n = strlen((const char *)fr->fr_Drawer);
-            int slash = n && (((const char *)fr->fr_Drawer)[n - 1] == '/' || ((const char *)fr->fr_Drawer)[n - 1] == ':');
-            snprintf(path, sizeof path, slash ? "%s%s" : "%s/%s", (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
-            olui_set_text(ui, olui_find(ui, "path"), path);
-            omv_say(ui, "Ready to slice");
-        }
-    }
-    FreeAslRequest(fr);
+    olui_set_text(ui, olui_find(ui, "path"), path);
+    gs_cam_home(&cam);
+    snprintf(err, sizeof err, "%d triangles. Slice when ready.", job.part.n);
+    omv_say(ui, err);
+    refresh(ui);
 }
 
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
 {
-    gs_cfg cfg;
-    char err[160], status[160];
-    const char *path = olui_get_text(olui_find(ui, "path"));
+    gp_opts po;
+    gc_opts go;
+    om_machine m;
+    char err[160];
+    int have;
     (void)ev;
     (void)userdata;
-    gs_cfg_default(&cfg);
-    cfg.layer_h = omv_number(ui, "layer");
-    cfg.infill = omv_number(ui, "infill");
-    cfg.line_w = omv_number(ui, "line");
-    cfg.filament = omv_number(ui, "filament");
-    cfg.hotend = omv_number(ui, "hotend");
-    cfg.bed = omv_number(ui, "bed");
-    cfg.skirt = olui_get_checked(olui_find(ui, "skirt"));
-    olui_set_progress(ui, olui_find(ui, "progress"), 10);
-    if (gs_job_slice(&job, path ? path : "", NULL, &cfg, err, (int)sizeof err)) {
+    have = printer(ui, &m, err, (int)sizeof err) == 0;
+    if (job.have_part) gp_place(&job.part, m.area[0], m.area[1]); /* on the bed of the printer picked */
+    sl_ui_opts(ui, &po, &go);
+    omv_say(ui, "Slicing...");
+    if (sl_slice(&job, &po, &go, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
         omv_say(ui, err);
-        olui_set_progress(ui, olui_find(ui, "progress"), 0);
+        olui_repaint(ui, olui_find(ui, "view"), NULL);
         return;
     }
-    fill_layers(ui);
-    snprintf(status, sizeof status, "%d triangles, %d layers, %s drawer", job.triangles, job.layers,
-             gs_view_on_gpu() ? "GPU" : "CPU");
-    omv_say(ui, status);
-    olui_set_progress(ui, olui_find(ui, "progress"), 100);
+    sliced_go = go;
+    sliced_go.layer_h = gl_height(po.layer_h);
+    layer_no = job.path.nlayers;
+    olui_set_slider(ui, olui_find(ui, "layerno"), 100);
+    refresh(ui);
 }
 
-static void on_layer(olui *ui, const olui_event *ev, void *userdata)
+static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
+{
+    om_machine m;
+    char path[256], err[160];
+    (void)ev;
+    (void)userdata;
+    if (!job.sliced) {
+        omv_say(ui, "Slice first");
+        return;
+    }
+    if (printer(ui, &m, err, (int)sizeof err)) {
+        omv_say(ui, err);
+        return;
+    }
+    if (!ask_file(ui, "Save G-code", TRUE, "#?.gcode", path, (int)sizeof path)) return;
+    if (sl_write(&job, path, &m, &sliced_go, err, (int)sizeof err)) omv_say(ui, err);
+    else omv_say(ui, path);
+}
+
+static void on_show(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)userdata;
-    if (ev->type != OLUI_SELECT) return;
-    show_layer(ui, ev->index);
+    show_layer = ev->checked;
+    refresh(ui);
+}
+
+static void on_step(olui *ui, const olui_event *ev, void *userdata)
+{
+    int n = job.path.nlayers > 0 ? job.path.nlayers : 1;
+    (void)ev;
+    layer_no += (int)(intptr_t)userdata;
+    if (layer_no < 1) layer_no = 1;
+    if (layer_no > n) layer_no = n;
+    if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
+    olui_set_slider(ui, olui_find(ui, "layerno"), omv_slider_of(layer_no, n));
+    refresh(ui);
+}
+
+static void on_slide(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)userdata;
+    layer_no = omv_layer_of(ev->index, job.path.nlayers > 0 ? job.path.nlayers : 1);
+    if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
+    refresh(ui);
 }
 
 int main(void)
@@ -156,13 +232,16 @@ int main(void)
     }
     olui_on(ui, "open", OLUI_CLICK, on_open, NULL);
     olui_on(ui, "slice", OLUI_CLICK, on_slice, NULL);
-    olui_on(ui, "layers", OLUI_SELECT, on_layer, NULL);
-    gs_job_init(&job);
+    olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
+    olui_on(ui, "show", OLUI_CHANGE, on_show, NULL);
+    olui_on(ui, "prev", OLUI_CLICK, on_step, (void *)(intptr_t)-1);
+    olui_on(ui, "next", OLUI_CLICK, on_step, (void *)(intptr_t)1);
+    olui_on(ui, "layerno", OLUI_CHANGE, on_slide, NULL);
+    sl_init(&job);
     gs_cam_home(&cam);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
     w = omv_window_open("GFOpenSlicer 0.1.0", olui_amiga_idcmp());
     if (!w) {
-        gs_job_free(&job);
         olui_free(ui);
         fprintf(stderr, "GFOpenSlicer: the window did not open\n");
         return 20;
@@ -171,14 +250,17 @@ int main(void)
     a = olui_amiga_new(ui, w);
     if (!a) {
         CloseWindow(w);
-        gs_job_free(&job);
         olui_free(ui);
         fprintf(stderr, "GFOpenSlicer: GFOpenLayout could not draw the window\n");
         return 20;
     }
     olui_amiga_theme(a, NULL);
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
+    /* The printer picker: every machines/printer/<driver>/profiles/ .om file. */
+    if (omv_machines_scan(&printers, "PROGDIR:machines", "printer") < 0) printers.n = 0;
+    omv_machines_fill(ui, "machine", &printers, "No printers");
     olui_amiga_layout(a);
+    if (printers.skipped) omv_say(ui, printers.why);
     for (;;) {
         int r;
         WaitPort(w->UserPort);
@@ -216,7 +298,8 @@ int main(void)
 done:
     olui_amiga_free(a);
     CloseWindow(w);
-    gs_job_free(&job);
+    sl_free(&job);
+    omv_machines_free(&printers);
     olui_free(ui);
     return 0;
 }

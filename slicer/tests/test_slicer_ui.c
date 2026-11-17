@@ -1,10 +1,12 @@
 /* GFOpenSlicer's window (slicer/src/markup.h), laid out on the host by
  * the real GFOpenLayout at the size amiga.c opens it: 640 by 480 inside,
  * which with the title bar and sizing border fits a 640 by 512 PAL screen.
- * Its status line and numbers go through core/ui (omview_ui.h).
+ * Its status line and numbers go through core/ui (omview_ui.h); its
+ * settings become the toolpath engine's options (slicer_ui.h).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "markup.h"
 #include "omview_ui.h"
+#include "slicer_ui.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -42,8 +44,9 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
     {"path", "input"}, {"open", "button"}, {"slice", "button"}, {"layer", "spinner"}, {"infill", "spinner"},
-    {"line", "spinner"}, {"skirt", "checkbox"}, {"filament", "spinner"}, {"hotend", "spinner"}, {"bed", "spinner"},
-    {"layers", "list"}, {"progress", "progress"}
+    {"line", "spinner"}, {"walls", "spinner"}, {"hotend", "spinner"}, {"bed", "spinner"}, {"brim", "spinner"},
+    {"machine", "select"}, {"show", "checkbox"}, {"prev", "button"}, {"layerno", "slider"}, {"next", "button"},
+    {"gcode", "button"}
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
 
@@ -87,8 +90,25 @@ int main(void)
     }
     omv_say(ui, "Sliced: 100 layers");
     expect(!strcmp(olui_get_text(olui_find(ui, "status")), "Sliced: 100 layers"), "omv_say says it on the status line");
-    expect(omv_number(ui, "layer") == 0.2f && omv_number(ui, "infill") == 20.f && omv_number(ui, "filament") == 1.75f,
-           "omv_number reads the spinners: 0.20 mm, 20 %, 1.75 mm");
+    expect(olui_find(ui, "layers") == NULL && olui_find(ui, "skirt") == NULL, "no layer list or skirt: a slider, a brim");
+    {
+        /* The settings as the engine's options: its defaults, then the
+         * window's numbers over them. */
+        gp_opts po, pd;
+        gc_opts go, gd;
+        gp_defaults(&pd);
+        gc_defaults(&gd);
+        sl_ui_opts(ui, &po, &go);
+        expect(po.layer_h == 0.2f && po.infill == 20.f && po.line_w == 0.4f && po.walls == 2 && po.brim == 3 &&
+                   po.skins == pd.skins,
+               "gp_opts: 0.20 mm layers, 20 % infill, 0.40 mm lines, 2 walls, 3 brim loops, the skins as ever");
+        expect(go.hotend == 200.f && go.bed == 60.f && go.layer_h == po.layer_h && go.filament == gd.filament,
+               "gc_opts: 200 and 60 degrees, the layers' height, the filament as ever");
+        olui_set_number(ui, olui_find(ui, "layer"), 30);
+        olui_set_number(ui, olui_find(ui, "walls"), 4);
+        sl_ui_opts(ui, &po, &go);
+        expect(po.layer_h == 0.3f && go.layer_h == 0.3f && po.walls == 4, "and as they are changed");
+    }
     olui_free(ui);
     printf(fails ? "slicer ui: %d failed\n" : "slicer ui ok\n", fails);
     return fails != 0;
