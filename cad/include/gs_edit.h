@@ -153,6 +153,13 @@ int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
  * moved, line saying so; or -1 with line saying why, the part kept. */
 int ge_pull(gs_mesh *m, int face, float mm, char *line, int len);
 
+/* The bench's Chamfer: face's plane (as Pull's) moved in by mm (0.2 to
+ * 20; its size if less than 0), its edge points in along the walls by as
+ * much, with the points of other faces on them. 0, line saying so; or -1
+ * with line saying why (no face, no edge, or more than the part or the
+ * face has), the part kept. */
+int ge_chamfer(gs_mesh *m, int face, float mm, char *line, int len);
+
 /* The bench's Extrude: kind GM_RECT, GM_ROUND or GM_SLOT, w by d (a round
  * w across), h tall. GM_ON_BED: out is the solid on the bed mid-plate, to
  * place and join as an added part. GM_ON_TOP and GM_FROM_TOP: out is the

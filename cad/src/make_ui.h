@@ -27,7 +27,7 @@
  * counterbore, cut through the picked part about its middle), Shape (the
  * bench's Extrude: a block, round or slot added on the bed, stood on the
  * picked part's top, or cut down from it; and Face: the picked face
- * pulled by a distance) and Print (Layers, and Slice
+ * pulled by a distance, or chamfered by it) and Print (Layers, and Slice
  * with core/ui's print settings panel, omview_settings.h, put in
  * "settings" by make.c), as wide as that panel. Place's Size and At, a row
  * for each axis, are the
@@ -108,7 +108,8 @@ static const char gm_markup_b[] =
     "</fieldset>"
     "<fieldset><legend>Face</legend>"
     "<row><label for=\"fmm\">By</label><spinner id=\"fmm\" min=\"-99.9\" max=\"99.9\" step=\"0.1\" value=\"5.0\"><span class=\"unit\">mm</span></row>"
-    "<row><button id=\"pull\" title=\"The picked face along its normal\">Pull</button></row>"
+    "<row><button id=\"pull\" title=\"The picked face along its normal\">Pull</button>"
+    "<button id=\"chamfer\" title=\"The picked face's edges cut in\">Chamfer</button></row>"
     "</fieldset>"
     "</tab><tab title=\"Print\">"
     "<fieldset><legend>Layers</legend>"

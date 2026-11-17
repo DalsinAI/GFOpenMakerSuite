@@ -306,16 +306,16 @@ int main(void)
     }
     {
         /* The Shape tab (the bench's Extrude, and its face tools): the sketch's shape, width, depth and height,
-         * Add, On top and Cut; Face's distance and Pull; and
+         * Add, On top and Cut; Face's distance, Pull and Chamfer; and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
-        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull"};
-        static const char tags[] = "snnnbbbnb"; /* select, number, button */
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer"};
+        static const char tags[] = "snnnbbbnbb"; /* select, number, button */
         const int nx = (int)(sizeof ids / sizeof ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[9];
+            olui_rect side, st, r[sizeof ids / sizeof ids[0]];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_SHAPE);
