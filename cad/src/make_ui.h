@@ -9,7 +9,8 @@
 /* OpenLayout Clear (docs/HANDOVER.md): one light window, the tools in
  * grouped boxes down the left, a label beside its field, one status line
  * along the bottom, Save STL the accent primary button. The chosen tool
- * is :selected and lit in the accent too. */
+ * is :selected and lit in the accent too. Slice turns the part into a
+ * toolpath, shown in the view, its layers up to the Layers slider's. */
 static const char gm_markup[] =
     "<row><h2>GFOpenMake</h2><spacer></spacer><span id=\"ver\">0.1.0</span></row>"
     "<row id=\"body\">"
@@ -34,6 +35,9 @@ static const char gm_markup[] =
     "<row><label for=\"lh\">Height</label><spinner id=\"lh\" value=\"0.20\" min=\"0.08\" max=\"0.80\" step=\"0.01\"></row>"
     "<checkbox id=\"show\">Show layer</checkbox>"
     "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
+    "</fieldset>"
+    "<fieldset><legend>Slice</legend>"
+    "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
     "</fieldset>"
     "</column>"
     "<div id=\"view\"></div>"

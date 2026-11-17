@@ -21,6 +21,11 @@ float omv_number(olui *ui, const char *id);
 int omv_slider_of(int l, int n);
 int omv_layer_of(int slider, int n);
 
+/* What a slice came to, for the status line: its layers and moves, how
+ * long (seconds) and how much filament (mm), and which layers are shown
+ * (upto; 0: all). */
+void omv_slice_status(char *buf, int len, int layers, int moves, float seconds, float filament, int upto);
+
 /* The pen drawer: a w by h picture (rgb, as gs_view_* draw it) as runs of
  * one pen (gs_pen_of), each put(ud, x, y, n, pen) once: on the Amiga one
  * SetAPen and RectFill. Returns how many runs, or -1 out of memory. */

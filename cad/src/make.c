@@ -8,9 +8,12 @@
  * same batch. The pen drawer is only the fallback.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
+#include "gs_gcode.h"
 #include "gs_gpu.h"
 #include "gs_layer.h"
 #include "gs_model.h"
+#include "gs_par.h"
+#include "gs_plan.h"
 #include "make_ui.h"
 #include "omview_gpu.h"
 #include "omview_ui.h"
@@ -52,6 +55,10 @@ static char stl_path[256] = "RAM:hole.stl";
 static float layer_h = 0.2f;
 static int show_layer, layer_no = 1;
 static gl_walls walls;
+/* The Slice group: the part as a toolpath, and what it came to. */
+static gt_path sliced;
+static int has_slice;
+static gc_stats slice_st;
 /* The view on OpenGPU (core/ui): its picture, depth, vertices and stream. */
 static omv_gpu gpu;
 
@@ -114,17 +121,23 @@ static int draw_gpu(int x, int y, int w, int h)
     int nv, nw;
     if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
-    verts_fit(show_layer ? walls.n * 6 : 0);
-    nv = gs_gpu_vertices_plate(&shown, &cam, w, h, gpu.verts, gpu.vert_cap);
+    if (has_slice) {
+        /* The toolpath alone, fitted to the part, with no grid. */
+        if (!omv_gpu_room(&gpu, sliced.n * 6 + 6)) return 0;
+        nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
+    } else {
+        verts_fit(show_layer ? walls.n * 6 : 0);
+        nv = gs_gpu_vertices_plate(&shown, &cam, w, h, gpu.verts, gpu.vert_cap);
+    }
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
-    if (show_layer && walls.n) {
+    if (!has_slice && show_layer && walls.n) {
         int nw2 = gs_gpu_walls_plate(&walls, &shown, &cam, w, h, gpu.verts + nv * 6, gpu.vert_cap - nv);
         if (nw2 > 0) nv += nw2;
     }
     nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
                              (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
-                             (uint32_t)(uintptr_t)gpu.depth, w, h, &shown, &cam, draw_grid, 1);
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, &shown, &cam, has_slice ? 0 : draw_grid, 1);
     if (!omv_gpu_show(&gpu, nw, win->RPort, x, y)) return 0;
     presented = 1;
     return 1;
@@ -147,11 +160,11 @@ static void draw_pens(int x, int y, int w, int h)
     vw = w;
     vh = h;
     rebuild_shown();
-    if (gs_view_bed(&shown, &cam, rgb, w, h)) {
+    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(&shown, &cam, rgb, w, h)) {
         free(rgb);
         return;
     }
-    if (show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
+    if (!has_slice && show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
     /* Grey goes to the three greys, the walls' blue to the window's fourth
      * pen, the Workbench blue. */
     at[0] = x;
@@ -203,6 +216,14 @@ static void refresh(olui *ui)
 {
     char status[180];
     recut();
+    if (has_slice) {
+        omv_slice_status(status, (int)sizeof status, sliced.nlayers, slice_st.moves, slice_st.seconds,
+                         slice_st.filament, show_layer ? layer_no : 0);
+        say(ui, status);
+        face_line(ui);
+        olui_repaint(ui, olui_find(ui, "view"), NULL);
+        return;
+    }
     if (show_layer) {
         gl_status(status, (int)sizeof status, &shown, layer_h, layer_no, &walls);
         say(ui, status);
@@ -239,8 +260,15 @@ static void scene_in(const ge_scene *sc)
 }
 
 /* Both parts go in the step, so Undo after Join gives both back. */
+static void drop_slice(void)
+{
+    gt_free(&sliced);
+    has_slice = 0;
+}
+
 static void remember(void)
 {
+    drop_slice();
     ge_scene sc = scene_out();
     if (hist && hole.n) ge_hist_push_scene(hist, &sc);
 }
@@ -339,6 +367,7 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     scene_in(&sc);
+    drop_slice();
     picked = -1;
     verts_fit(0);
     refresh(ui);
@@ -426,6 +455,7 @@ static void on_height(olui *ui, const olui_event *ev, void *userdata)
     layer_h = (float)olui_number_value(lh) / 100.f;
     if (layer_h < GL_MIN_H) layer_h = GL_MIN_H;
     if (layer_h > GL_MAX_H) layer_h = GL_MAX_H;
+    drop_slice();
     refresh(ui);
     slider_to_layer(ui);
 }
@@ -594,6 +624,78 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* The part as a printer's toolpath, at the Layers height, on as many
+ * tasks as there are cores (gs_par: exec tasks here). */
+static void on_slice(olui *ui, const olui_event *ev, void *userdata)
+{
+    gp_opts o;
+    gc_opts go;
+    (void)ev;
+    (void)userdata;
+    rebuild_shown();
+    gp_defaults(&o);
+    o.layer_h = layer_h;
+    drop_slice();
+    say(ui, "Slicing...");
+    if (gp_part_par(&sliced, &shown, &o, gs_par_cores()) || !sliced.n) {
+        drop_slice();
+        say(ui, "That did not slice: out of memory, or nothing to slice");
+        return;
+    }
+    gc_defaults(&go);
+    go.layer_h = layer_h;
+    gc_estimate(&sliced, NULL, &go, &slice_st);
+    has_slice = 1;
+    refresh(ui);
+}
+
+/* The toolpath as G-code for the generic Marlin printer in machines/,
+ * checked against it first (the machine picker is to choose it). */
+static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
+{
+    static const char driver[] = "PROGDIR:machines/printer/marlin/driver.om";
+    static const char profile[] = "PROGDIR:machines/printer/marlin/profiles/generic-220.om";
+    struct FileRequester *fr;
+    om_machine m;
+    om_job job;
+    gc_opts go;
+    char path[256], err[160];
+    FILE *f;
+    (void)ev;
+    (void)userdata;
+    if (!has_slice) {
+        say(ui, "Slice first");
+        return;
+    }
+    om_clear(&m);
+    if (om_load(&m, driver, err, (int)sizeof err) || om_load(&m, profile, err, (int)sizeof err)) {
+        say(ui, err);
+        return;
+    }
+    gc_defaults(&go);
+    go.layer_h = layer_h;
+    gc_job(&sliced, &m, &go, &job);
+    if (om_check(&m, &job, err, (int)sizeof err) & ~OM_TOO_FAST) {
+        say(ui, err);
+        return;
+    }
+    fr = (struct FileRequester *)AllocAslRequestTags(ASL_FileRequest, ASLFR_TitleText, (ULONG) "Save G-code",
+                                                     ASLFR_DoSaveMode, TRUE, ASLFR_DoPatterns, TRUE,
+                                                     ASLFR_InitialPattern, (ULONG) "#?.gcode", TAG_END);
+    if (!fr) {
+        say(ui, "The file requester did not open");
+        return;
+    }
+    if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
+        path_join(path, (int)sizeof path, (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
+        f = fopen(path, "w");
+        if (!f || gc_write(f, &sliced, &m, &go, NULL, err, (int)sizeof err)) say(ui, f ? err : "Could not write there");
+        else say(ui, path);
+        if (f) fclose(f);
+    }
+    FreeAslRequest(fr);
+}
+
 int main(int argc, char **argv)
 {
     olui *ui;
@@ -652,11 +754,13 @@ int main(int argc, char **argv)
     olui_on(ui, "prev", OLUI_CLICK, on_step, (void *)(intptr_t)-1);
     olui_on(ui, "next", OLUI_CLICK, on_step, (void *)(intptr_t)1);
     olui_on(ui, "layer", OLUI_CHANGE, on_slide, NULL);
+    olui_on(ui, "slice", OLUI_CLICK, on_slice, NULL);
+    olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     gs_cam_home(&cam);
     w = OpenWindowTags(NULL,
         WA_Title, (ULONG)"GFOpenMake",
         WA_InnerWidth, 640,
-        WA_InnerHeight, 520,
+        WA_InnerHeight, 580, /* the Slice group under Layers */
         WA_MinWidth, 320,
         WA_MinHeight, 280,
         WA_MaxWidth, (ULONG)~0,
@@ -763,6 +867,7 @@ done:
     gs_mesh_free(&added);
     gs_mesh_free(&shown);
     gl_walls_free(&walls);
+    drop_slice();
     olui_free(ui);
     omv_gpu_close(&gpu);
     return 0;

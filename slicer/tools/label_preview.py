@@ -7,6 +7,8 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 src, dst, line2 = sys.argv[1], sys.argv[2], sys.argv[3]
 im = Image.open(src).convert('RGB'); W, H = im.size
+# A narrow picture (a window) gets a wider sheet, so the label is never cut.
+W = max(W, 1060)
 out = Image.new('RGB', (W, H + 118), (245, 245, 245)); out.paste(im, (0, 118))
 d = ImageDraw.Draw(out)
 f = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 24)
