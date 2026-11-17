@@ -18,7 +18,8 @@ enum {
     BURN_SET_PASSES = 4,
     BURN_SET_ON = 8,
     BURN_SET_MODE = 16,
-    BURN_SET_INTERVAL = 32
+    BURN_SET_INTERVAL = 32,
+    BURN_SET_KERF = 64
 };
 
 /* How a layer is burned. */
@@ -36,6 +37,7 @@ typedef struct {
     int on;          /* 0: leave the layer out; not 0: include it */
     int mode;        /* BURN_LINE, BURN_FILL or BURN_OFFSET */
     float interval;  /* mm between fill lines; 0: 0.2 */
+    float kerf;      /* mm of kerf on a cut layer; 0: none */
     unsigned set;
 } burn_layer;
 
@@ -56,6 +58,7 @@ typedef struct {
     int nseq;
     int invert;   /* 1: white is more power on a picture */
     float width;  /* picture width mm; 0: interval times the columns */
+    float kerf;   /* mm of kerf on cut layers; 0: none */
 } burn_opts;
 
 void burn_defaults(burn_opts *o);
@@ -69,11 +72,11 @@ int burn_mode_parse(const char *s);
 const char *burn_mode_name(int mode);
 
 /* Parse a layer= value: "#rrggbb,power=80,speed=10,passes=2,on=1" or
- * "1,power=80", and mode= / interval= for a fill. 0, or -1 with why in err. */
+ * "1,power=80", and mode= / interval= for a fill, kerf= for a cut. 0, or -1 with why in err. */
 int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen);
 
 /* Layer L (0-based) of d, with o's defaults and any matching override.
- * power, speed, passes, on, mode and interval are filled in. */
+ * power, speed, passes, on, mode, interval and kerf are filled in. */
 void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out);
 
 /* 0-based document layer indices into seq[0..d->nlayer-1] as the job will

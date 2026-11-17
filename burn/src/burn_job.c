@@ -227,6 +227,13 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen)
                 return -1;
             }
             L->set |= BURN_SET_INTERVAL;
+        } else if (parse_key(buf, "kerf", &rest) || parse_key(buf, "KERF", &rest)) {
+            L->kerf = strtof(rest, &end);
+            if (end == rest || *end || L->kerf < 0.f) {
+                snprintf(err, (size_t)errlen, "layer=: kerf is a number, in mm, 0 or more");
+                return -1;
+            }
+            L->set |= BURN_SET_KERF;
         } else {
             snprintf(err, (size_t)errlen, "%s: no such setting", buf);
             return -1;
@@ -247,6 +254,7 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
     out->on = 1;
     out->mode = o->mode;
     out->interval = interval_of(o->interval);
+    out->kerf = o->kerf > 0.f ? o->kerf : 0.f;
     if (!d || L < 0 || L >= d->nlayer) return;
     out->colour = d->layer[L].colour;
     out->index = L + 1;
@@ -262,6 +270,7 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
         if (s->set & BURN_SET_ON) out->on = s->on ? 1 : 0;
         if (s->set & BURN_SET_MODE) out->mode = s->mode;
         if (s->set & BURN_SET_INTERVAL) out->interval = interval_of(s->interval);
+        if (s->set & BURN_SET_KERF) out->kerf = s->kerf > 0.f ? s->kerf : 0.f;
     }
 }
 
@@ -508,6 +517,60 @@ static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc
     return 0;
 }
 
+
+/* Closed cuts of the layer, grown by half the kerf (holes shrink), then
+ * any open paths unshifted. Shared geometry is gl_inset in openmakepath. */
+static int add_line(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
+{
+    int i, start;
+    if (ly->kerf > 0.f) {
+        gl_loops region, cut;
+        memset(&cut, 0, sizeof cut);
+        if (loops_of(d, ly->colour, &region)) return -1;
+        face_even_odd(&region);
+        if (region.n) {
+            gl_loops united;
+            memset(&united, 0, sizeof united);
+            if (gl_union(&region, &united)) {
+                gl_loops_free(&region);
+                return -1;
+            }
+            gl_loops_free(&region);
+            if (gl_inset(&united, -0.5f * ly->kerf, &cut)) {
+                gl_loops_free(&united);
+                return -1;
+            }
+            gl_loops_free(&united);
+            start = p->n;
+            for (i = 0; i < cut.n; i++) {
+                if (!cut.l[i].closed || cut.l[i].n < 3) continue;
+                if (gt_loop(p, GT_CUT, &cut.l[i], 0.f, ly->power)) {
+                    gl_loops_free(&cut);
+                    return -1;
+                }
+            }
+            if (spd && *spd) {
+                if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
+                    gl_loops_free(&cut);
+                    return -1;
+                }
+            }
+            gl_loops_free(&cut);
+        } else
+            gl_loops_free(&region);
+        for (i = 0; i < d->n; i++) {
+            if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
+            if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
+        }
+        return 0;
+    }
+    for (i = 0; i < d->n; i++) {
+        if (gv_path_colour(&d->p[i]) != ly->colour) continue;
+        if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
+    }
+    return 0;
+}
+
 float burn_heaviness(const burn_layer *ly)
 {
     float s;
@@ -587,7 +650,7 @@ int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap)
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
-    int pass, L, i, nspd = 0, cap = 0;
+    int pass, L, nspd = 0, cap = 0;
     gt_free(p);
     gt_init(p);
     if (speed) *speed = NULL;
@@ -627,14 +690,11 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
                     }
                     continue;
                 }
-                for (i = 0; i < d->n; i++) {
-                    if (gv_path_colour(&d->p[i]) != ly.colour) continue;
-                    if (add_path(p, speed ? &spd : NULL, &nspd, &cap, &d->p[i], ly.power, ly.speed)) {
-                        free(spd);
-                        if (speed) *speed = NULL;
-                        gt_free(p);
-                        return -1;
-                    }
+                if (add_line(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)) {
+                    free(spd);
+                    if (speed) *speed = NULL;
+                    gt_free(p);
+                    return -1;
                 }
             }
         }
