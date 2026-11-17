@@ -1,9 +1,10 @@
-/* Host checks for the engine. A cube, a pyramid, an ASCII file, a mesh
- * with welded duplicates. MIT, Copyright (c) 2026 AmiCradle Team. */
+/* Host checks for STL loading and the core's pictures: a binary cube, an
+ * ASCII pyramid, a binary file whose header says "solid", the solid view
+ * (faces, orbit, pan) and the G-code painter. They were test_slice's, when
+ * the first slicer (gs_slice) was here. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs.h"
 #include "gs_view.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,139 +71,27 @@ static void pyramid_stl(const char *path)
     fclose(f);
 }
 
-typedef struct {
-    int layers;
-    int g1;
-    float emax;
-    float xmin, xmax, ymin, ymax;
-    float z0, zlast;
-    int skirt_out;
-    float first_span, last_span;
-    int in_first, in_last;
-} stats;
-
-static void span_add(float *mn, float *mx, float x)
-{
-    if (x < *mn) *mn = x;
-    if (x > *mx) *mx = x;
-}
-
-static stats read_gcode(const char *path)
-{
-    FILE *f = fopen(path, "r");
-    char line[256];
-    stats s;
-    int layer = -1, first = -1, last = -1;
-    float fx0 = 1e9f, fx1 = -1e9f, lx0 = 1e9f, lx1 = -1e9f;
-    memset(&s, 0, sizeof s);
-    s.xmin = 1e9f;
-    s.ymin = 1e9f;
-    s.xmax = -1e9f;
-    s.ymax = -1e9f;
-    while (fgets(line, sizeof line, f)) {
-        float x, y, z, e;
-        if (sscanf(line, "; LAYER %d Z%f", &layer, &z) == 2) {
-            s.layers++;
-            if (s.layers == 1) s.z0 = z;
-            s.zlast = z;
-            if (first < 0) first = layer;
-            last = layer;
-            lx0 = 1e9f;
-            lx1 = -1e9f;
-            s.in_last = 0;
-        } else if (sscanf(line, "G1 X%f Y%f E%f", &x, &y, &e) == 3) {
-            s.g1++;
-            if (e > s.emax) s.emax = e;
-            span_add(&s.xmin, &s.xmax, x);
-            span_add(&s.ymin, &s.ymax, y);
-            if (layer == first) {
-                span_add(&fx0, &fx1, x);
-                s.in_first++;
-            }
-            if (layer == last) {
-                span_add(&lx0, &lx1, x);
-                s.in_last++;
-            }
-            if (layer == 0 && (x < -0.5f || x > 10.5f || y < -0.5f || y > 10.5f)) s.skirt_out = 1;
-        }
-    }
-    s.first_span = fx1 - fx0;
-    s.last_span = lx1 - lx0;
-    fclose(f);
-    return s;
-}
-
-static int slice_file(const char *in, const char *out, float infill)
-{
-    gs_mesh m;
-    gs_cfg c;
-    FILE *f;
-    char err[160];
-    if (gs_stl_load(&m, in, err, (int)sizeof err)) {
-        fprintf(stderr, "load %s\n", err);
-        return -1;
-    }
-    gs_mesh_repair(&m);
-    gs_cfg_default(&c);
-    c.infill = infill;
-    f = fopen(out, "w");
-    if (gs_slice(&m, &c, f, err, (int)sizeof err)) {
-        fprintf(stderr, "slice %s\n", err);
-        fclose(f);
-        gs_mesh_free(&m);
-        return -1;
-    }
-    fclose(f);
-    gs_mesh_free(&m);
-    return 0;
-}
-
 int main(void)
 {
-    stats s;
     cube_stl("/tmp/gs-cube.stl");
     pyramid_stl("/tmp/gs-pyr.stl");
-    expect(slice_file("/tmp/gs-cube.stl", "/tmp/gs-cube.gcode", 20.f) == 0, "cube slices");
-    s = read_gcode("/tmp/gs-cube.gcode");
-    expect(s.layers == 50, "cube has 50 layers");
-    expect(fabsf(s.z0 - 0.1f) < 0.001f, "first layer at 0.1");
-    expect(fabsf(s.zlast - 9.9f) < 0.02f, "last layer at 9.9");
-    expect(s.g1 > 50, "cube extrudes");
-    expect(s.emax > 10.f && s.emax < 400.f, "filament used is in range");
-    expect(s.skirt_out, "the skirt stands outside the cube");
-    expect(s.xmin > -8.f && s.xmax < 18.f, "nothing is far from the cube");
-
-    expect(slice_file("/tmp/gs-pyr.stl", "/tmp/gs-pyr.gcode", 0.f) == 0, "pyramid slices");
-    s = read_gcode("/tmp/gs-pyr.gcode");
-    expect(s.layers == 50, "pyramid has 50 layers");
-    expect(s.first_span > s.last_span + 2.f, "the pyramid narrows");
-    expect(s.in_last > 0, "the top still has a wall");
 
     {
-        FILE *f = fopen("/tmp/gs-cube.gcode", "r");
-        char *buf;
-        const char *a, *b;
-        unsigned char *rgb;
-        int segs, brass = 0, i, n;
-        long sz;
-        fseek(f, 0, SEEK_END);
-        sz = ftell(f);
-        rewind(f);
-        buf = (char *)malloc((size_t)sz + 1);
-        n = (int)fread(buf, 1, (size_t)sz, f);
-        buf[n] = 0;
-        fclose(f);
-        a = strstr(buf, "; LAYER 0 ");
-        b = strstr(a, "; LAYER 1 ");
-        rgb = (unsigned char *)malloc(180 * 140 * 3);
-        segs = gs_view_paint(a, (int)(b - a), rgb, 180, 140);
-        expect(segs > 8, "the view draws the first layer");
+        /* A first layer as G-code: a 10 mm square's wall and five lines
+         * of infill, drawn on the bed by the G-code painter. */
+        static const char gcode[] =
+            "; LAYER 0 Z0.1\nG0 X0 Y0\nG1 X10 Y0 E1\nG1 X10 Y10 E2\nG1 X0 Y10 E3\nG1 X0 Y0 E4\n"
+            "G0 X1 Y1\nG1 X9 Y9 E5\nG0 X1 Y3\nG1 X7 Y9 E6\nG0 X3 Y1\nG1 X9 Y7 E7\nG0 X1 Y5\nG1 X5 Y9 E8\n"
+            "G0 X5 Y1\nG1 X9 Y5 E9\n; LAYER 1 Z0.3\n";
+        unsigned char *rgb = (unsigned char *)malloc(180 * 140 * 3);
+        int segs, brass = 0, i;
+        segs = gs_view_paint(gcode, (int)strlen(gcode), rgb, 180, 140);
+        expect(segs == 9, "the view draws the layer's nine lines, not the travels");
         for (i = 0; i < 180 * 140; i++)
             if (rgb[i * 3] == 232 && rgb[i * 3 + 1] == 184) brass++;
         expect(brass > 40, "the lines show on the bed");
         expect(rgb[0] == 20 && rgb[2] == 28, "the corner of the bed stays empty");
         free(rgb);
-        free(buf);
     }
 
     {
