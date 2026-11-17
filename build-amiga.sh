@@ -42,7 +42,7 @@ fi
 # by name, not at the link.
 MISSING=""
 DEFINED=$("$NM" "$OLUI" 2>/dev/null | awk '$2 == "T" { print $3 }')
-for f in $(grep -ho 'olui_[a-z_0-9]*(' cad/src/*.c slicer/src/*.c burn/src/*.c core/ui/*.c | tr -d '(' | sort -u); do
+for f in $(grep -ho 'olui_[a-z_0-9]*(' cad/src/*.c slicer/src/*.c burn/src/*.c workshop/src/*.c core/ui/*.c | tr -d '(' | sort -u); do
     echo "$DEFINED" | grep -qx "_$f" || MISSING="$MISSING $f"
 done
 if [ -n "$MISSING" ]; then
@@ -93,6 +93,12 @@ build() {
         core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c core/src/toolpath_paint.c core/src/gpu.c \
         core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c core/ui/view_gpu.c core/ui/view_gpu_amiga.c \
         machines/src/machine.c $CORE "$OLUI" -lm
+    # GFOpenWorkshop's window (workshop/src/amiga.c): one product's drawer,
+    # core/ui's helpers and the pen-drawn preview of the picked item
+    "$CC" $cf -Iworkshop/src -s -o "$dir/GFOpenWorkshop" workshop/src/amiga.c workshop/src/workshop_ui.c \
+        core/src/project.c core/src/vec.c core/src/dxf.c \
+        core/ui/view_ui.c core/ui/window_amiga.c \
+        $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
