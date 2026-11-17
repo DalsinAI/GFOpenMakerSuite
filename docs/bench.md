@@ -18,6 +18,6 @@ What the bench can do, and what was checked:
 - Split keeps both halves, at the section or at mid-height. A 16 mm box became two 8 mm slabs.
 - Washer, slot, line, ring, mirror, copy, stack, solo, section, measure. Drop, Centre, Lay flat.
 
-Not in the Amiga window yet: extrude, keyway, pull, chamfer, the hole tools, and split. The slicer is still the 0.1.0-rc1 slice. One wall, 45° infill, a rectangular skirt.
+Not in the Amiga window yet: extrude, keyway, pull, chamfer, the hole tools, and split. The slicer is OpenMakeCore's toolpath engine: walls joined where they meet, skins, infill and a brim.
 
 Commits on this work are AmiCradle. SacredTrees is the other name that belongs on this repo.

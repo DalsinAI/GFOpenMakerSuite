@@ -53,10 +53,20 @@ float gl_loop_area(const gl_loop *l);
 float gl_loop_length(const gl_loop *l);
 
 /* Replaces out with every closed loop of in moved d mm into the material:
- * an outside shrinks and a hole grows, each corner mitred. A loop with no
- * room left is dropped; open pieces are left out. A d below 0 moves them
- * out of the material: an outside grows, a hole shrinks. 0, or -1. */
+ * an outside shrinks and a hole grows, each corner mitred. Where moved
+ * walls meet they are joined (gl_union): a part that pinches apart becomes
+ * two loops, holes that meet become one, a hole that meets the outside
+ * opens into it. A loop with no room left is dropped; open pieces are left
+ * out. A d below 0 moves them out of the material: an outside grows, a
+ * hole shrinks. 0, or -1. */
 int gl_inset(const gl_loops *in, float d, gl_loops *out);
+
+/* Replaces out with the material in's closed loops make, as loops that do
+ * not cross: everywhere the loops wind round at least once (anticlockwise
+ * outsides count 1, clockwise holes -1). Outsides come out anticlockwise
+ * and holes clockwise; loops that only touch at a point come out apart.
+ * 0, or -1 out of memory. */
+int gl_union(const gl_loops *in, gl_loops *out);
 
 /* "Layer n of N, X mm of wall. No infill." for the window's status. */
 void gl_status(char *buf, int len, const gs_mesh *m, float h, int layer, const gl_walls *w);
