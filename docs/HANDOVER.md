@@ -2,11 +2,11 @@
 
 16 November 2026. The browser bench in `cad/bench/` was ahead of `cad/src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
 
-17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, and a dragged sketch. Section hides the picture above a height. It does not cut until Split. Still only on the bench: the NASA shelf. The example files are in `examples/`, listed in `docs/media-examples.md`.
+17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, and a dragged sketch. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. Still only on the bench: the NASA shelf. The example files are in `examples/`, listed in `docs/media-examples.md`.
 
 ## What it is
 
-A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is OpenMakeCore's toolpath engine (`core/src/plan.c` and the rest, run by `slicer/src/sl_job.c`): walls, skins, infill and a brim. The first slicer, `slicer/src/slice.c`, is gone. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It has the bench's tools except the NASA shelf. Section on the window hides the picture. Split is the cut. Draw drags the footprint.
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is OpenMakeCore's toolpath engine (`core/src/plan.c` and the rest, run by `slicer/src/sl_job.c`): walls, skins, infill and a brim. The first slicer, `slicer/src/slice.c`, is gone. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It has the bench's tools except the NASA shelf. Section on the window hides the picture, and the layer walls stop there too. Split is the cut. Draw drags the footprint.
 
 The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
 
@@ -48,7 +48,7 @@ Turning a part off hides the lines. Moving the part with the gizmo refreshes the
 - Join, cut, intersect, drill, bolt circle, row, counterbore, countersink and split stop at 2,500 triangles (`BOOLEAN_LIMIT` in `cad/bench/modeller/library.ts`). A result over 20,000 triangles is refused and the part is left as it was.
 - The NASA wrench and the spacecraft can be opened, turned, measured and saved. They cannot be drilled or joined. The Utah teapot is CC0. The workshop parts are made here.
 - A part that hangs off the 220 mm plate is marked. The mass line assumes solid PLA at 1.24 g/cm³. That is a guess for the solid, not a sliced estimate.
-- Section is a clipping plane. It does not cut triangles until Split.
+- Section is a clipping plane. The picture and the layer walls stop at it. It does not cut triangles until Split.
 
 ## Files
 

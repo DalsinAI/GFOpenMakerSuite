@@ -1,6 +1,7 @@
 /* The Layers group: walls at one height, a cube, a cube with a hole, and
  * the NASA wrench from the shelf. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_layer.h"
+#include "gs_edit.h"
 #include "gs_model.h"
 #include "gs_view.h"
 
@@ -160,6 +161,17 @@ int main(void)
         expect((near(a0, 400.f, 0.01f) && near(a1, -hole, 0.05f)) || (near(a1, 400.f, 0.01f) && near(a0, -hole, 0.05f)),
                "the outside anticlockwise and the hole clockwise");
         gl_loops_free(&L);
+    }
+    {
+        /* Section hides the picture above a height. The layer walls follow
+         * that cut: a 20 mm cube at 10 mm keeps the lower 50 layers. */
+        gs_mesh clip = {0};
+        int full = gl_layers(&box, 0.2f);
+        expect(ge_clip_below(&clip, &box, 10.f) == 0, "section the cube");
+        expect(full == 100 && gl_layers(&clip, 0.2f) == 50, "the layers above the section are gone");
+        expect(gl_cut(&clip, 0.2f, 999, &w) == 0 && near(w.z, 9.9f, 1e-3f) && near(w.length, 80.f, 0.05f),
+               "the highest wall sits on the plane, still the square");
+        gs_mesh_free(&clip);
     }
     gl_walls_free(&w);
     gs_mesh_free(&box);
