@@ -764,7 +764,7 @@ static int by_side(const void *p, const void *q)
     return a->hi < b->hi ? -1 : a->hi > b->hi ? 1 : 0;
 }
 
-static int from_mesh(bag *b, const gs_mesh *m)
+static int from_mesh(bag *b, const gs_mesh *m, const mv *off)
 {
     int i, k, nv, round, ns = 0, changed = 1;
     int *idx = NULL;
@@ -775,15 +775,15 @@ static int from_mesh(bag *b, const gs_mesh *m)
     for (i = 0; i < m->n; i++) {
         poly p;
         p.n = 3;
-        p.v[0].x = m->t[i].a.x;
-        p.v[0].y = m->t[i].a.y;
-        p.v[0].z = m->t[i].a.z;
-        p.v[1].x = m->t[i].b.x;
-        p.v[1].y = m->t[i].b.y;
-        p.v[1].z = m->t[i].b.z;
-        p.v[2].x = m->t[i].c.x;
-        p.v[2].y = m->t[i].c.y;
-        p.v[2].z = m->t[i].c.z;
+        p.v[0].x = m->t[i].a.x - off->x;
+        p.v[0].y = m->t[i].a.y - off->y;
+        p.v[0].z = m->t[i].a.z - off->z;
+        p.v[1].x = m->t[i].b.x - off->x;
+        p.v[1].y = m->t[i].b.y - off->y;
+        p.v[1].z = m->t[i].b.z - off->z;
+        p.v[2].x = m->t[i].c.x - off->x;
+        p.v[2].y = m->t[i].c.y - off->y;
+        p.v[2].z = m->t[i].c.z - off->z;
         if (!plane_of(&p, &p.nrm, &p.w)) {
             /* No area, so no plane: kept on z so the bag lines up with the mesh. */
             p.nrm.x = p.nrm.y = 0.f;
@@ -1137,17 +1137,47 @@ fail:
 
 /* Join 0, cut 1, overlap 2. The same clips; only the turns of the
  * surface change, which is what picks inside from outside. */
+/* Both solids are moved so their joint box sits on the origin while the
+ * planes are cut: a float has most of its digits left there, so a round
+ * part far out on the plate splits as cleanly as one at the origin. */
+static void csg_centre(mv *off, const gs_mesh *a, const gs_mesh *b)
+{
+    float lx = a->min.x < b->min.x ? a->min.x : b->min.x, hx = a->max.x > b->max.x ? a->max.x : b->max.x;
+    float ly = a->min.y < b->min.y ? a->min.y : b->min.y, hy = a->max.y > b->max.y ? a->max.y : b->max.y;
+    float lz = a->min.z < b->min.z ? a->min.z : b->min.z, hz = a->max.z > b->max.z ? a->max.z : b->max.z;
+    off->x = off->y = off->z = 0.f;
+    if (!a->n || !b->n) return;
+    off->x = (lx + hx) * 0.5f;
+    off->y = (ly + hy) * 0.5f;
+    off->z = (lz + hz) * 0.5f;
+}
+
+static void csg_back(gs_mesh *m, const mv *off)
+{
+    int i;
+    for (i = 0; i < m->n; i++) {
+        m->t[i].a.x += off->x, m->t[i].a.y += off->y, m->t[i].a.z += off->z;
+        m->t[i].b.x += off->x, m->t[i].b.y += off->y, m->t[i].b.z += off->z;
+        m->t[i].c.x += off->x, m->t[i].c.y += off->y, m->t[i].c.z += off->z;
+    }
+    if (!m->n) return;
+    m->min.x += off->x, m->min.y += off->y, m->min.z += off->z;
+    m->max.x += off->x, m->max.y += off->y, m->max.z += off->z;
+}
+
 static int gm_csg(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b, int op)
 {
     bag pa, pb, all;
     node *A, *B;
+    mv off;
     int rc;
+    csg_centre(&off, a, b);
     memset(&pa, 0, sizeof pa);
     memset(&pb, 0, sizeof pb);
     memset(&all, 0, sizeof all);
     A = (node *)calloc(1, sizeof *A);
     B = (node *)calloc(1, sizeof *B);
-    if (!A || !B || from_mesh(&pa, a) || from_mesh(&pb, b)) {
+    if (!A || !B || from_mesh(&pa, a, &off) || from_mesh(&pb, b, &off)) {
         bag_free(&pa);
         bag_free(&pb);
         node_free(A);
@@ -1191,6 +1221,7 @@ static int gm_csg(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b, int op)
     rc = mesh_from(dst, &all);
     bag_free(&all);
     if (!rc && seal(dst) < 0) rc = -1;
+    if (!rc) csg_back(dst, &off);
     return rc;
 }
 
