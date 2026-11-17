@@ -79,8 +79,8 @@ build() {
     "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/sl_job.c \
         slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c \
         core/ui/view_gpu.c core/ui/view_gpu_amiga.c core/src/gpu.c core/src/plan_par.c \
-        core/src/par_exec.c core/src/gcode.c machines/src/machine.c $PLAN core/src/layer.c core/src/loops.c \
-        $CORE "$OLUI" -lm
+        core/src/par_exec.c core/src/gcode.c core/src/settings.c machines/src/machine.c $PLAN core/src/layer.c \
+        core/src/loops.c $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm

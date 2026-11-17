@@ -44,7 +44,6 @@ static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static int show_layer, layer_no = 1;
-static gc_opts sliced_go; /* the G-code options the slice was made with */
 static omv_gpu gpu;
 
 /* The printer picked, loaded; a 220 mm bed when there is none. 0, or -1. */
@@ -167,8 +166,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
 
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
 {
-    gp_opts po;
-    gc_opts go;
+    gs_settings set;
     om_machine m;
     char err[160];
     int have;
@@ -176,15 +174,13 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     (void)userdata;
     have = printer(ui, &m, err, (int)sizeof err) == 0;
     if (job.have_part) gp_place(&job.part, m.area[0], m.area[1]); /* on the bed of the printer picked */
-    sl_ui_opts(ui, &po, &go);
+    sl_ui_settings(ui, &set);
     omv_say(ui, "Slicing...");
-    if (sl_slice(&job, &po, &go, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
+    if (sl_slice(&job, &set, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
         omv_say(ui, err);
         olui_repaint(ui, olui_find(ui, "view"), NULL);
         return;
     }
-    sliced_go = go;
-    sliced_go.layer_h = gl_height(po.layer_h);
     layer_no = job.path.nlayers;
     olui_set_slider(ui, olui_find(ui, "layerno"), 100);
     refresh(ui);
@@ -205,7 +201,7 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (!ask_file(ui, "Save G-code", TRUE, "#?.gcode", path, (int)sizeof path)) return;
-    if (sl_write(&job, path, &m, &sliced_go, err, (int)sizeof err)) omv_say(ui, err);
+    if (sl_write(&job, path, &m, err, (int)sizeof err)) omv_say(ui, err);
     else omv_say(ui, path);
 }
 

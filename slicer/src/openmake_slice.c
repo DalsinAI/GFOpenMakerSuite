@@ -68,8 +68,7 @@ int main(int argc, char **argv)
 {
     sl_job j;
     om_machine m;
-    gp_opts po;
-    gc_opts go;
+    gs_settings set;
     char err[160];
     const char *driver = arg(argc, argv, "DRIVER"), *profile = arg(argc, argv, "PROFILE");
     int rc = 1, tasks = gs_par_cores();
@@ -79,20 +78,18 @@ int main(int argc, char **argv)
                         "       [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
         return 2;
     }
-    gp_defaults(&po);
-    gc_defaults(&go);
-    num(argc, argv, "LAYER", &po.layer_h);
-    num(argc, argv, "LINE", &po.line_w);
-    num(argc, argv, "INFILL", &po.infill);
-    whole(argc, argv, "WALLS", &po.walls);
-    whole(argc, argv, "SKINS", &po.skins);
-    whole(argc, argv, "BRIM", &po.brim);
+    gs_settings_default(&set);
+    num(argc, argv, "LAYER", &set.layer_h);
+    num(argc, argv, "LINE", &set.line_w);
+    num(argc, argv, "INFILL", &set.infill);
+    whole(argc, argv, "WALLS", &set.walls);
+    if (arg(argc, argv, "SKINS")) whole(argc, argv, "SKINS", &set.top), set.bottom = set.top;
+    if (arg(argc, argv, "BRIM")) whole(argc, argv, "BRIM", &set.loops), set.around = set.loops > 0 ? GS_BRIM : GS_NONE;
     whole(argc, argv, "TASKS", &tasks);
     if (tasks < 1) tasks = 1;
     if (tasks > 64) tasks = 64;
-    num(argc, argv, "HOTEND", &go.hotend);
-    num(argc, argv, "BED", &go.bed);
-    go.layer_h = gl_height(po.layer_h);
+    num(argc, argv, "HOTEND", &set.hotend);
+    num(argc, argv, "BED", &set.bed);
 
     om_clear(&m);
     if (om_load(&m, driver, err, (int)sizeof err) || (profile && om_load(&m, profile, err, (int)sizeof err))) {
@@ -104,13 +101,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "openmake-slice: %s: %s\n", argv[1], err);
         return 1;
     }
-    if (sl_slice(&j, &po, &go, &m, tasks, err, (int)sizeof err)) {
+    if (sl_slice(&j, &set, &m, tasks, err, (int)sizeof err)) {
         fprintf(stderr, "openmake-slice: %s\n", err);
         goto done;
     }
     printf("%d layers made on %d task%s\n", j.path.nlayers, j.tasks, j.tasks == 1 ? "" : "s");
     /* The machine first: a job it cannot do is not written. */
-    if (sl_write(&j, argv[2], &m, &go, err, (int)sizeof err)) {
+    if (sl_write(&j, argv[2], &m, err, (int)sizeof err)) {
         fprintf(stderr, "openmake-slice: %s\n", err);
         goto done;
     }
@@ -121,8 +118,8 @@ int main(int argc, char **argv)
            j.how == GC_WITH_ACCEL  ? "with the printer's acceleration and jerk"
            : j.how == GC_FELL_BACK ? "at the set speeds: no memory to plan the acceleration, so it will take longer"
                                    : "at the set speeds, no acceleration given",
-           (double)(j.st.filament / 1000.f), (double)go.filament,
-           (double)(j.st.filament * 3.14159265f * go.filament * go.filament * 0.25f * 1.24e-3f));
+           (double)(j.st.filament / 1000.f), (double)set.filament,
+           (double)(j.st.filament * 3.14159265f * set.filament * set.filament * 0.25f * 1.24e-3f));
     if (arg(argc, argv, "PREVIEW")) {
         float zoom = 0.f;
         int upto = 0;

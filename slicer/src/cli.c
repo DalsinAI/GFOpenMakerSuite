@@ -44,8 +44,7 @@ int main(int argc, char **argv)
     const char *driver = arg(argc, argv, "DRIVER"), *profile = arg(argc, argv, "PROFILE");
     sl_job j;
     om_machine m;
-    gp_opts po;
-    gc_opts go;
+    gs_settings set;
     char err[160];
     int rc = 1, tasks = gs_par_cores();
     (void)version;
@@ -59,21 +58,19 @@ int main(int argc, char **argv)
     if (!driver) driver = "machines/printer/marlin/driver.om";
     if (!profile && !arg(argc, argv, "DRIVER")) profile = "machines/printer/marlin/profiles/generic-220.om";
     if (arg(argc, argv, "SKIRT")) fprintf(stderr, "GFOpenSlicer: SKIRT is gone: the slicer makes a brim (BRIM=3)\n");
-    gp_defaults(&po);
-    gc_defaults(&go);
-    num(argc, argv, "LAYER", &po.layer_h);
-    num(argc, argv, "INFILL", &po.infill);
-    num(argc, argv, "LINE", &po.line_w);
-    whole(argc, argv, "WALLS", &po.walls);
-    whole(argc, argv, "SKINS", &po.skins);
-    whole(argc, argv, "BRIM", &po.brim);
-    num(argc, argv, "FILAMENT", &go.filament);
-    num(argc, argv, "HOTEND", &go.hotend);
-    num(argc, argv, "BED", &go.bed);
+    gs_settings_default(&set);
+    num(argc, argv, "LAYER", &set.layer_h);
+    num(argc, argv, "INFILL", &set.infill);
+    num(argc, argv, "LINE", &set.line_w);
+    whole(argc, argv, "WALLS", &set.walls);
+    if (arg(argc, argv, "SKINS")) whole(argc, argv, "SKINS", &set.top), set.bottom = set.top;
+    if (arg(argc, argv, "BRIM")) whole(argc, argv, "BRIM", &set.loops), set.around = set.loops > 0 ? GS_BRIM : GS_NONE;
+    num(argc, argv, "FILAMENT", &set.filament);
+    num(argc, argv, "HOTEND", &set.hotend);
+    num(argc, argv, "BED", &set.bed);
     whole(argc, argv, "TASKS", &tasks);
     if (tasks < 1) tasks = 1;
     if (tasks > 64) tasks = 64;
-    go.layer_h = gl_height(po.layer_h);
     om_clear(&m);
     if (om_load(&m, driver, err, (int)sizeof err) || (profile && om_load(&m, profile, err, (int)sizeof err))) {
         fprintf(stderr, "GFOpenSlicer: %s\n", err);
@@ -81,7 +78,7 @@ int main(int argc, char **argv)
     }
     sl_init(&j);
     if (sl_load(&j, argv[1], m.area[0], m.area[1], err, (int)sizeof err) ||
-        sl_slice(&j, &po, &go, &m, tasks, err, (int)sizeof err) || sl_write(&j, argv[2], &m, &go, err, (int)sizeof err))
+        sl_slice(&j, &set, &m, tasks, err, (int)sizeof err) || sl_write(&j, argv[2], &m, err, (int)sizeof err))
         fprintf(stderr, "GFOpenSlicer: %s\n", err);
     else {
         printf("GFOpenSlicer: wrote %s: %d layers, %d moves for %s\n", argv[2], j.path.nlayers, j.st.moves, m.name);
