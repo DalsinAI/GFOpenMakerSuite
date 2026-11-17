@@ -13,7 +13,7 @@ over its driver and gives one machine's numbers.
 
 Every machine declares:
 
-- **Limits:** the work area; the most speed and acceleration on each axis
+- **Limits:** the work area; the most speed, acceleration and jerk on each axis
   (X, Y, Z, E); the hotend and bed temperatures; laser power; spindle RPM.
 - **Features:** heated bed, extruder count, bed levelling, rotary axis, air
   assist, tool changer, spindle control, laser power, homing and probing.
@@ -39,6 +39,7 @@ be `openmakemachine.library`, loaded once for every app.
 | `area` | X Y Z in mm |
 | `speed` | X Y Z E in mm/s |
 | `accel` | X Y Z E in mm/s² |
+| `jerk` | X Y Z E in mm/s: the speed change made at once, at a corner (0 or none: it stops there); with `accel`, for the time estimate |
 | `hotend`, `bed` | The most °C |
 | `laser` | The most power, % |
 | `rpm` | The most spindle speed |

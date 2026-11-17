@@ -116,8 +116,10 @@ int main(int argc, char **argv)
     }
     rc = 0;
     printf("%s: %d layers, %d moves for %s\n", argv[2], j.path.nlayers, j.st.moves, m.name);
-    printf("about %d h %02d min at the set speeds (no acceleration counted), %.2f m of %.2f mm filament (%.0f g of PLA)\n",
-           (int)(j.st.seconds / 3600.f), (int)(j.st.seconds / 60.f) % 60, (double)(j.st.filament / 1000.f), (double)go.filament,
+    printf("about %d h %02d min (%s), %.2f m of %.2f mm filament (%.0f g of PLA)\n",
+           (int)(j.st.seconds / 3600.f), (int)(j.st.seconds / 60.f) % 60,
+           m.accel[OM_X] > 0.f && m.accel[OM_Y] > 0.f ? "with the printer's acceleration and jerk" : "at the set speeds, no acceleration given",
+           (double)(j.st.filament / 1000.f), (double)go.filament,
            (double)(j.st.filament * 3.14159265f * go.filament * go.filament * 0.25f * 1.24e-3f));
     if (arg(argc, argv, "PREVIEW")) {
         float zoom = 0.f;

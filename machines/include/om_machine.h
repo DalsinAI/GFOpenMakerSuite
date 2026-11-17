@@ -41,6 +41,7 @@ typedef struct {
     float rpm;                 /* most spindle speed; 0: none */
     int extruders;
     char start[OM_CODE], end[OM_CODE];   /* G-code; {hotend} and {bed} are filled in */
+    float jerk[OM_AXES];       /* the speed change, mm/s, it makes at once (a corner); 0: it stops */
 } om_machine;
 
 /* Reads "key = value" lines over m; "key += value" adds a line to start

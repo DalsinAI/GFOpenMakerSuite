@@ -30,6 +30,7 @@ int main(void)
     expect(m.family == OM_PRINTER && strcmp(m.dialect, "marlin") == 0, "a Marlin printer");
     expect(m.area[0] == 220.f && m.area[1] == 220.f && m.area[2] == 250.f, "220 by 220 by 250 mm");
     expect(m.speed[OM_X] == 300.f && m.speed[OM_Z] == 5.f && m.accel[OM_X] == 3000.f, "speeds and accelerations");
+    expect(m.jerk[OM_X] == 10.f && m.jerk[OM_Z] == 0.3f && m.jerk[OM_E] == 5.f, "and how sharply it may change speed (jerk)");
     expect(m.hotend == 260.f && m.bed == 100.f && m.extruders == 1, "temperatures and one extruder");
     expect(om_has(&m, OM_HEATED_BED) && om_has(&m, OM_HOMING), "a heated bed, and homing");
     expect(!om_has(&m, OM_AIR_ASSIST) && !om_has(&m, OM_SPINDLE) && !om_has(&m, OM_LASER_POWER),
