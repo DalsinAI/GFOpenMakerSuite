@@ -752,8 +752,10 @@ omr_client *omr_connect(const char *port_base, omr_opt *opt)
              * if we actually spawned. On the host we spawn with system in
              * the background when the program path is usable. */
             char sh[OMR_LINE + 8];
+            int st;
             snprintf(sh, sizeof sh, "%s &", cmd);
-            (void)system(sh);
+            st = system(sh);
+            (void)st;
         }
         left = omr_timeout_ms(timeout);
         while (left > 0 && omr_find(port_base, found, (int)sizeof found) != 0) {
