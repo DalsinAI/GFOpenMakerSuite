@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "gs_parts.h"
+#include "gs_view.h"
 #include "omview_settings.h"
 
 /* OpenLayout Clear (docs/HANDOVER.md): one light window, the tools in
@@ -141,6 +142,20 @@ static const char *gm_markup(void)
 /* The Parts tab from a parts list: a line for each part (its name, and
  * "(hidden)" when hidden), the picked one selected and its name in the
  * field, Hide or Show, its metal lit; Delete off for the last part. */
+/* The view's colours: a run per shown part, its metal, in the order
+ * gs_parts_scene puts their faces. How many, up to cap. */
+static int gm_tints(gs_parts *ps, gs_tint *t, int cap)
+{
+    int i, n = 0;
+    for (i = 0; ps && i < gs_parts_count(ps) && n < cap; i++)
+        if (gs_parts_shown(ps, i) == 1) {
+            t[n].n = gs_parts_mesh(ps, i)->n;
+            t[n].rgb = gs_parts_rgb(gs_parts_colour(ps, i));
+            n++;
+        }
+    return n;
+}
+
 static void gm_parts_list(olui *ui, const gs_parts *ps)
 {
     olui_el *list = olui_find(ui, "plist"), *field = olui_find(ui, "pname"), *item = NULL;

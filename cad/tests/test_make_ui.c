@@ -509,6 +509,31 @@ int main(void)
         }
     }
     olui_free(ui);
+    { /* The view's colours: one run per shown part, in the list's order. */
+        gs_parts *ps = gs_parts_new();
+        gs_tint t[GS_PARTS_MAX];
+        gs_mesh m[3];
+        int k, n;
+        for (k = 0; k < 3; k++) {
+            memset(&m[k], 0, sizeof m[k]);
+            m[k].t = (gs_tri *)calloc(12, sizeof(gs_tri)); /* a cube's twelve faces; where, no matter */
+            m[k].n = m[k].cap = m[k].t ? 12 : 0;
+        }
+        expect(ps && gs_parts_add(ps, &m[0], "A") == 0 && gs_parts_add(ps, &m[1], "B") == 1 &&
+                   gs_parts_add(ps, &m[2], "C") == 2,
+               "three parts");
+        gs_parts_set_colour(ps, 2, 5);
+        n = gm_tints(ps, t, GS_PARTS_MAX);
+        expect(n == 3 && t[0].n == 12 && t[0].rgb == gs_parts_rgb(0) && t[1].rgb == gs_parts_rgb(1) &&
+                   t[2].rgb == gs_parts_rgb(5),
+               "three runs, each part's metal");
+        gs_parts_show(ps, 1, 0);
+        n = gm_tints(ps, t, GS_PARTS_MAX);
+        expect(n == 2 && t[0].rgb == gs_parts_rgb(0) && t[1].n == 12 && t[1].rgb == gs_parts_rgb(5),
+               "a hidden part has no run: the next part's faces follow on");
+        expect(gm_tints(ps, t, 1) == 1 && gm_tints(NULL, t, 4) == 0, "no more runs than room");
+        gs_parts_free(ps);
+    }
     if (failed) {
         printf("%d failed\n", failed);
         return 1;
