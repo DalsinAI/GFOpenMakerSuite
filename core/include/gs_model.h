@@ -1,4 +1,5 @@
-/* Solids the way a small CAD does them: a box, a cylinder, and the three
+/* Solids the way a small CAD does them: a box, a cylinder, a sphere, a
+ * cone, a torus, a wedge, a slot, and the three
  * ways of joining two solids. The triangles are a gs_mesh, so the slicer's
  * view and the chip's triangle op can draw them without a second scene.
  *
@@ -16,6 +17,30 @@ int gm_cube(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)
 /* Axis along Z, centred on (x, y), from z up by h. seg is the number of
  * sides, at least 3. */
 int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg);
+
+/* The bench's other solids. Each replaces m: 0, or -1 (no size, or out
+ * of memory). Closed, the outside out. */
+
+/* Centred on (x, y, z): seg round, rings from pole to pole (at least 3
+ * and 2). */
+int gm_sphere(gs_mesh *m, float x, float y, float z, float r, int seg, int rings);
+
+/* Axis along Z: the base centred on (x, y) at z, the point h above. */
+int gm_cone(gs_mesh *m, float x, float y, float z, float r, float h, int seg);
+
+/* Round Z through (x, y, z): the ring's radius to the tube's middle, the
+ * tube's radius (less than the ring's); seg round the ring, tseg round
+ * the tube. */
+int gm_torus(gs_mesh *m, float x, float y, float z, float ring, float tube, int seg, int tseg);
+
+/* In the box from (x, y, z) measuring sx, sy, sz: full height at x,
+ * sloping down to the base at x + sx. */
+int gm_wedge(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz);
+
+/* A slot (a stadium: round ends) filling the box from (x, y, z) measuring
+ * sx, sy, sz, along its longer side; as long as wide, a round. seg is
+ * the sides of a whole round end (4 to 128). */
+int gm_slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz, int seg);
 
 /* dst = a and b joined. a and b are not changed. 0, or -1. */
 int gm_union(gs_mesh *dst, const gs_mesh *a, const gs_mesh *b);

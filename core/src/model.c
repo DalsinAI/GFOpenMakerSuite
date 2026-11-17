@@ -513,6 +513,133 @@ int gm_cylinder(gs_mesh *m, float x, float y, float z, float r, float h, int seg
     return 0;
 }
 
+/* The bench's other solids (cad/bench/modeller/solids.ts), written again
+ * here: outward faces, counter-clockwise from the outside, and each
+ * corner worked out the same way every time it is used, so neighbouring
+ * triangles share it exactly and the solid is closed. */
+
+static float turn(int i, int n) { return (float)(i % n) / (float)n * 6.2831853f; }
+
+int gm_sphere(gs_mesh *m, float x, float y, float z, float r, int seg, int rings)
+{
+    int i, j;
+    if (!(r > 0.f)) return -1;
+    if (seg < 3) seg = 3;
+    if (rings < 2) rings = 2;
+    mesh_clear(m);
+    for (i = 0; i < rings; i++) {
+        /* From the top pole down: the poles exact, so the fans close. */
+        float v0 = (float)i / (float)rings * 3.14159265f, v1 = (float)(i + 1) / (float)rings * 3.14159265f;
+        float s0 = i == 0 ? 0.f : sinf(v0), c0 = i == 0 ? 1.f : cosf(v0);
+        float s1 = i + 1 == rings ? 0.f : sinf(v1), c1 = i + 1 == rings ? -1.f : cosf(v1);
+        for (j = 0; j < seg; j++) {
+            float cu0 = cosf(turn(j, seg)), su0 = sinf(turn(j, seg));
+            float cu1 = cosf(turn(j + 1, seg)), su1 = sinf(turn(j + 1, seg));
+            float ax = x + r * s0 * cu0, ay = y + r * s0 * su0, az = z + r * c0;
+            float bx = x + r * s0 * cu1, by = y + r * s0 * su1;
+            float cx = x + r * s1 * cu0, cy = y + r * s1 * su0, cz = z + r * c1;
+            float dx = x + r * s1 * cu1, dy = y + r * s1 * su1;
+            if (i + 1 < rings && tri(m, ax, ay, az, cx, cy, cz, dx, dy, cz)) return -1;
+            if (i > 0 && tri(m, ax, ay, az, dx, dy, cz, bx, by, az)) return -1;
+        }
+    }
+    return 0;
+}
+
+int gm_cone(gs_mesh *m, float x, float y, float z, float r, float h, int seg)
+{
+    int i;
+    if (!(r > 0.f) || !(h > 0.f)) return -1;
+    if (seg < 3) seg = 3;
+    mesh_clear(m);
+    for (i = 0; i < seg; i++) {
+        float x0 = x + r * cosf(turn(i, seg)), y0 = y + r * sinf(turn(i, seg));
+        float x1 = x + r * cosf(turn(i + 1, seg)), y1 = y + r * sinf(turn(i + 1, seg));
+        if (tri(m, x0, y0, z, x1, y1, z, x, y, z + h) || tri(m, x, y, z, x1, y1, z, x0, y0, z)) return -1;
+    }
+    return 0;
+}
+
+int gm_torus(gs_mesh *m, float x, float y, float z, float ring, float tube, int seg, int tseg)
+{
+    int i, j;
+    if (!(tube > 0.f) || !(ring > tube)) return -1;
+    if (seg < 3) seg = 3;
+    if (tseg < 3) tseg = 3;
+    mesh_clear(m);
+    for (i = 0; i < seg; i++)
+        for (j = 0; j < tseg; j++) {
+            float p[4][3];
+            int k;
+            for (k = 0; k < 4; k++) {
+                float u = turn(i + (k & 1), seg), v = turn(j + (k >> 1), tseg);
+                float rr = ring + tube * cosf(v);
+                p[k][0] = x + rr * cosf(u);
+                p[k][1] = y + rr * sinf(u);
+                p[k][2] = z + tube * sinf(v);
+            }
+            /* a = p[0], b = p[1] (round the ring), c = p[2] (round the tube), d = p[3] */
+            if (tri(m, p[0][0], p[0][1], p[0][2], p[1][0], p[1][1], p[1][2], p[3][0], p[3][1], p[3][2]) ||
+                tri(m, p[0][0], p[0][1], p[0][2], p[3][0], p[3][1], p[3][2], p[2][0], p[2][1], p[2][2]))
+                return -1;
+        }
+    return 0;
+}
+
+int gm_wedge(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)
+{
+    float x1 = x + sx, y1 = y + sy, z1 = z + sz;
+    if (!(sx > 0.f) || !(sy > 0.f) || !(sz > 0.f)) return -1;
+    mesh_clear(m);
+    /* The base, the upright end at x, the two sides, and the slope from
+     * the top of that end down to the base at x1. */
+    if (tri(m, x, y, z, x, y1, z, x1, y1, z) || tri(m, x, y, z, x1, y1, z, x1, y, z)) return -1;
+    if (tri(m, x, y, z, x, y, z1, x, y1, z1) || tri(m, x, y, z, x, y1, z1, x, y1, z)) return -1;
+    if (tri(m, x, y, z, x1, y, z, x, y, z1) || tri(m, x, y1, z, x, y1, z1, x1, y1, z)) return -1;
+    if (tri(m, x, y, z1, x1, y, z, x1, y1, z) || tri(m, x, y, z1, x1, y1, z, x, y1, z1)) return -1;
+    return 0;
+}
+
+int gm_slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz, int seg)
+{
+    float px[130], py[130], cx = x + sx * 0.5f, cy = y + sy * 0.5f, r, straight, a0;
+    float e1x, e1y, e2x, e2y;
+    int along_x = sx >= sy, half, n = 0, k, end, i;
+    if (!(sx > 0.f) || !(sy > 0.f) || !(sz > 0.f)) return -1;
+    if (seg < 4) seg = 4;
+    if (seg > 128) seg = 128;
+    half = seg / 2;
+    r = (along_x ? sy : sx) * 0.5f;
+    straight = (along_x ? sx : sy) - 2.f * r;
+    /* The two round ends' centres; the outline counter-clockwise from the
+     * far end's right-hand side. */
+    if (along_x) {
+        e1x = x + sx - r, e1y = cy, e2x = x + r, e2y = cy, a0 = -1.5707963f;
+    } else {
+        e1x = cx, e1y = y + sy - r, e2x = cx, e2y = y + r, a0 = 0.f;
+    }
+    end = straight > 1e-3f ? half : half - 1; /* a round: the ends meet */
+    for (k = 0; k <= end; k++) {
+        float a = a0 + 3.14159265f * (float)k / (float)half;
+        px[n] = e1x + r * cosf(a), py[n] = e1y + r * sinf(a), n++;
+    }
+    for (k = 0; k <= end; k++) {
+        float a = a0 + 3.14159265f + 3.14159265f * (float)k / (float)half;
+        px[n] = e2x + r * cosf(a), py[n] = e2y + r * sinf(a), n++;
+    }
+    mesh_clear(m);
+    for (i = 0; i < n; i++) {
+        int j = (i + 1) % n;
+        if (tri(m, px[i], py[i], z, px[j], py[j], z, px[j], py[j], z + sz) ||
+            tri(m, px[i], py[i], z, px[j], py[j], z + sz, px[i], py[i], z + sz))
+            return -1;
+        if (tri(m, cx, cy, z + sz, px[i], py[i], z + sz, px[j], py[j], z + sz) ||
+            tri(m, cx, cy, z, px[j], py[j], z, px[i], py[i], z))
+            return -1;
+    }
+    return 0;
+}
+
 /* Welding: corners closer than WELD on every axis are one vertex. A cut
  * reaches the same point from two polygons by different sums, so the two
  * copies can differ in the last bits. A vertex counts as on an edge
