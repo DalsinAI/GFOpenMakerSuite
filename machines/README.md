@@ -13,7 +13,7 @@ over its driver and gives one machine's numbers.
 
 Every machine declares:
 
-- **Limits:** the work area; the most speed and acceleration on each axis
+- **Limits:** the work area; the most speed, acceleration and jerk on each axis
   (X, Y, Z, E); the hotend and bed temperatures; laser power; spindle RPM.
 - **Features:** heated bed, extruder count, bed levelling, rotary axis, air
   assist, tool changer, spindle control, laser power, homing and probing.
