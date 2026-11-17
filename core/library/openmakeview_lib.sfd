@@ -1,13 +1,13 @@
-==id $Id: openmakeview_lib.sfd 1.0 (17.11.2026) $
+==id $Id: openmakeview_lib.sfd 1.1 (17.11.2026) $
 * "openmakeview.library": OpenMakeCore's view, the one every app of the
 * suite shows (gs_view.h): the turntable camera, the part and the plate
 * framed, and the CPU drawer's pictures and pens for a machine with no
-* graphics chip. Each call is its C function in snake case (GS_ViewFrameBed
-* is gs_view_frame_bed); floats travel as their bits. Never reorder or take
-* a call out; add new ones at the end. core/library/gen-library.py writes
-* the rest from this. gs_view_map and gs_view_colour take points by value
-* and gs_view_lines hands back memory the program frees, so they are not
-* here.
+* graphics chip; 1.1 the walls and the toolpath drawn. Each call is its C
+* function in snake case (GS_ViewFrameBed is gs_view_frame_bed); floats
+* travel as their bits. Never reorder or take a call out; add new ones at
+* the end. core/library/gen-library.py writes the rest from this.
+* gs_view_map and gs_view_colour take points by value and gs_view_lines
+* hands back memory the program frees, so they are not here.
 ==base _OpenMakeViewBase
 ==basetype struct Library *
 ==libname openmakeview.library
@@ -15,6 +15,8 @@
 ==public
 ==include <exec/types.h>
 ==include <gs_view.h>
+==include <gs_layer.h>
+==include <gs_toolpath.h>
 void GS_CamHome(gs_cam *c)(a0)
 void GS_CamOrbit(gs_cam *c, float dx, float dy)(a0,d0,d1)
 void GS_CamPan(gs_cam *c, float dx, float dy)(a0,d0,d1)
@@ -26,4 +28,12 @@ int GS_ViewBed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, i
 int GS_PenOf(const unsigned char *rgb)(a0)
 int GS_PenRow(const unsigned char *rgb, int w, gs_run *runs)(a0,d0,a1)
 int GS_ViewOnGpu()()
+* 1.1: the walls and the toolpath drawn (gs_layer.h, gs_toolpath.h)
+int GL_Paint(const gl_walls *w, const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int width, int height)(a0,a1,a2,a3,d0,d1)
+unsigned long GT_Colour(int kind)(d0)
+unsigned long GT_Shade(int kind, float z, float top)(d0,d1,d2)
+int GT_End(const gt_path *p, int upto)(a0,d0)
+int GT_Frame(const gt_path *p, const gs_cam *cam, int part, int w, int h, gs_frame *f)(a0,a1,d0,d1,d2,a2)
+int GT_Paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)(a0,a1,d0,a2,d1,d2)
+int GT_PaintPart(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)(a0,a1,d0,a2,d1,d2)
 ==end

@@ -104,10 +104,10 @@ $(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl
 
 # openmakeview.library's calls, the same way.
 VIEW_LIB = core/library/openmakeview_lib.sfd
-VIEW_SRC = core/src/solid.c core/src/view.c
-$(BUILD)/test_view_lib: core/tests/test_view_lib.c $(VIEW_SRC) core/src/model.c core/src/stl.c $(VIEW_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+VIEW_SRC = core/src/solid.c core/src/view.c core/src/layer_paint.c core/src/toolpath_paint.c core/src/toolpath.c
+$(BUILD)/test_view_lib: core/tests/test_view_lib.c $(VIEW_SRC) $(PLAN) core/src/model.c core/src/stl.c $(VIEW_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
 	python3 core/library/gen-library.py $(VIEW_LIB) --check
-	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_view_lib.c $(VIEW_SRC) core/src/model.c core/src/stl.c -lm
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_view_lib.c $(sort $(VIEW_SRC) $(PLAN)) core/src/model.c core/src/stl.c -lm
 
 # openmakegcode.library's calls, the same way.
 GCODE_LIB = core/library/openmakegcode_lib.sfd

@@ -10,11 +10,11 @@ and shared by every app: `openmakemachine.library` first, then
 | `omlib.h` | What a library and its callers share: `REG()`, and a float carried in a data register as its bits. |
 | `libshell.c`, `libstart.c` | The library around the calls: romtag, init, open, close, expunge, the jump table (checked against the last bias when it builds). The FPU build's init fails on a machine without an FPU; the build without one opens the mathieee libraries, through which libnix's soft float works (and which use an FPU themselves when there is one). A library that needs another opens it in `LIB_OPEN_MORE()` and closes it in `LIB_CLOSE_MORE()`. |
 | `runtime_dos.c` | `fopen` and the rest over dos.library, for the calls that read files. |
-| `link_base.c` | A link library's base, opened before `main()`; without the library the program says so and stops. |
+| `link_base.c` | A link library's base, opened before `main()`, and a second with `LINK_BASE2` for a program on two libraries; without one the program says so and stops. |
 | `openmakepath_lib.*` | openmakepath.library: a part cut into layers, the walls welded into loops and inset (`core/src/layer.c`, `loops.c`, `inset.c`), the toolpath and its fill (`toolpath.c`, `fill.c`), and a printer's layers planned (`plan.c`). |
 | `openmakemesh_lib.*` | openmakemesh.library: STL in and out, repair, and the solids and booleans (`core/src/model.c`, `stl.c`). |
 | `openmakegcode_lib.*` | openmakegcode.library: a printer's G-code from a toolpath, its time and filament, and the job for om_check (`core/src/gcode.c`). It writes to the program's own `gc_put`, not a file, and opens openmakemachine.library at init for the start and end code: without that it does not open. |
-| `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`). |
+| `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`), and the walls and the toolpath drawn (`layer_paint.c`, `toolpath_paint.c`). |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 
 Each library's `.sfd` is the list of its calls, in order. Never reorder or

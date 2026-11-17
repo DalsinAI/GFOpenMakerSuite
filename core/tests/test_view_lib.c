@@ -6,6 +6,7 @@
 
 #include "../library/openmakeview_vectors.h"
 #include "gs_model.h"
+#include "gs_plan.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,44 @@ APTR om_host_vector(struct Library *base, int bias)
 #define W 96
 #define H 72
 
+/* The walls and the toolpath drawn: GL_Paint and the GT_ drawers against
+ * the C functions. The calls it makes. */
+static int paint_case(const gs_mesh *box, const gs_cam *cam)
+{
+    static unsigned char a[W * H * 3], b[W * H * 3];
+    gl_walls wl;
+    gp_opts o;
+    gt_path p;
+    gs_frame fa, fb;
+    int k, part, same = 1;
+    memset(&wl, 0, sizeof wl);
+    expect(gl_cut(box, 0.5f, 10, &wl) == 0 && wl.n > 0, "the box's walls");
+    expect(gl_paint(&wl, box, cam, a, W, H) == 0 && GL_Paint(&wl, box, cam, b, W, H) == 0 && !memcmp(a, b, sizeof a),
+           "GL_Paint, the same picture");
+    gp_defaults(&o);
+    o.layer_h = 0.5f;
+    gt_init(&p);
+    expect(gp_part(&p, box, &o) == 0 && p.nlayers == 40, "the box's toolpath");
+    for (k = 0; k < GT_KINDS; k++)
+        if (GT_Colour(k) != gt_colour(k) || GT_Shade(k, 3.f, 20.f) != gt_shade(k, 3.f, 20.f)) same = 0;
+    expect(same, "GT_Colour and GT_Shade, every kind");
+    expect(GT_End(&p, 3) == gt_end(&p, 3) && GT_End(&p, 3) == p.layer[3], "GT_End");
+    for (part = 0; part < 2; part++)
+        expect(gt_frame(&p, cam, part, W, H, &fa) == 0 && GT_Frame(&p, cam, part, W, H, &fb) == 0 &&
+                   !memcmp(&fa, &fb, sizeof fa),
+               "GT_Frame, the part and the plate");
+    expect(gt_paint(&p, cam, 20, a, W, H) == 0 && GT_Paint(&p, cam, 20, b, W, H) == 0 && !memcmp(a, b, sizeof a),
+           "GT_Paint, the same picture");
+    expect(gt_paint_part(&p, cam, 0, a, W, H) == 0 && GT_PaintPart(&p, cam, 0, b, W, H) == 0 &&
+               !memcmp(a, b, sizeof a),
+           "GT_PaintPart, the same picture");
+    gt_free(&p);
+    gl_walls_free(&wl);
+    /* GL_Paint, a GT_Colour and a GT_Shade a kind, two GT_End, two
+     * GT_Frame, GT_Paint, GT_PaintPart */
+    return 1 + 2 * GT_KINDS + 2 + 2 + 1 + 1;
+}
+
 int main(void)
 {
     static unsigned char a[W * H * 3], b[W * H * 3];
@@ -42,7 +81,7 @@ int main(void)
     gs_cam ca, cb;
     gs_frame fa, fb;
     gs_run ra[W], rb[W];
-    int na, nb, y, i, mid = 0, rows = 1;
+    int na, nb, y, i, k, mid = 0, rows = 1;
     OpenMakeViewBase = fake;
     memset(&box, 0, sizeof box);
     expect(sizeof table / sizeof table[0] == OPENMAKEVIEW_LAST_BIAS / 6, "every call has its slot");
@@ -83,6 +122,9 @@ int main(void)
     expect(GS_ViewOnGpu() == gs_view_on_gpu(), "GS_ViewOnGpu");
     printf("through the library: a %dx%d plate as %d runs of pens\n", W, H, mid);
     expect(calls == 10 + H, "every GS_ call went through the table");
+    calls = 0;
+    k = paint_case(&box, &cb);
+    expect(calls == k, "every GL_ and GT_ call went through the table");
 
     gs_mesh_free(&box);
     if (fails) {
