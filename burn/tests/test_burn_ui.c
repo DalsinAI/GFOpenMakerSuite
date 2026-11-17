@@ -141,11 +141,18 @@ int main(void)
                        olui_box(ui, olui_find(ui, "layer-0-passes"), &pass) &&
                        pass.x >= boxset.x && pass.x + pass.w <= boxset.x + boxset.w,
                    "the pass spinner stays inside the settings box");
+            {
+                olui_rect kerf;
+                expect(olui_box(ui, olui_find(ui, "layer-0-kerf"), &kerf) && inside(&kerf, w, h) &&
+                           kerf.x >= boxset.x && kerf.x + kerf.w <= boxset.x + boxset.w,
+                       "the kerf spinner stays inside the settings box");
+            }
         }
         expect(omv_number(ui, "layer-0-power") == 50.f && omv_number(ui, "layer-0-speed") == 20.f &&
                    omv_number(ui, "layer-0-passes") == 1.f && olui_get_checked(olui_find(ui, "layer-0-on")) &&
-                   olui_select_index(olui_find(ui, "layer-0-mode")) == 0 && omv_number(ui, "layer-0-interval") == 0.2f,
-               "defaults in the list: 50%, 20 mm/s, one pass, on, line, 0.2 mm gap");
+                   olui_select_index(olui_find(ui, "layer-0-mode")) == 0 && omv_number(ui, "layer-0-interval") == 0.2f &&
+                   omv_number(ui, "layer-0-kerf") == 0.f,
+               "defaults in the list: 50%, 20 mm/s, one pass, on, line, 0.2 mm gap, no kerf");
         expect(!strcmp(olui_get_text(olui_find(ui, "layer-0-name")), "#ff0000") &&
                    !strcmp(olui_get_text(olui_find(ui, "layer-1-name")), "#0000ff"),
                "red then blue");
@@ -155,11 +162,13 @@ int main(void)
     olui_set_checked(ui, olui_find(ui, "constant"), 1);
     olui_select_set(ui, olui_find(ui, "layer-0-mode"), 1);
     olui_set_number(ui, olui_find(ui, "layer-0-interval"), 10); /* 0.10 with two decimals */
+    olui_set_number(ui, olui_find(ui, "layer-1-kerf"), 20); /* 0.20 with two decimals */
     burn_ui_read(ui, &o, store, 8);
     expect(o.nlayer == 2 && o.constant == 1 && store[0].power == 80.f && store[1].speed == 15.f &&
                store[0].colour == 0xff0000u && store[1].index == 2 && store[0].mode == BURN_FILL &&
-               store[0].interval == 0.1f && store[1].mode == BURN_LINE,
-           "the list is read back, including M3 and fill");
+               store[0].interval == 0.1f && store[1].mode == BURN_LINE && store[1].kerf == 0.2f &&
+               (store[1].set & BURN_SET_KERF),
+           "the list is read back, including M3, fill and kerf");
     olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
     burn_ui_read(ui, &o, store, 8);
     expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");

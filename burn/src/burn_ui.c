@@ -111,9 +111,12 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                  "<row><label for=\"layer-%d-interval\">Gap</label>"
                  "<spinner id=\"layer-%d-interval\" min=\"0.01\" max=\"20\" step=\"0.01\" value=\"%.2f\">"
                  "<span>mm</span></row>"
+                 "<row><label for=\"layer-%d-kerf\">Kerf</label>"
+                 "<spinner id=\"layer-%d-kerf\" min=\"0\" max=\"20\" step=\"0.01\" value=\"%.2f\">"
+                 "<span>mm</span></row>"
                  "</column>",
                  L, L, L, L, (unsigned)ly.colour, L, L, L, L, (double)ly.power, L, L, (double)ly.speed, L, L, ly.passes, L, L,
-                 L, L, (double)ly.interval);
+                 L, L, (double)ly.interval, L, L, (double)ly.kerf);
         snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", L, (unsigned)ly.colour);
         if (!olui_add_css(ui, css) || !olui_add(ui, parent, m, err, (size_t)errlen)) return -1;
         id_of(id, (int)sizeof id, L, "on");
@@ -194,6 +197,9 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         id_of(id, (int)sizeof id, i, "interval");
         store[i].interval = omv_number(ui, id);
         store[i].set |= BURN_SET_INTERVAL;
+        id_of(id, (int)sizeof id, i, "kerf");
+        store[i].kerf = omv_number(ui, id);
+        store[i].set |= BURN_SET_KERF;
     }
 }
 
