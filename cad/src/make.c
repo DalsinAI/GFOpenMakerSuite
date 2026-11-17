@@ -586,37 +586,23 @@ static void take_added(olui *ui, gs_mesh box)
     refresh(ui);
 }
 
-static void on_add_cube(olui *ui, const olui_event *ev, void *userdata)
+/* Parts' Add: the shape picked, placed from the stock (ge_shape), as the
+ * added part to join, cut or intersect with it. */
+static void on_add(olui *ui, const olui_event *ev, void *userdata)
 {
-    gs_mesh box;
+    gs_mesh part;
+    int kind = olui_select_index(olui_find(ui, "shape"));
+    char why[64];
     (void)ev;
     (void)userdata;
-    memset(&box, 0, sizeof box);
-    if (gm_cube(&box, hole.min.x + 12.f, hole.min.y + 4.f, hole.min.z, 16.f, 16.f, 16.f)) {
-        say(ui, "The cube did not build");
+    memset(&part, 0, sizeof part);
+    if (ge_shape(&part, kind, &hole)) {
+        gs_mesh_free(&part);
+        snprintf(why, sizeof why, "The %s did not build", ge_shape_name(kind) ? ge_shape_name(kind) : "shape");
+        say(ui, why);
         return;
     }
-    take_added(ui, box);
-}
-
-static void on_add_cyl(olui *ui, const olui_event *ev, void *userdata)
-{
-    gs_mesh peg;
-    float cx, cy, h, r;
-    (void)ev;
-    (void)userdata;
-    memset(&peg, 0, sizeof peg);
-    cx = (hole.min.x + hole.max.x) * 0.5f;
-    cy = (hole.min.y + hole.max.y) * 0.5f;
-    h = (hole.max.z - hole.min.z) + 4.f;
-    if (h < 8.f) h = 8.f;
-    r = (hole.max.x - hole.min.x) * 0.22f;
-    if (r < 3.f) r = 3.f;
-    if (gm_cylinder(&peg, cx, cy, hole.min.z - 2.f, r, h, 24)) {
-        say(ui, "The cylinder did not build");
-        return;
-    }
-    take_added(ui, peg);
+    take_added(ui, part);
 }
 
 static void on_bool(olui *ui, const olui_event *ev, void *userdata)
@@ -807,8 +793,12 @@ int main(int argc, char **argv)
     olui_on(ui, "drop", OLUI_CLICK, on_drop, NULL);
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
-    olui_on(ui, "addcube", OLUI_CLICK, on_add_cube, NULL);
-    olui_on(ui, "addcyl", OLUI_CLICK, on_add_cyl, NULL);
+    olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
+    {
+        int k;
+        for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
+        olui_select_set(ui, olui_find(ui, "shape"), 0);
+    }
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);

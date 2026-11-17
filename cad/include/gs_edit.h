@@ -71,4 +71,16 @@ int ge_hist_pop_scene(ge_hist *h, ge_scene *s);
  * ran out, and then the scene and h are as they were. */
 int ge_bool(ge_scene *s, int op, ge_hist *h);
 
+/* The shapes Parts adds, as the bench's Make has them. */
+enum { GE_BOX, GE_CYLINDER, GE_SPHERE, GE_CONE, GE_TORUS, GE_WEDGE, GE_SLOT, GE_SHAPES };
+
+/* "Box" ... "Slot", or NULL. */
+const char *ge_shape_name(int kind);
+
+/* A part of that kind to add to the stock, placed and sized from it: the
+ * box beside its corner (to join), the cylinder and the slot down through
+ * its middle (to cut), the rest on the plate at its middle. Replaces m.
+ * 0, or -1. */
+int ge_shape(gs_mesh *m, int kind, const gs_mesh *stock);
+
 #endif

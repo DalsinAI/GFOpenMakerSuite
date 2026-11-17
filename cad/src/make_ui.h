@@ -33,7 +33,7 @@ static const char gm_markup[] =
     "<row><button id=\"rot\">Rotate</button><button id=\"scale\">Scale</button></row>"
     "</fieldset>"
     "<fieldset><legend>Parts</legend>"
-    "<row><button id=\"addcube\">Cube</button><button id=\"addcyl\">Cylinder</button></row>"
+    "<row><select id=\"shape\"></select><button id=\"add\">Add</button></row>"
     "<row><button id=\"join\">Join</button><button id=\"cut\">Cut</button><button id=\"meet\">Intersect</button></row>"
     "</fieldset>"
     "<fieldset><legend>Place</legend>"

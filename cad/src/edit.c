@@ -410,3 +410,36 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
     ge_move(m, 0.f, 0.f, 8.f);
     return 0;
 }
+
+static const char *const shape_names[GE_SHAPES] = {"Box", "Cylinder", "Sphere", "Cone", "Torus", "Wedge", "Slot"};
+
+const char *ge_shape_name(int kind) { return kind >= 0 && kind < GE_SHAPES ? shape_names[kind] : NULL; }
+
+int ge_shape(gs_mesh *m, int kind, const gs_mesh *stock)
+{
+    float x0 = stock->min.x, y0 = stock->min.y, z0 = stock->min.z, zt = stock->max.z;
+    float cx = (stock->min.x + stock->max.x) * 0.5f, cy = (stock->min.y + stock->max.y) * 0.5f;
+    float h = stock->max.z - stock->min.z + 4.f, r = (stock->max.x - stock->min.x) * 0.22f;
+    if (!stock->n) x0 = y0 = z0 = cx = cy = 0.f, zt = 3.f, h = 24.f, r = 5.f;
+    if (h < 8.f) h = 8.f;
+    if (r < 3.f) r = 3.f;
+    switch (kind) {
+    case GE_BOX: /* beside the stock's corner, to join */
+        return gm_cube(m, x0 + 12.f, y0 + 4.f, z0, 16.f, 16.f, 16.f);
+    case GE_CYLINDER: /* down through the stock's middle, to cut a hole */
+        return gm_cylinder(m, cx, cy, z0 - 2.f, r, h, 24);
+    case GE_SPHERE:
+        return gm_sphere(m, cx, cy, z0 + 8.f, 8.f, 24, 12);
+    case GE_CONE:
+        return gm_cone(m, cx, cy, z0, 8.f, 16.f, 24);
+    case GE_TORUS:
+        /* Half in the top face, inside its edges: a cut leaves a groove, a
+         * join a ring (8 and 1.5 on the 20 mm start). */
+        return gm_torus(m, cx, cy, zt, r * (8.f / 4.4f), r * (1.5f / 4.4f), 24, 12);
+    case GE_WEDGE:
+        return gm_wedge(m, cx - 10.f, cy - 8.f, z0, 20.f, 16.f, 12.f);
+    case GE_SLOT: /* through the stock and inside its ends, to cut a slot */
+        return gm_slot(m, cx - r * (7.f / 4.4f), cy - r, z0 - 2.f, r * (14.f / 4.4f), 2.f * r, h, 16);
+    }
+    return -1;
+}

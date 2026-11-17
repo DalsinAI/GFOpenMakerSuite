@@ -35,9 +35,9 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
  * tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
     "open", "save", "undo", "orbit", "move", "rot", "scale", "drop", "centre", "lay",
-    "addcube", "addcyl", "join", "cut", "meet", "prev", "next", "slice", "gcode"
+    "add", "join", "cut", "meet", "prev", "next", "slice", "gcode"
 };
-#define PRINT_BUTTONS 15
+#define PRINT_BUTTONS 14
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -147,7 +147,15 @@ int main(void)
                 expect(!overlap(&box[i], &box[j]), what);
             }
         }
-        if (t == 0) break;
+        if (t == 0) {
+            /* Parts: the shape to add, a select beside Add, wide enough for "Cylinder". */
+            olui_el *shape = olui_find(ui, "shape");
+            olui_rect r;
+            expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
+                       r.w >= 90 && !overlap(&r, &box[10]) && r.x < box[10].x,
+                   "the shape select is beside Add, wide enough for a name");
+            break;
+        }
         for (i = 0; i < omv_settings_tabs(); i++) {
             olui_rect side, r, frame;
             int k;
@@ -162,8 +170,8 @@ int main(void)
                 snprintf(what, sizeof what, "%s in the side, clear of Slice", id);
                 /* and room after it in the panel's frame for its unit, "mm/s" in Topaz 8 */
                 expect(olui_box(ui, olui_find(ui, id), &r) && r.x >= side.x && r.x + r.w + 4 + 34 <= frame.x + frame.w &&
-                           r.y >= side.y && r.y + r.h <= side.y + side.h && !overlap(&r, &box[17]) &&
-                           !overlap(&r, &box[18]),
+                           r.y >= side.y && r.y + r.h <= side.y + side.h && !overlap(&r, &box[NBUTTONS - 2]) &&
+                           !overlap(&r, &box[NBUTTONS - 1]),
                        what);
             }
         }

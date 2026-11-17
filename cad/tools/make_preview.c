@@ -9,7 +9,9 @@
  * the picker's list shown open; SIZE: the window's inside, 640x480 to start.
  * SETTINGS: a profile's lines put in the settings panel and sliced with,
  * held to the first printer; SIDE: the side's tab (1, Print, to start);
- * TAB: the panel's tab.
+ * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
+ * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
+ * OPEN: a select's id, shown open (the side on Model for "shape").
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_gcode.h"
@@ -89,6 +91,21 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return 1;
     }
+    if (getenv("SHAPE")) { /* as make.c's Add, then Join, Cut or Intersect */
+        ge_scene sc;
+        memset(&sc, 0, sizeof sc);
+        sc.stock = part;
+        sc.has_added = sc.on_added = 1;
+        if (ge_shape(&sc.added, atoi(getenv("SHAPE")), &part) ||
+            ge_bool(&sc, getenv("OP") ? atoi(getenv("OP")) : 0, NULL)) {
+            fprintf(stderr, "SHAPE: that did not build or did not meet the part\n");
+            return 1;
+        }
+        part = sc.stock;
+        printf("%s %s: %d triangles\n", ge_shape_name(atoi(getenv("SHAPE"))),
+               getenv("OP") && atoi(getenv("OP")) == 1 ? "cut" : getenv("OP") && atoi(getenv("OP")) == 2 ? "met" : "joined",
+               part.n);
+    }
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
     if (!olui_load(ui, gm_markup, gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
@@ -128,7 +145,16 @@ int main(int argc, char **argv)
         olui_set_checked(ui, olui_find(ui, "show"), 1);
         olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(upto, path.nlayers));
     }
+    {
+        int k; /* as make.c fills Parts' list, showing the shape added */
+        for (k = 0; k < GE_SHAPES; k++) olui_select_add(ui, olui_find(ui, "shape"), ge_shape_name(k), ge_shape_name(k));
+        olui_select_set(ui, olui_find(ui, "shape"), getenv("SHAPE") ? atoi(getenv("SHAPE")) : 0);
+    }
     if (!olui_layout(ui, w, h)) return 1;
+    if (getenv("OPEN")) {
+        olui_select_open(ui, olui_find(ui, getenv("OPEN")), 1);
+        if (!olui_layout(ui, w, h)) return 1;
+    }
     if (argc > 4 && !strcmp(argv[4], "open")) {
         olui_select_open(ui, olui_find(ui, "machine"), 1);
         if (!olui_layout(ui, w, h)) return 1;
