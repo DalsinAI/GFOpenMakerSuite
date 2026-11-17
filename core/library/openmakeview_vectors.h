@@ -150,7 +150,31 @@ static int LIB_GS_GpuStreamPlate(REG(a0, uint32_t *stream), REG(d0, int cap), RE
     return gs_gpu_stream_plate(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, plate);
 }
 
-#define OPENMAKEVIEW_LAST_BIAS 168
+static void LIB_GS_ViewMapAt(REG(a0, const gs_frame *f), REG(a1, const gs_cam *cam), REG(a2, const gs_v *p), REG(a3, float *xyz), REG(a6, struct Library *base))
+{
+    (void)base;
+    gs_view_map_at(f, cam, p, xyz);
+}
+
+static int LIB_GS_ViewColourOf(REG(a0, const gs_cam *cam), REG(a1, const gs_v *pts), REG(a2, int *rgb), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_view_colour_of(cam, pts, rgb);
+}
+
+static int LIB_GS_ViewLinesInto(REG(a0, const char *gcode), REG(d0, int len), REG(a1, gs_line *lines), REG(d1, int cap), REG(a2, float *box), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_view_lines_into(gcode, len, lines, cap, box);
+}
+
+static int LIB_GS_ViewPaint(REG(a0, const char *gcode), REG(d0, int len), REG(a1, unsigned char *rgb), REG(d1, int w), REG(d2, int h), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_view_paint(gcode, len, rgb, w, h);
+}
+
+#define OPENMAKEVIEW_LAST_BIAS 192
 #define OPENMAKEVIEW_VECTORS \
     (APTR)LIB_GS_CamHome, \
     (APTR)LIB_GS_CamOrbit, \
@@ -175,4 +199,8 @@ static int LIB_GS_GpuStreamPlate(REG(a0, uint32_t *stream), REG(d0, int cap), RE
     (APTR)LIB_GS_GpuWallsPlate, \
     (APTR)LIB_GS_GpuToolpath, \
     (APTR)LIB_GS_GpuStream, \
-    (APTR)LIB_GS_GpuStreamPlate
+    (APTR)LIB_GS_GpuStreamPlate, \
+    (APTR)LIB_GS_ViewMapAt, \
+    (APTR)LIB_GS_ViewColourOf, \
+    (APTR)LIB_GS_ViewLinesInto, \
+    (APTR)LIB_GS_ViewPaint

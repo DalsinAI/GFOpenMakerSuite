@@ -48,6 +48,17 @@ void gs_view_map(const gs_frame *f, const gs_cam *cam, gs_v p, float *x, float *
 /* The face colour gs_view_solid uses. 0, or -1 for an empty triangle. */
 int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *r, int *g, int *blue);
 
+/* The same three with nothing passed by value and no memory handed back,
+ * as openmakeview.library's calls take them. gs_view_map_at: p's screen
+ * x, y and depth in xyz[0..2]. gs_view_colour_of: pts[0..3] is origin, a,
+ * b, c; the colour in rgb[0..2]. gs_view_lines_into: up to cap of the
+ * G-code's lines into lines (may be NULL with cap 0) and, when box is not
+ * NULL, minx, miny, maxx, maxy in box[0..3]; returns how many lines there
+ * are (only cap written when more), or -1. */
+void gs_view_map_at(const gs_frame *f, const gs_cam *cam, const gs_v *p, float *xyz);
+int gs_view_colour_of(const gs_cam *cam, const gs_v *pts, int *rgb);
+int gs_view_lines_into(const char *gcode, int len, gs_line *lines, int cap, float *box);
+
 /* Shaded mesh into rgb, w*h*3. 0, or -1. The bed stays dark. */
 int gs_view_solid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h);
 

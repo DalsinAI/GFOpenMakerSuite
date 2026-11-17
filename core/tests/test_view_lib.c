@@ -121,6 +121,41 @@ static int gpu_case(const gs_mesh *box, const gs_cam *cam)
     return 8;
 }
 
+/* 1.3: what gs_view_map, gs_view_colour and gs_view_lines give, through
+ * calls that take a point by address and lines into the program's room;
+ * and the G-code painter. Returns how many calls it made. */
+static int gaps_case(const gs_mesh *box, const gs_cam *cam)
+{
+    static const char gcode[] = "G0 X0 Y0\nG1 X10 Y0 E1\nG1 X10 Y10 E2\nG0 X0 Y10\nG1 X0 Y0 E3\n";
+    static unsigned char a[W * H * 3], b[W * H * 3];
+    gs_frame f;
+    gs_v p = {5.f, 6.f, 7.f}, tri[4] = {{0, 0, 0}, {0, 0, 0}, {10, 0, 0}, {0, 10, 0}};
+    gs_line *mine = NULL, got[4];
+    float x, y, z, xyz[3], lo[2], hi[2], box4[4];
+    int r, g, bl, rgb[3], n, k = 0, i, same = 1;
+    expect(gs_view_frame(box, cam, W, H, &f) == 0, "a frame");
+    gs_view_map(&f, cam, p, &x, &y, &z);
+    GS_ViewMapAt(&f, cam, &p, xyz), k++;
+    expect(xyz[0] == x && xyz[1] == y && xyz[2] == z, "GS_ViewMapAt: gs_view_map's x, y and depth");
+    tri[0] = f.origin;
+    expect(gs_view_colour(cam, tri[0], tri[1], tri[2], tri[3], &r, &g, &bl) == 0, "a colour");
+    expect(GS_ViewColourOf(cam, tri, rgb) == 0 && rgb[0] == r && rgb[1] == g && rgb[2] == bl, "GS_ViewColourOf"), k++;
+    expect(gs_view_lines(gcode, (int)strlen(gcode), &mine, &n, &lo[0], &lo[1], &hi[0], &hi[1]) == 0 && n == 3,
+           "three lines laid down, the travels not");
+    expect(GS_ViewLinesInto(gcode, (int)strlen(gcode), got, 4, box4) == 3, "GS_ViewLinesInto: three"), k++;
+    for (i = 0; i < 3; i++) same &= !memcmp(&got[i], &mine[i], sizeof got[i]);
+    expect(same && box4[0] == lo[0] && box4[1] == lo[1] && box4[2] == hi[0] && box4[3] == hi[1],
+           "the same lines and box, in the program's room");
+    expect(GS_ViewLinesInto(gcode, (int)strlen(gcode), got, 2, box4) == 3 && !memcmp(&got[1], &mine[1], sizeof got[1]),
+           "room for two: two written, three said"), k++;
+    expect(GS_ViewLinesInto(gcode, (int)strlen(gcode), NULL, 0, NULL) == 3, "no room: only counted"), k++;
+    free(mine);
+    expect(gs_view_paint(gcode, (int)strlen(gcode), a, W, H) == 3 && GS_ViewPaint(gcode, (int)strlen(gcode), b, W, H) == 3 &&
+               !memcmp(a, b, sizeof a),
+           "GS_ViewPaint, the same picture"), k++;
+    return k;
+}
+
 int main(void)
 {
     static unsigned char a[W * H * 3], b[W * H * 3];
@@ -175,6 +210,10 @@ int main(void)
     calls = 0;
     k = gpu_case(&box, &cb);
     expect(calls == k, "every GS_Gpu call went through the table");
+
+    calls = 0;
+    k = gaps_case(&box, &cb);
+    expect(calls == k, "every 1.3 call went through the table");
 
     gs_mesh_free(&box);
     if (fails) {

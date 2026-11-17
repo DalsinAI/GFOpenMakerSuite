@@ -122,3 +122,23 @@ int gs_gpu_stream_plate(uint32_t *stream, int cap, uint32_t vert_addr, int nvert
 {
     return GS_GpuStreamPlate(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, plate);
 }
+
+void gs_view_map_at(const gs_frame *f, const gs_cam *cam, const gs_v *p, float *xyz)
+{
+    GS_ViewMapAt(f, cam, p, xyz);
+}
+
+int gs_view_colour_of(const gs_cam *cam, const gs_v *pts, int *rgb)
+{
+    return GS_ViewColourOf(cam, pts, rgb);
+}
+
+int gs_view_lines_into(const char *gcode, int len, gs_line *lines, int cap, float *box)
+{
+    return GS_ViewLinesInto(gcode, len, lines, cap, box);
+}
+
+int gs_view_paint(const char *gcode, int len, unsigned char *rgb, int w, int h)
+{
+    return GS_ViewPaint(gcode, len, rgb, w, h);
+}
