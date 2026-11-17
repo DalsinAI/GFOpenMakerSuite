@@ -17,7 +17,11 @@
 #define LINE 1e-5f  /* mm off a line and still on it */
 #define SIDE 2e-4f  /* mm to a piece's side, to count the winding there */
 
+#define LO(a, b) ((a) < (b) ? (a) : (b))
+#define HI(a, b) ((a) > (b) ? (a) : (b))
+
 typedef struct { float x0, y0, x1, y1; } edge;
+typedef struct { float left; int e; } ordered; /* an edge by its left end */
 typedef struct { int e; float t, x, y; } cut;
 typedef struct { float x0, y0, x1, y1; } piece;
 
@@ -80,19 +84,28 @@ static int meet(work *w, int i, int j)
     return add_cut(w, i, t, px, py) || add_cut(w, j, u, px, py) ? -1 : 0;
 }
 
-static const edge *sort_e;
 static int by_left(const void *p, const void *q)
 {
-    const edge *a = &sort_e[*(const int *)p], *b = &sort_e[*(const int *)q];
-    float l = a->x0 < a->x1 ? a->x0 : a->x1, r = b->x0 < b->x1 ? b->x0 : b->x1;
-    return l < r ? -1 : l > r;
+    const ordered *a = (const ordered *)p, *b = (const ordered *)q;
+    if (a->left != b->left) return a->left < b->left ? -1 : 1;
+    return a->e < b->e ? -1 : a->e > b->e;
+}
+
+/* How far left the turn from (ix, iy) to (ox, oy) is, rising with the
+ * angle from -180 to 180 degrees: no trigonometry. */
+static float turn_of(float ix, float iy, float ox, float oy)
+{
+    float c = ix * oy - iy * ox, d = ix * ox + iy * oy, p = d / (fabsf(c) + fabsf(d) + 1e-30f);
+    return c >= 0.f ? 1.f - p : p - 1.f;
 }
 
 static int by_edge(const void *p, const void *q)
 {
     const cut *a = (const cut *)p, *b = (const cut *)q;
     if (a->e != b->e) return a->e < b->e ? -1 : 1;
-    return a->t < b->t ? -1 : a->t > b->t;
+    if (a->t != b->t) return a->t < b->t ? -1 : 1;
+    if (a->x != b->x) return a->x < b->x ? -1 : 1;
+    return a->y < b->y ? -1 : a->y > b->y;
 }
 
 /* How many times the loops wind round (px, py). */
@@ -117,8 +130,8 @@ static int bands(work *w)
     int i, b, *fill;
     for (i = 0; i < w->ne; i++) {
         const edge *e = &w->e[i];
-        lo = fminf(lo, fminf(e->y0, e->y1));
-        hi = fmaxf(hi, fmaxf(e->y0, e->y1));
+        lo = LO(lo, LO(e->y0, e->y1));
+        hi = HI(hi, HI(e->y0, e->y1));
     }
     w->nb = w->ne / 4 < 1 ? 1 : w->ne / 4 > 4096 ? 4096 : w->ne / 4;
     w->y0 = lo - 1.f;
@@ -133,7 +146,7 @@ static int bands(work *w)
         int k;
         for (k = 0; k < w->ne; k++) {
             const edge *e = &w->e[k];
-            int b0 = (int)((fminf(e->y0, e->y1) - w->y0) / w->bh), b1 = (int)((fmaxf(e->y0, e->y1) - w->y0) / w->bh);
+            int b0 = (int)((LO(e->y0, e->y1) - w->y0) / w->bh), b1 = (int)((HI(e->y0, e->y1) - w->y0) / w->bh);
             for (b = b0; b <= b1 && b < w->nb; b++) {
                 if (i == 0) w->band_at[b + 1]++;
                 else w->band[w->band_at[b] + fill[b]++] = k;
@@ -216,7 +229,7 @@ static int join(piece *p, int np, gl_loops *out)
             for (; k < np && p[k].x0 == c->x1 && p[k].y0 == c->y1; k++) {
                 float ox = p[k].x1 - p[k].x0, oy = p[k].y1 - p[k].y0, turn;
                 if (used[k] && k != s) continue;
-                turn = atan2f(ix * oy - iy * ox, ix * ox + iy * oy);
+                turn = turn_of(ix, iy, ox, oy);
                 if (turn > best) {
                     best = turn;
                     next = k;
@@ -266,7 +279,8 @@ static int join(piece *p, int np, gl_loops *out)
 int gl_union(const gl_loops *in, gl_loops *out)
 {
     work w;
-    int *order = NULL, i, j, k, np = 0, rc = -1;
+    ordered *order = NULL;
+    int i, j, k, np = 0, rc = -1;
     piece *p = NULL;
     gl_loops res;
     memset(&w, 0, sizeof w);
@@ -289,19 +303,21 @@ int gl_union(const gl_loops *in, gl_loops *out)
             w.ne++;
         }
     }
-    order = (int *)malloc(((size_t)w.ne + 1) * sizeof *order);
+    order = (ordered *)malloc(((size_t)w.ne + 1) * sizeof *order);
     if (!order) goto done;
-    for (i = 0; i < w.ne; i++) order[i] = i;
-    sort_e = w.e;
+    for (i = 0; i < w.ne; i++) {
+        order[i].left = LO(w.e[i].x0, w.e[i].x1);
+        order[i].e = i;
+    }
     qsort(order, (size_t)w.ne, sizeof *order, by_left);
     for (i = 0; i < w.ne; i++) {
-        const edge *a = &w.e[order[i]];
-        float r = fmaxf(a->x0, a->x1) + LINE, lo = fminf(a->y0, a->y1) - LINE, hi = fmaxf(a->y0, a->y1) + LINE;
+        const edge *a = &w.e[order[i].e];
+        float r = HI(a->x0, a->x1) + LINE, lo = LO(a->y0, a->y1) - LINE, hi = HI(a->y0, a->y1) + LINE;
         for (j = i + 1; j < w.ne; j++) {
-            const edge *b = &w.e[order[j]];
-            if (fminf(b->x0, b->x1) > r) break;
-            if (fmaxf(b->y0, b->y1) < lo || fminf(b->y0, b->y1) > hi) continue;
-            if (meet(&w, order[i], order[j])) goto done;
+            const edge *b = &w.e[order[j].e];
+            if (LO(b->x0, b->x1) > r) break;
+            if (HI(b->y0, b->y1) < lo || LO(b->y0, b->y1) > hi) continue;
+            if (meet(&w, order[i].e, order[j].e)) goto done;
         }
     }
     if (w.nc) qsort(w.c, (size_t)w.nc, sizeof *w.c, by_edge);

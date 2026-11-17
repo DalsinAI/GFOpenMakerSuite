@@ -79,6 +79,20 @@ static void meeting(void)
     count(&o, &outs, &holes, &oa, &ha);
     expect(outs == 1 && near(oa, 175.f, 0.01f), "of 175 mm2");
     expect(gl_inset(&in4, -0.5f, &o) == 0 && o.n == 1, "their brims merge too");
+    {
+        /* Corners touching: two loops still. An island in a hole: kept. */
+        static float t1[] = {0, 0, 5, 0, 5, 5, 0, 5}, t2[] = {5, 5, 10, 5, 10, 10, 5, 10};
+        static float big[] = {0, 0, 20, 0, 20, 20, 0, 20}, hole[] = {5, 5, 5, 15, 15, 15, 15, 5};
+        static float isle[] = {8, 8, 12, 8, 12, 12, 8, 12};
+        gl_loop touch[] = {{t1, 4, 1}, {t2, 4, 1}}, nest[] = {{big, 4, 1}, {hole, 4, 1}, {isle, 4, 1}};
+        gl_loops in5 = {touch, 2, 0}, in6 = {nest, 3, 0};
+        expect(gl_union(&in5, &o) == 0 && o.n == 2, "squares touching at a corner stay two loops");
+        count(&o, &outs, &holes, &oa, &ha);
+        expect(outs == 2 && near(oa, 50.f, 1e-3f), "both anticlockwise, 25 mm2 each");
+        expect(gl_union(&in6, &o) == 0 && o.n == 3, "an outside, its hole, and an island in the hole");
+        count(&o, &outs, &holes, &oa, &ha);
+        expect(outs == 2 && holes == 1 && near(oa, 416.f, 1e-3f) && near(ha, 100.f, 1e-3f), "each where it was");
+    }
     gl_loops_free(&o);
 }
 
