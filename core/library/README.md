@@ -2,7 +2,7 @@
 
 The suite's shared code is built as Amiga shared libraries, each loaded once
 and shared by every app: `openmakemachine.library` first, then
-`openmakepath`, `openmakemesh`, `openmakegcode`, `openmakeview`, `openmaketask` and `openmakevec`.
+`openmakepath`, `openmakemesh`, `openmakegcode`, `openmakeview`, `openmaketask`, `openmakevec` and `openmakeproject`.
 
 | file | what it is |
 |---|---|
@@ -17,6 +17,7 @@ and shared by every app: `openmakemachine.library` first, then
 | `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`), the walls and the toolpath drawn (`layer_paint.c`, `toolpath_paint.c`), the same as OpenGPU batches and streams (`gpu.c`), and (1.3) a point mapped to the screen, a face's colour, a G-code's lines into the program's room and its picture (`gs_view_map_at`, `gs_view_colour_of`, `gs_view_lines_into`, `gs_view_paint`), and (1.4) the faces in the parts' colours (`gs_view_bed_tint`, `gs_gpu_vertices_plate_tint`). |
 | `openmaketask_lib.*` | openmaketask.library: work spread over the cores (`gs_par.h`, `core/src/par_exec.c`): n pieces of the program's own code, each run once on exec tasks, returning when all have. The pieces must not use DOS (tasks, not processes), and the program must not be built `-fbaserel`. |
 | `openmakevec_lib.*` | openmakevec.library: 2D vector drawings and an SVG reader (`core/src/vec.c`, `gs_vec.h`), written from the W3C SVG 1.1 specification. Paths, groups and the usual shapes; coordinates in millimetres, origin at the bottom-left of the view box, Y up. A colour becomes a layer (the stroke, or the fill if there is no stroke). |
+| `openmakeproject_lib.*` | openmakeproject.library: a GFOpenMakerWorkshop project (`core/src/project.c`, `gs_project.h`): a drawer and its `project.om` manifest (create, open, save, add, remove, rename, kinds, the app for an item, and recent projects). An unknown kind is kept, so a later kind can be added without breaking old projects. |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 
 Each library's `.sfd` is the list of its calls, in order. Never reorder or
