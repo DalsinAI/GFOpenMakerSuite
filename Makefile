@@ -32,9 +32,9 @@ $(BUILD)/test_model: core/tests/test_model.c core/src/model.c core/src/stl.c cor
 $(BUILD)/test_gpu: core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_gpu.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -I$(SDK) -o $@ core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
-$(BUILD)/preview: slicer/tools/preview.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/view_gpu.c core/ui/machines_ui.c $(SL_JOB) core/src/toolpath_paint.c | $(BUILD)
+$(BUILD)/preview: slicer/tools/preview.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/settings_ui.c core/ui/view_ui.c core/ui/view_gpu.c core/ui/machines_ui.c $(SL_JOB) core/src/toolpath_paint.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/ui -Islicer/include -Islicer/src -Imachines/include -I$(LAYOUT)/include -I$(SDK) -o $@ \
-	    slicer/tools/preview.c slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/view_gpu.c core/src/gpu.c core/ui/machines_ui.c $(sort $(SL_JOB)) core/src/toolpath_paint.c \
+	    slicer/tools/preview.c slicer/src/slicer_ui.c core/ui/settings_ui.c core/ui/view_ui.c core/ui/view_gpu.c core/src/gpu.c core/ui/machines_ui.c $(sort $(SL_JOB)) core/src/toolpath_paint.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
@@ -51,10 +51,10 @@ $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # GFOpenSlicer's window at 640 by 480, its status and numbers through core/ui.
-$(BUILD)/test_slicer_ui: slicer/tests/test_slicer_ui.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/omview_ui.h core/src/view.c core/src/solid.c | $(BUILD)
+$(BUILD)/test_slicer_ui: slicer/tests/test_slicer_ui.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/settings_ui.c core/ui/view_ui.c core/ui/omview_ui.h core/src/view.c core/src/solid.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/src -Imachines/include -I$(LAYOUT)/include -o $@ slicer/tests/test_slicer_ui.c \
 	    slicer/src/slicer_ui.c $(PLAN) core/src/gcode.c core/src/settings.c machines/src/machine.c core/src/model.c core/src/stl.c \
-	    core/ui/view_ui.c core/src/view.c core/src/solid.c $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
+	    core/ui/view_ui.c core/ui/settings_ui.c core/src/view.c core/src/solid.c $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # The print settings panel both windows share, in a side column at 640 by 480.

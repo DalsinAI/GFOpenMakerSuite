@@ -15,6 +15,7 @@
 #include "omview_gpu.h"
 #include "omview_machines.h"
 #include "omview_scene.h"
+#include "omview_settings.h"
 #include "omview_ui.h"
 #include "omview_window.h"
 #include "sl_job.h"
@@ -174,6 +175,7 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     (void)userdata;
     have = printer(ui, &m, err, (int)sizeof err) == 0;
     if (job.have_part) gp_place(&job.part, m.area[0], m.area[1]); /* on the bed of the printer picked */
+    if (have) omv_settings_fit(ui, &m, &set, err, (int)sizeof err); /* the fields held to the printer */
     sl_ui_settings(ui, &set);
     omv_say(ui, "Slicing...");
     if (sl_slice(&job, &set, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
@@ -212,6 +214,22 @@ static void on_show(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* Another printer picked: the settings held to it, and why said. */
+static void on_machine(olui *ui, const olui_event *ev, void *userdata)
+{
+    om_machine m;
+    gs_settings s;
+    char err[160];
+    (void)ev;
+    (void)userdata;
+    if (printer(ui, &m, err, (int)sizeof err)) {
+        omv_say(ui, err);
+        return;
+    }
+    omv_settings_fit(ui, &m, &s, err, (int)sizeof err);
+    if (err[0]) omv_say(ui, err);
+}
+
 static void on_step(olui *ui, const olui_event *ev, void *userdata)
 {
     int n = job.path.nlayers > 0 ? job.path.nlayers : 1;
@@ -246,7 +264,13 @@ int main(void)
         fprintf(stderr, "GFOpenSlicer: %s\n", ui ? err : "GFOpenLayout is not open");
         return 20;
     }
+    if (sl_ui_init(ui, err, (int)sizeof err)) {
+        olui_free(ui);
+        fprintf(stderr, "GFOpenSlicer: %s\n", err);
+        return 20;
+    }
     olui_on(ui, "open", OLUI_CLICK, on_open, NULL);
+    olui_on(ui, "machine", OLUI_CHANGE, on_machine, NULL);
     olui_on(ui, "slice", OLUI_CLICK, on_slice, NULL);
     olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     olui_on(ui, "show", OLUI_CHANGE, on_show, NULL);
@@ -281,6 +305,7 @@ int main(void)
     omv_machines_fill(ui, "machine", &printers, "No printers");
     olui_amiga_layout(a);
     if (printers.skipped) omv_say(ui, printers.why);
+    else on_machine(ui, NULL, NULL);
     for (;;) {
         int r;
         WaitPort(w->UserPort);

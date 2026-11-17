@@ -43,10 +43,9 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
-    {"path", "input"}, {"open", "button"}, {"slice", "button"}, {"layer", "spinner"}, {"infill", "spinner"},
-    {"line", "spinner"}, {"walls", "spinner"}, {"hotend", "spinner"}, {"bed", "spinner"}, {"brim", "spinner"},
-    {"machine", "select"}, {"show", "checkbox"}, {"prev", "button"}, {"layerno", "slider"}, {"next", "button"},
-    {"gcode", "button"}
+    {"path", "input"}, {"open", "button"}, {"slice", "button"}, {"machine", "select"},
+    {"set-layer-height", "spinner"}, {"set-walls", "spinner"}, {"show", "checkbox"}, {"prev", "button"},
+    {"layerno", "slider"}, {"next", "button"}, {"gcode", "button"}
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
 
@@ -58,6 +57,7 @@ int main(void)
     int w = 640, h = 480, i, j;
     olui_set_measure(ui, measure, NULL);
     expect(olui_load(ui, gs_markup, gs_css, err, sizeof err), "the window loads");
+    expect(sl_ui_init(ui, err, (int)sizeof err) == 0, "with the settings panel");
     expect(olui_layout(ui, w, h), "the window lays out at 640 by 480, as amiga.c opens it");
     for (i = 0; i < N; i++) {
         olui_el *el = olui_find(ui, controls[i][0]);
@@ -68,6 +68,10 @@ int main(void)
             snprintf(what, sizeof what, "%s is clear of %s", controls[i][0], controls[j][0]);
             expect(!overlap(&box[i], &box[j]), what);
         }
+    }
+    {
+        olui_rect tabs;
+        expect(olui_box(ui, olui_find(ui, "set-tabs"), &tabs) && inside(&tabs, w, h), "the settings' tabs in the window");
     }
     expect(olui_find(ui, "ver") == NULL, "the name and version are in the title bar, not a row");
     expect(olui_box(ui, olui_find(ui, "view"), &view) && inside(&view, w, h) && view.h >= h / 2,
@@ -92,20 +96,16 @@ int main(void)
     expect(!strcmp(olui_get_text(olui_find(ui, "status")), "Sliced: 100 layers"), "omv_say says it on the status line");
     expect(olui_find(ui, "layers") == NULL && olui_find(ui, "skirt") == NULL, "no layer list or skirt: a slider, a brim");
     {
-        /* The window's settings: the shared defaults, then the window's
-         * numbers over them. */
+        /* The window's settings: the panel's, the shared defaults to start. */
         gs_settings s, d;
         gs_settings_default(&d);
         sl_ui_settings(ui, &s);
-        expect(s.layer_h == 0.2f && s.infill == 20.f && s.line_w == 0.4f && s.walls == 2 && s.around == GS_BRIM &&
-                   s.loops == 3 && s.top == d.top && s.filament == d.filament,
-               "0.20 mm layers, 20 % infill, 0.40 mm lines, 2 walls, 3 brim loops, the rest the defaults");
-        expect(s.hotend == 200.f && s.bed == 60.f, "200 and 60 degrees");
-        olui_set_number(ui, olui_find(ui, "layer"), 30);
-        olui_set_number(ui, olui_find(ui, "walls"), 4);
-        olui_set_number(ui, olui_find(ui, "brim"), 0);
+        expect(!memcmp(&s, &d, sizeof s), "the shared defaults to start");
+        olui_set_number(ui, olui_find(ui, "set-layer-height"), 30);
+        olui_set_number(ui, olui_find(ui, "set-walls"), 4);
+        olui_select_set(ui, olui_find(ui, "set-pattern"), GS_GRID);
         sl_ui_settings(ui, &s);
-        expect(s.layer_h == 0.3f && s.walls == 4 && s.around == GS_NONE, "and as they are changed; no brim, none");
+        expect(s.layer_h == 0.3f && s.walls == 4 && s.pattern == GS_GRID, "and as they are changed");
     }
     olui_free(ui);
     printf(fails ? "slicer ui: %d failed\n" : "slicer ui ok\n", fails);
