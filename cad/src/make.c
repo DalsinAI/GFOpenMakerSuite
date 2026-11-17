@@ -80,7 +80,6 @@ static gs_mesh *work(void)
     gs_mesh *m = gs_parts_mesh(parts, gs_parts_picked(parts));
     if (m) return m;
     gs_mesh_free(&none);
-    gs_mesh_free(&pull_base);
     return &none;
 }
 
@@ -1261,6 +1260,7 @@ done:
     gs_parts_free(parts);
     gs_mesh_free(&shown);
     gs_mesh_free(&none);
+    gs_mesh_free(&pull_base);
     gl_walls_free(&walls);
     drop_slice();
     omv_machines_free(&printers);
