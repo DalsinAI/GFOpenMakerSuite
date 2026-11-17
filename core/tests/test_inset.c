@@ -169,6 +169,55 @@ int main(void)
     expect(after < before && after > before * 0.8f, "a little less inside");
 
     meeting();
+
+    {
+        float sq[8] = {0.f, 0.f, 10.f, 0.f, 10.f, 10.f, 0.f, 10.f};
+        gl_loop box = {sq, 4, 1};
+        gl_loops tabs;
+        float cut, x, y;
+        int i, mid;
+        memset(&tabs, 0, sizeof tabs);
+        expect(gl_tabs(&box, 0, 1.f, &tabs) == 0 && tabs.n == 1 && tabs.l[0].closed && tabs.l[0].n == 4,
+               "no tabs leaves the square closed");
+        gl_loops_free(&tabs);
+        expect(gl_tabs(&box, 4, 1.f, &tabs) == 0 && tabs.n == 4, "four tabs, four open cuts");
+        cut = 0.f;
+        mid = 0;
+        for (i = 0; i < tabs.n; i++) {
+            expect(!tabs.l[i].closed && tabs.l[i].n >= 2, "each remaining piece is open");
+            cut += gl_loop_length(&tabs.l[i]);
+        }
+        expect(near(cut, 36.f, 1e-3f), "four 1 mm tabs leave 36 mm of cut");
+        /* Mid-edge of each side is a tab centre, so no cut lands on (5,0). */
+        for (i = 0; i < tabs.n; i++) {
+            int k;
+            for (k = 0; k < tabs.l[i].n; k++) {
+                x = tabs.l[i].xy[k * 2];
+                y = tabs.l[i].xy[k * 2 + 1];
+                if (near(x, 5.f, 0.05f) && near(y, 0.f, 0.05f)) mid++;
+            }
+        }
+        expect(mid == 0, "a square's tabs sit mid-edge, not in the remaining cuts");
+        /* Ends of the first tab around (5,0): (4.5, 0) and (5.5, 0). */
+        {
+            int ends = 0;
+            for (i = 0; i < tabs.n; i++) {
+                int k;
+                for (k = 0; k < tabs.l[i].n; k++) {
+                    x = tabs.l[i].xy[k * 2];
+                    y = tabs.l[i].xy[k * 2 + 1];
+                    if (near(y, 0.f, 1e-4f) && (near(x, 4.5f, 1e-4f) || near(x, 5.5f, 1e-4f))) ends++;
+                }
+            }
+            expect(ends == 2, "the bottom tab is 1 mm about the mid-edge");
+        }
+        gl_loops_free(&tabs);
+        expect(gl_tabs(&box, 4, 9.5f, &tabs) == 0 && tabs.n == 4, "tabs that use the whole perimeter but for 0.5 mm gaps still fit");
+        gl_loops_free(&tabs);
+        expect(gl_tabs(&box, 4, 9.6f, &tabs) == -2 && tabs.n == 0, "tabs that need more than the perimeter are refused");
+        expect(gl_tabs(&box, -1, 1.f, &tabs) == -1, "a negative count is refused");
+    }
+
     gl_loops_free(&L);
     gl_loops_free(&in);
     gl_loops_free(&gone);

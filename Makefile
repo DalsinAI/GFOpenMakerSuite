@@ -380,6 +380,12 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-kerf-off.gcode kerf=0.2 \
 	    2> $(BUILD)/burn-kerf-off.txt
 	grep -q 'cannot burn this' $(BUILD)/burn-kerf-off.txt && test ! -e $(BUILD)/burn-kerf-off.gcode
+	$(BUILD)/openmake-burn burn/tests/data/square-10mm-at-5.svg $(BUILD)/burn-tabs.gcode tabs=4 tabw=1 kerf=0.2 > /dev/null
+	grep -q 'X4.900' $(BUILD)/burn-tabs.gcode && grep -q 'X15.100' $(BUILD)/burn-tabs.gcode && \
+	    test $$(grep -c '^G0 ' $(BUILD)/burn-tabs.gcode) -ge 4
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-tabs-fit.gcode tabs=4 tabw=20 \
+	    2> $(BUILD)/burn-tabs-fit.txt
+	grep -q 'tabs do not fit' $(BUILD)/burn-tabs-fit.txt && test ! -e $(BUILD)/burn-tabs-fit.gcode
 	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview

@@ -52,6 +52,15 @@ void gl_loops_free(gl_loops *out);
 float gl_loop_area(const gl_loop *l);
 float gl_loop_length(const gl_loop *l);
 
+/* Holding tabs on one closed loop: `count` gaps of `width` mm, equally
+ * spaced, each centred half a step along the perimeter so a square's
+ * four tabs sit mid-edge, not on a corner. Replaces out with the
+ * remaining open cuts. count 0 or width 0 leaves the loop closed,
+ * uncut. 0, or -1 out of memory or a bad argument, or -2 if the tabs
+ * do not fit (each tab plus 0.5 mm of cut, times the count, must fit
+ * the perimeter). */
+int gl_tabs(const gl_loop *in, int count, float width, gl_loops *out);
+
 /* Replaces out with every closed loop of in moved d mm into the material:
  * an outside shrinks and a hole grows, each corner mitred. Where moved
  * walls meet they are joined (gl_union): a part that pinches apart becomes

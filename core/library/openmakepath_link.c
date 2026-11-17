@@ -147,3 +147,8 @@ int gt_fill_grid(gt_path *p, const gl_loops *region, const gl_loops *const *soli
 {
     return GT_FillGrid(p, region, solid, nsolid, z, w, every, cross);
 }
+
+int gl_tabs(const gl_loop *in, int count, float width, gl_loops *out)
+{
+    return GL_Tabs(in, count, width, out);
+}

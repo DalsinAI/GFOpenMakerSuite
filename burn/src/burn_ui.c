@@ -62,7 +62,7 @@ int burn_ui_count(olui *ui)
 int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int errlen)
 {
     olui_el *parent = olui_find(ui, "layers");
-    char m[2048], css[96], id[32];
+    char m[2560], css[96], id[32];
     int i;
     if (!parent) {
         snprintf(err, (size_t)errlen, "the layer list is missing");
@@ -114,9 +114,13 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                  "<row><label for=\"layer-%d-kerf\">Kerf</label>"
                  "<spinner id=\"layer-%d-kerf\" min=\"0\" max=\"20\" step=\"0.01\" value=\"%.2f\">"
                  "<span>mm</span></row>"
+                 "<row><label class=\"pair\" for=\"layer-%d-tabs\">Tabs</label>"
+                 "<spinner id=\"layer-%d-tabs\" min=\"0\" max=\"32\" step=\"1\" value=\"%d\">"
+                 "<label class=\"pair\" for=\"layer-%d-tabw\">Width</label>"
+                 "<spinner id=\"layer-%d-tabw\" min=\"0\" max=\"20\" step=\"0.01\" value=\"%.2f\"></row>"
                  "</column>",
                  L, L, L, L, (unsigned)ly.colour, L, L, L, L, (double)ly.power, L, L, (double)ly.speed, L, L, ly.passes, L, L,
-                 L, L, (double)ly.interval, L, L, (double)ly.kerf);
+                 L, L, (double)ly.interval, L, L, (double)ly.kerf, L, L, ly.tabs, L, L, (double)ly.tabw);
         snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", L, (unsigned)ly.colour);
         if (!olui_add_css(ui, css) || !olui_add(ui, parent, m, err, (size_t)errlen)) return -1;
         id_of(id, (int)sizeof id, L, "on");
@@ -200,6 +204,12 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         id_of(id, (int)sizeof id, i, "kerf");
         store[i].kerf = omv_number(ui, id);
         store[i].set |= BURN_SET_KERF;
+        id_of(id, (int)sizeof id, i, "tabs");
+        store[i].tabs = (int)(omv_number(ui, id) + 0.5f);
+        store[i].set |= BURN_SET_TABS;
+        id_of(id, (int)sizeof id, i, "tabw");
+        store[i].tabw = omv_number(ui, id);
+        store[i].set |= BURN_SET_TABW;
     }
 }
 

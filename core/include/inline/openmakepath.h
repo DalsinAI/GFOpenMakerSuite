@@ -420,4 +420,19 @@ static __inline__ int GT_FillGrid(gt_path *p, const gl_loops *region, const gl_l
 #endif
 }
 
+static __inline__ int GL_Tabs(const gl_loop *in, int count, float width, gl_loops *out)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gl_loop *, int, ULONG, gl_loops *, struct Library *))om_host_vector(OpenMakePathBase, 204))(in, count, om_lib_bits(width), out, OpenMakePathBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakePathBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(in);
+    register ULONG _d0 __asm("d0") = (ULONG)(count);
+    register ULONG _d1 __asm("d1") = om_lib_bits(width);
+    register ULONG _a1 __asm("a1") = (ULONG)(out);
+    __asm__ volatile("jsr a6@(-204:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

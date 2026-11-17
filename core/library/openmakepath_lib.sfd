@@ -47,4 +47,6 @@ void GP_MoreDefaults(gp_more *x)(a0)
 int GP_LayerMore(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x, int n)(a0,a1,a2,a3,d0)
 int GP_PartMore(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more *x)(a0,a1,a2,a3)
 int GT_FillGrid(gt_path *p, const gl_loops *region, const gl_loops *const *solid, int nsolid, float z, float w, int every, int cross)(a0,a1,a2,d0,d1,d2,d3,d4)
+* 1.4: holding tabs on a closed loop
+int GL_Tabs(const gl_loop *in, int count, float width, gl_loops *out)(a0,d0,d1,a1)
 ==end
