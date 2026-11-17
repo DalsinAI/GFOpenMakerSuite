@@ -308,9 +308,22 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-m3.gcode constant=1 power=100 > /dev/null
 	grep -q '^M3' $(BUILD)/burn-m3.gcode && grep -q '^S1000' $(BUILD)/burn-m3.gcode && ! grep -q '^M4' $(BUILD)/burn-m3.gcode
 	$(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-layers.gcode \
-	    layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
+	    cuts_last=0 layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
 	grep -q '^S1000' $(BUILD)/burn-layers.gcode && grep -q '^S250' $(BUILD)/burn-layers.gcode && \
 	    grep -q ' F600' $(BUILD)/burn-layers.gcode && grep -q ' F2400' $(BUILD)/burn-layers.gcode
+	test $$(grep -n '^S1000' $(BUILD)/burn-layers.gcode | head -1 | cut -d: -f1) -lt \
+	    $$(grep -n '^S250' $(BUILD)/burn-layers.gcode | head -1 | cut -d: -f1)
+	$(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-cuts-last.gcode \
+	    layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
+	test $$(grep -n '^S250' $(BUILD)/burn-cuts-last.gcode | head -1 | cut -d: -f1) -lt \
+	    $$(grep -n '^S1000' $(BUILD)/burn-cuts-last.gcode | head -1 | cut -d: -f1)
+	$(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-order.gcode \
+	    cuts_last=0 order=2,1 layer=#ff0000,power=100,speed=10 layer=#0000ff,power=25,speed=40 > /dev/null
+	test $$(grep -n '^S250' $(BUILD)/burn-order.gcode | head -1 | cut -d: -f1) -lt \
+	    $$(grep -n '^S1000' $(BUILD)/burn-order.gcode | head -1 | cut -d: -f1)
+	! $(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-orderbad.gcode \
+	    cuts_last=0 order=9 2> $(BUILD)/burn-orderbad.txt
+	grep -q 'order: no such layer 9' $(BUILD)/burn-orderbad.txt && test ! -e $(BUILD)/burn-orderbad.gcode
 	$(BUILD)/openmake-burn burn/tests/data/square-fill.svg $(BUILD)/burn-fill.gcode mode=fill interval=0.2 > /dev/null
 	grep -q '^M4' $(BUILD)/burn-fill.gcode && grep -q '^G1 ' $(BUILD)/burn-fill.gcode && \
 	    test $$(grep -c '^G1 ' $(BUILD)/burn-fill.gcode) -ge 40

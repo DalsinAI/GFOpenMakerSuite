@@ -26,7 +26,7 @@ static const char burn_markup[] =
     "<fieldset id=\"settingsbox\"><legend>Settings</legend>"
     "<row><label for=\"machine\">Laser</label><select id=\"machine\"></select></row>"
     "<column id=\"layers\"></column>"
-    "<row><checkbox id=\"constant\">M3 (constant)</checkbox></row>"
+    "<row><checkbox id=\"cuts_last\" checked>Cuts last</checkbox></row>""<row><checkbox id=\"constant\">M3 (constant)</checkbox></row>"
     "</fieldset>"
     "</column>"
     "<div id=\"view\"></div>"
@@ -64,6 +64,6 @@ static const char burn_css[] =
     "#layers label.name{width:auto;flex:1}"
     "#layers spinner{flex:1;min-width:0}"
     "#layers span{width:16px;color:#616161}"
-    "#layers checkbox{width:16px}";
+    "#layers checkbox{width:16px}""#layers .shift{width:28px;min-width:28px;padding:0 2px}";
 
 #endif

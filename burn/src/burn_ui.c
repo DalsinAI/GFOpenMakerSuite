@@ -8,7 +8,8 @@
 #include <string.h>
 
 static const char layers_css[] =
-    "#layers .swatch{width:12px;min-height:12px;border:1px solid #d0d0d0}";
+    "#layers .swatch{width:12px;min-height:12px;border:1px solid #d0d0d0}"
+    "#layers .shift{width:28px;min-width:28px;padding:0 2px}";
 
 static void id_of(char *buf, int n, int i, const char *what)
 {
@@ -16,6 +17,34 @@ static void id_of(char *buf, int n, int i, const char *what)
         snprintf(buf, (size_t)n, "layer-%d-%s", i, what);
     else
         snprintf(buf, (size_t)n, "layer-%d", i);
+}
+
+
+static int layer_id(const char *id)
+{
+    int n = 0;
+    if (!id || strncmp(id, "layer-", 6) != 0) return -1;
+    id += 6;
+    if (*id < '0' || *id > '9') return -1;
+    while (*id >= '0' && *id <= '9') n = n * 10 + (*id++ - '0');
+    if (*id) return -1;
+    return n;
+}
+
+static void list_order(const burn_opts *o, int *ord, int n)
+{
+    int i, k = 0, used[256];
+    for (i = 0; i < n; i++) used[i] = 0;
+    if (o && o->seq && o->nseq > 0) {
+        for (i = 0; i < o->nseq && k < n; i++) {
+            int L = o->seq[i];
+            if (L < 0 || L >= n || used[L]) continue;
+            ord[k++] = L;
+            used[L] = 1;
+        }
+    }
+    for (i = 0; i < n; i++)
+        if (!used[i]) ord[k++] = i;
 }
 
 int burn_ui_count(olui *ui)
@@ -44,10 +73,22 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
         snprintf(err, (size_t)errlen, "the layer list's style did not load");
         return -1;
     }
+    if (o) {
+        olui_el *cl = olui_find(ui, "cuts_last");
+        if (cl) olui_set_checked(ui, cl, o->cuts_last);
+    }
     if (!d) return 0;
-    for (i = 0; i < d->nlayer; i++) {
+    {
+        int ord[256];
+        if (d->nlayer > 256) {
+            snprintf(err, (size_t)errlen, "too many layers");
+            return -1;
+        }
+        list_order(o, ord, d->nlayer);
+        for (i = 0; i < d->nlayer; i++) {
+        int L = ord[i];
         burn_layer ly;
-        burn_layer_of(o, d, i, &ly);
+        burn_layer_of(o, d, L, &ly);
         if (ly.colour == GV_NONE) continue;
         snprintf(m, sizeof m,
                  "<column id=\"layer-%d\">"
@@ -55,6 +96,8 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                  "<checkbox id=\"layer-%d-on\"></checkbox>"
                  "<div id=\"layer-%d-swatch\" class=\"swatch\"></div>"
                  "<label id=\"layer-%d-name\" class=\"name\">#%06x</label>"
+                 "<button id=\"layer-%d-up\" class=\"shift\">Up</button>"
+                 "<button id=\"layer-%d-down\" class=\"shift\">Dn</button>"
                  "</row>"
                  "<row><label for=\"layer-%d-power\">Power</label>"
                  "<spinner id=\"layer-%d-power\" min=\"0\" max=\"100\" step=\"1\" value=\"%.0f\">"
@@ -69,13 +112,13 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                  "<spinner id=\"layer-%d-interval\" min=\"0.01\" max=\"20\" step=\"0.01\" value=\"%.2f\">"
                  "<span>mm</span></row>"
                  "</column>",
-                 i, i, i, i, (unsigned)ly.colour, i, i, (double)ly.power, i, i, (double)ly.speed, i, i, ly.passes, i, i,
-                 i, i, (double)ly.interval);
-        snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", i, (unsigned)ly.colour);
+                 L, L, L, L, (unsigned)ly.colour, L, L, L, L, (double)ly.power, L, L, (double)ly.speed, L, L, ly.passes, L, L,
+                 L, L, (double)ly.interval);
+        snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", L, (unsigned)ly.colour);
         if (!olui_add_css(ui, css) || !olui_add(ui, parent, m, err, (size_t)errlen)) return -1;
-        id_of(id, (int)sizeof id, i, "on");
+        id_of(id, (int)sizeof id, L, "on");
         olui_set_checked(ui, olui_find(ui, id), ly.on);
-        id_of(id, (int)sizeof id, i, "mode");
+        id_of(id, (int)sizeof id, L, "mode");
         {
             olui_el *sel = olui_find(ui, id);
             if (sel) {
@@ -84,6 +127,7 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                 olui_select_add(ui, sel, "Offset", "offset");
                 olui_select_set(ui, sel, ly.mode == BURN_OFFSET ? 2 : ly.mode == BURN_FILL ? 1 : 0);
             }
+        }
         }
     }
     return 0;
@@ -97,6 +141,8 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
     if (o) {
         con = olui_find(ui, "constant");
         o->constant = con && olui_get_checked(con);
+        con = olui_find(ui, "cuts_last");
+        o->cuts_last = con && olui_get_checked(con);
         o->layer = (n && store) ? store : NULL;
         o->nlayer = (n && store) ? n : 0;
     }
@@ -149,6 +195,48 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         store[i].interval = omv_number(ui, id);
         store[i].set |= BURN_SET_INTERVAL;
     }
+}
+
+
+int burn_ui_order(olui *ui, int *seq, int cap)
+{
+    olui_el *parent, *ch;
+    int n = 0;
+    if (!ui || !seq || cap <= 0) return 0;
+    parent = olui_find(ui, "layers");
+    if (!parent) return 0;
+    for (ch = olui_first_child(parent); ch && n < cap; ch = olui_next(ch)) {
+        int L = layer_id(olui_id(ch));
+        if (L < 0) continue;
+        seq[n++] = L;
+    }
+    return n;
+}
+
+int burn_ui_move(olui *ui, const gv_doc *d, burn_opts *o, burn_layer *store, int cap, int *seq, int seqcap, int L,
+                 int dir, char *err, int errlen)
+{
+    int n, i, at = -1, tmp;
+    if (!ui || !d || !o || !seq) {
+        if (err && errlen > 0) snprintf(err, (size_t)errlen, "the layer list is missing");
+        return -1;
+    }
+    burn_ui_read(ui, o, store, cap);
+    n = burn_ui_order(ui, seq, seqcap);
+    for (i = 0; i < n; i++)
+        if (seq[i] == L) at = i;
+    if (at >= 0 && dir < 0 && at > 0) {
+        tmp = seq[at];
+        seq[at] = seq[at - 1];
+        seq[at - 1] = tmp;
+    } else if (at >= 0 && dir > 0 && at + 1 < n) {
+        tmp = seq[at];
+        seq[at] = seq[at + 1];
+        seq[at + 1] = tmp;
+    }
+    o->seq = seq;
+    o->nseq = n;
+    return burn_ui_layers(ui, d, o, err, errlen);
 }
 
 void burn_ui_status(char *buf, int len, const char *name, int moves, float seconds)

@@ -3,7 +3,8 @@
  * and forth inside closed shapes (openmakepath's gt_fill); offset
  * fill follows them inwards (gl_inset). A layer can
  * take its own power, speed, passes and mode; the job's values are the
- * default. MIT, Copyright (c) 2026 AmiCradle Team. */
+ * default. cuts_last (default on) burns fills first, then lines, with
+ * the heavier lines last; the layer list order is used when it is off. MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef BURN_JOB_H
 #define BURN_JOB_H
 
@@ -50,6 +51,9 @@ typedef struct {
     float interval; /* mm between fill lines; 0: 0.2 */
     const burn_layer *layer; /* overrides, or NULL */
     int nlayer;
+    int cuts_last;     /* 1: fills first, heavier lines last; 0: seq or file order */
+    const int *seq;    /* 0-based document layers, nseq long; NULL: file order */
+    int nseq;
 } burn_opts;
 
 void burn_defaults(burn_opts *o);
@@ -66,8 +70,15 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen);
  * power, speed, passes, on, mode and interval are filled in. */
 void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out);
 
+/* 0-based document layer indices into seq[0..d->nlayer-1] as the job will
+ * run them. cap must be at least d->nlayer. 0, or -1 if cap is short. */
+int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap);
+
+/* How heavy a cut is: power * passes / speed, speed at least 0.001 mm/s. */
+float burn_heaviness(const burn_layer *ly);
+
 /* Replaces p with the line or fill paths of d, each layer at its power,
- * its passes times, in layer order. If speed is not NULL, *speed is a new
+ * its passes times, in cuts-last or list order. If speed is not NULL, *speed is a new
  * array of p->n mm/s values the caller frees (0 on a travel). 0, or -1
  * out of memory. */
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o);

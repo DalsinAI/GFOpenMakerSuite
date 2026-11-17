@@ -45,7 +45,7 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
     {"path", "input"},   {"open", "button"}, {"preview", "button"}, {"machine", "select"},
-    {"constant", "checkbox"}, {"frame", "button"}, {"gcode", "button"},
+    {"constant", "checkbox"}, {"cuts_last", "checkbox"}, {"frame", "button"}, {"gcode", "button"},
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
 
@@ -130,6 +130,42 @@ int main(void)
     olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
     burn_ui_read(ui, &o, store, 8);
     expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");
+
+    expect(olui_get_checked(olui_find(ui, "cuts_last")), "Cuts last is on by default");
+    olui_set_checked(ui, olui_find(ui, "cuts_last"), 0);
+    burn_ui_read(ui, &o, store, 8);
+    expect(o.cuts_last == 0, "unchecking Cuts last is read back");
+    olui_set_checked(ui, olui_find(ui, "cuts_last"), 1);
+    {
+        int seq[4], n;
+        olui_el *first;
+        n = burn_ui_order(ui, seq, 4);
+        expect(n == 2 && seq[0] == 0 && seq[1] == 1, "the list starts red then blue");
+        expect(olui_find(ui, "layer-0-up") && olui_find(ui, "layer-1-down") &&
+                   !strcmp(olui_tag(olui_find(ui, "layer-0-up")), "button"),
+               "Up and Dn sit on each layer row");
+        expect(burn_ui_move(ui, &d, &o, store, 8, seq, 4, 0, 1, err, (int)sizeof err) == 0, "move red down");
+        expect(olui_layout(ui, w, h), "it still lays out after a move");
+        n = burn_ui_order(ui, seq, 4);
+        first = olui_first_child(olui_find(ui, "layers"));
+        expect(n == 2 && seq[0] == 1 && seq[1] == 0 && first && !strcmp(olui_id(first), "layer-1"),
+               "Dn puts blue first in the list");
+        {
+            olui_rect boxset, pass, up;
+            expect(olui_box(ui, olui_find(ui, "settingsbox"), &boxset) &&
+                       olui_box(ui, olui_find(ui, "layer-0-passes"), &pass) &&
+                       olui_box(ui, olui_find(ui, "layer-0-up"), &up) &&
+                       pass.x >= boxset.x && pass.x + pass.w <= boxset.x + boxset.w &&
+                       up.x >= boxset.x && up.x + up.w <= boxset.x + boxset.w,
+                   "Up and the pass spinner stay inside the settings box after a move");
+        }
+        /* Display order is the list, not the cuts-last burn sort. */
+        o.cuts_last = 1;
+        expect(burn_ui_layers(ui, &d, &o, err, (int)sizeof err) == 0, "rebuild with cuts last on");
+        n = burn_ui_order(ui, seq, 4);
+        expect(n == 2 && seq[0] == 1 && seq[1] == 0 && olui_get_checked(olui_find(ui, "cuts_last")),
+               "the shown list keeps the user's order when Cuts last is on");
+    }
 
     /* Sized up, as on an RTG screen: the view takes the room. */
     {

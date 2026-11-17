@@ -2,10 +2,13 @@
  *   openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
  *       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]
  *       [layer=#rrggbb,power=80,speed=10,passes=2] [mode=line] [interval=0.2]
+ *       [cuts_last=1] [order=1,2]
  * The machine is the generic 400 mm diode (machines/laser/grbl) unless
  * DRIVER or PROFILE say otherwise. Power is a percentage, speed is mm/s.
  * A layer= sets power, speed, passes or on for one colour (or a 1-based
- * index). mode=fill scans inside closed shapes, mode=offset follows them inwards, interval the gap in mm. MIT, Copyright (c) 2026 AmiCradle Team. */
+ * index). mode=fill scans inside closed shapes, mode=offset follows them inwards, interval the gap in mm.
+ * cuts_last=1 (the default) burns fills first, then lines, heavier last;
+ * cuts_last=0 uses the file order, or order= of 1-based layers. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 
 #include <stdio.h>
@@ -31,7 +34,8 @@ static int known_key(const char *s)
 {
     static const char *const keys[] = {"DRIVER", "PROFILE", "power", "POWER", "speed", "SPEED",
                                        "passes", "PASSES", "constant", "CONSTANT", "s100", "S100",
-                                       "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER", NULL};
+                                       "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER",
+                                       "cuts_last", "CUTS_LAST", "order", "ORDER", NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -47,9 +51,11 @@ static void usage(void)
     fprintf(stderr, "usage: openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
-                    "       [mode=line] [interval=0.2]\n"
+                    "       [mode=line] [interval=0.2] [cuts_last=1] [order=1,2]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
                     "mode=fill scans inside closed shapes, mode=offset follows them inwards; interval is the gap in mm.\n"
+                    "cuts_last=1 (the default) burns fills first, then lines, with the heavier lines last.\n"
+                    "cuts_last=0 uses the file order, or order= of 1-based layers.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
                     "The machine is Generic Diode 400 unless DRIVER or PROFILE say otherwise.\n");
 }
@@ -60,7 +66,7 @@ int main(int argc, char **argv)
     const char *v;
     burn_opts o;
     burn_layer layers[32];
-    int nlayer = 0;
+    int nlayer = 0, seq[32], nseq = 0;
     om_machine m;
     gc_stats st;
     char err[160];
@@ -99,6 +105,7 @@ int main(int argc, char **argv)
     if ((v = arg2(argc, argv, "s100", "S100")) != NULL) o.s100 = (float)atof(v);
     if ((v = arg2(argc, argv, "mode", "MODE")) != NULL) o.mode = burn_mode_parse(v);
     if ((v = arg2(argc, argv, "interval", "INTERVAL")) != NULL) o.interval = (float)atof(v);
+    if ((v = arg2(argc, argv, "cuts_last", "CUTS_LAST")) != NULL) o.cuts_last = atoi(v) ? 1 : 0;
     if (o.passes < 1) o.passes = 1;
     for (i = 3; i < argc; i++) {
         const char *eq = strchr(argv[i], '=');
@@ -118,6 +125,29 @@ int main(int argc, char **argv)
     if (nlayer) {
         o.layer = layers;
         o.nlayer = nlayer;
+    }
+    if ((v = arg2(argc, argv, "order", "ORDER")) != NULL) {
+        const char *s = v;
+        while (*s) {
+            int n = 0;
+            if (*s == ',') s++;
+            if (*s < '0' || *s > '9') {
+                fprintf(stderr, "openmake-burn: order=%s: 1-based layers, comma separated\n", v);
+                return 1;
+            }
+            while (*s >= '0' && *s <= '9') n = n * 10 + (*s++ - '0');
+            if (n < 1 || nseq >= 32) {
+                fprintf(stderr, "openmake-burn: order=%s: 1-based layers, comma separated\n", v);
+                return 1;
+            }
+            seq[nseq++] = n - 1;
+            if (*s && *s != ',') {
+                fprintf(stderr, "openmake-burn: order=%s: 1-based layers, comma separated\n", v);
+                return 1;
+            }
+        }
+        o.seq = seq;
+        o.nseq = nseq;
     }
     om_clear(&m);
     if (om_load(&m, driver, err, (int)sizeof err) || (profile && om_load(&m, profile, err, (int)sizeof err))) {

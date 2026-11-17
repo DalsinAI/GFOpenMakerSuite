@@ -41,16 +41,57 @@ static gt_path path;
 static int have_path;
 static burn_opts opts;
 static burn_layer layers[64];
+static int layer_seq[64];
 static omv_machines lasers;
 static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static omv_gpu gpu;
 
+static void hook_shifts(olui *ui);
+
 static void read_opts(olui *ui)
 {
     burn_defaults(&opts);
     burn_ui_read(ui, &opts, layers, 64);
+    opts.nseq = burn_ui_order(ui, layer_seq, 64);
+    opts.seq = opts.nseq ? layer_seq : NULL;
+}
+
+static void on_shift(olui *ui, const olui_event *ev, void *userdata)
+{
+    const char *id;
+    char err[160];
+    int L = 0, dir = 0;
+    const char *s;
+    (void)userdata;
+    if (!have_doc) return;
+    id = (ev && ev->id) ? ev->id : "";
+    if (strncmp(id, "layer-", 6) != 0) return;
+    s = id + 6;
+    if (*s < '0' || *s > '9') return;
+    while (*s >= '0' && *s <= '9') L = L * 10 + (*s++ - '0');
+    if (!strcmp(s, "-up")) dir = -1;
+    else if (!strcmp(s, "-down")) dir = 1;
+    else return;
+    read_opts(ui);
+    if (burn_ui_move(ui, &doc, &opts, layers, 64, layer_seq, 64, L, dir, err, (int)sizeof err)) {
+        omv_say(ui, err);
+        return;
+    }
+    hook_shifts(ui);
+}
+
+static void hook_shifts(olui *ui)
+{
+    char id[32];
+    int i, n = burn_ui_count(ui);
+    for (i = 0; i < n; i++) {
+        snprintf(id, sizeof id, "layer-%d-up", i);
+        if (olui_find(ui, id)) olui_on(ui, id, OLUI_CLICK, on_shift, NULL);
+        snprintf(id, sizeof id, "layer-%d-down", i);
+        if (olui_find(ui, id)) olui_on(ui, id, OLUI_CLICK, on_shift, NULL);
+    }
 }
 
 /* The laser picked, loaded; a 400 mm bed when there is none. 0, or -1. */
@@ -209,6 +250,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
         omv_say(ui, err);
         return;
     }
+    hook_shifts(ui);
     gs_cam_home(&cam);
     if (preview_job(ui, &m, err, (int)sizeof err)) omv_say(ui, err);
 }
