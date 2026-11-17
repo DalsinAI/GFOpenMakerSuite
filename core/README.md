@@ -7,6 +7,9 @@ the slicer, and later the laser (burn) and CNC apps.
   watertight, and the binary STL writer.
 - `src/stl.c`: reading STL, and repair.
 - `src/layer.c`: one horizontal cut through a mesh.
+- `src/inset.c`, `src/union.c`: walls moved into the material (or out, for a
+  brim), joined where they meet: a part that pinches apart gives two loops,
+  holes that meet give one, a hole that meets the outside opens into it.
 - `src/view.c`, `src/solid.c`: the camera, the 220 mm plate and the CPU
   picture.
 - `src/gpu.c`: the same picture as an OpenGPU triangle batch.
