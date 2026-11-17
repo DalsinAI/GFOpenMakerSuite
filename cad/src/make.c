@@ -108,6 +108,20 @@ static void rebuild_shown(void)
     ntints = gm_tints(parts, tints, GS_PARTS_MAX);
 }
 
+/* Section: the picture hides whatever is above section_z. The parts are
+ * not cut. Split does that. */
+static int section_on;
+static float section_z = 10.f;
+static gs_mesh section_mesh;
+
+static const gs_mesh *view_of(void)
+{
+    if (!section_on) return &shown;
+    gs_mesh_free(&section_mesh);
+    if (ge_clip_below(&section_mesh, &shown, section_z)) return &shown;
+    return &section_mesh;
+}
+
 static void say(olui *ui, const char *text)
 {
     omv_say(ui, text);
@@ -118,15 +132,18 @@ static void verts_fit(int extra);
 static int draw_gpu(int x, int y, int w, int h)
 {
     int nv, nw;
+    const gs_mesh *vm;
     if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
+    vm = view_of();
     if (has_slice) {
         /* The toolpath alone, fitted to the part, with no grid. */
         if (!omv_gpu_room(&gpu, sliced.n * 6 + 6)) return 0;
         nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
     } else {
         verts_fit(show_layer ? walls.n * 6 : 0);
-        nv = gs_gpu_vertices_plate_tint(&shown, &cam, w, h, tints, ntints, gpu.verts, gpu.vert_cap);
+        nv = gs_gpu_vertices_plate_tint(vm, &cam, w, h, section_on ? NULL : tints, section_on ? 0 : ntints, gpu.verts,
+                                        gpu.vert_cap);
     }
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
@@ -136,7 +153,7 @@ static int draw_gpu(int x, int y, int w, int h)
     }
     nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
                              (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
-                             (uint32_t)(uintptr_t)gpu.depth, w, h, &shown, &cam, has_slice ? 0 : draw_grid, 1);
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, vm, &cam, has_slice ? 0 : draw_grid, 1);
     if (!omv_gpu_show(&gpu, nw, win->RPort, x, y)) return 0;
     presented = 1;
     return 1;
@@ -154,12 +171,14 @@ static void draw_pens(int x, int y, int w, int h)
 {
     unsigned char *rgb;
     int at[2];
+    const gs_mesh *vm;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     vw = w;
     vh = h;
     rebuild_shown();
-    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(&shown, &cam, rgb, w, h)) {
+    vm = view_of();
+    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(vm, &cam, rgb, w, h)) {
         free(rgb);
         return;
     }
@@ -796,6 +815,63 @@ static void on_washer(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
     say(ui, line);
 }
+
+/* Section hides the picture above At. Split cuts the picked part there. */
+static void section_say(olui *ui)
+{
+    char line[96];
+    if (!section_on) {
+        say(ui, "Section is off.");
+        return;
+    }
+    snprintf(line, sizeof line, "Section at %.1f mm. Everything above the plane is hidden.", (double)section_z);
+    say(ui, line);
+}
+
+static void set_section_z(olui *ui, float z)
+{
+    if (z < 0.f) z = 0.f;
+    if (z > 220.f) z = 220.f;
+    section_z = (float)(long)(z * 10.f + 0.5f) / 10.f;
+    olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + 0.5f));
+}
+
+static void on_sect(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)userdata;
+    section_on = ev->checked;
+    section_z = omv_number(ui, "sectz");
+    refresh(ui);
+    section_say(ui);
+}
+
+static void on_sectz(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    (void)userdata;
+    section_z = omv_number(ui, "sectz");
+    if (!section_on) olui_set_checked(ui, olui_find(ui, "sect"), section_on = 1);
+    refresh(ui);
+    section_say(ui);
+}
+
+static void on_split(olui *ui, const olui_event *ev, void *userdata)
+{
+    char line[120];
+    (void)ev;
+    (void)userdata;
+    remember();
+    if (ge_split(parts, omv_number(ui, "sectz"), 1, line, (int)sizeof line) < 0) {
+        forget();
+        say(ui, line);
+        return;
+    }
+    picked = -1;
+    verts_fit(0);
+    refresh(ui);
+    say(ui, line);
+}
+
 static void on_plist(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)userdata;
@@ -1164,6 +1240,9 @@ int main(int argc, char **argv)
     olui_on(ui, "drill", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_DRILL);
     olui_on(ui, "csink", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERSINK);
     olui_on(ui, "washer", OLUI_CLICK, on_washer, NULL);
+    olui_on(ui, "sect", OLUI_CHANGE, on_sect, NULL);
+    olui_on(ui, "sectz", OLUI_CHANGE, on_sectz, NULL);
+    olui_on(ui, "split", OLUI_CLICK, on_split, NULL);
     {
         int k;
         for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);
@@ -1291,7 +1370,17 @@ int main(int argc, char **argv)
                 int k = gm_command_key(code, (qual & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND)) != 0,
                                        (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0);
                 if (k == GM_KEY_PULL || k == GM_KEY_LEAVE) set_pull(ui, k == GM_KEY_PULL && tool != TOOL_PULL);
-                else if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
+                else if (k == GM_KEY_SECTION) {
+                    section_on = !section_on;
+                    olui_set_checked(ui, olui_find(ui, "sect"), section_on);
+                    refresh(ui);
+                    section_say(ui);
+                } else if (k == GM_KEY_SECT_DOWN || k == GM_KEY_SECT_UP) {
+                    set_section_z(ui, section_z + (k == GM_KEY_SECT_UP ? 1.f : -1.f));
+                    if (!section_on) olui_set_checked(ui, olui_find(ui, "sect"), section_on = 1);
+                    refresh(ui);
+                    section_say(ui);
+                } else if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
             }
             if (cls == IDCMP_MOUSEBUTTONS && code == SELECTDOWN) {
                 if (in_view(ui, w, mx, my, NULL, NULL)) {
@@ -1370,6 +1459,7 @@ done:
     gs_mesh_free(&shown);
     gs_mesh_free(&none);
     gs_mesh_free(&pull_base);
+    gs_mesh_free(&section_mesh);
     gl_walls_free(&walls);
     drop_slice();
     omv_machines_free(&printers);

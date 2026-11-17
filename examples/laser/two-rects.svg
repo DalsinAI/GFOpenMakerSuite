@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two 10 mm squares: red, then blue, on a 40 by 20 mm page. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="20mm" viewBox="0 0 40 20">
+  <rect x="0" y="0" width="10" height="10" fill="none" stroke="#ff0000" stroke-width="0.1"/>
+  <rect x="20" y="0" width="10" height="10" fill="none" stroke="#0000ff" stroke-width="0.1"/>
+</svg>

@@ -1,0 +1,24 @@
+3DBenchy.stl
+  The single-part file from CreativeTools/3DBenchy. The repository
+  says it may be downloaded, made and shared. It has no licence file.
+  NTI, Daniel Norée and Paulo Kiefe put the model in the public domain
+  in February 2025. That announcement is not a file in the repository.
+
+xyzCalibration_cube.amf
+xyzCalibration_cube.stl
+  The 20 mm cube from PrusaSlicer commit 45d0532,
+  resources/calibration/cube. The .amf is the zip that commit ships.
+  The .stl was written here from that AMF (136 triangles, 20 mm) so
+  GFOpenMake and GFOpenSlicer can open it. CC BY-SA 3.0,
+  iDig3Dprinting. cube-LICENCE.txt is the note that came with the
+  folder. The Thingiverse address in it is the attribution, not where
+  this copy was taken from. The same note names a Voron v7 AMF. That
+  AMF is not in this folder.
+
+Voron_Design_Cube_v8.STL
+  From Voron-Extras Test_Prints. GPL-3.0. GPL-3.0.txt is that
+  repository's licence.
+
+Mars-2020-sample-tube.stl
+  NASA 3D Resources, the Mars 2020 sample tube. Free and without
+  copyright. Not the insignia.

@@ -928,6 +928,142 @@ int ge_washer(gs_parts *ps, char *line, int len)
     return 0;
 }
 
+/* The picked part's index, or -1 with line saying so. Defined with Arrange. */
+static int arrange_part(gs_parts *ps, char *line, int len);
+/* Room for more parts in the list, or line saying not. */
+static int room_for(gs_parts *ps, int more, const char *what, char *line, int len);
+
+/* A name kept to 48 characters, with a short tail. */
+static void named_tail(char *dst, int n, const char *base, const char *tail)
+{
+    int bl = base ? (int)strlen(base) : 0, tl = (int)strlen(tail);
+    if (n < 2) {
+        if (n > 0) dst[0] = 0;
+        return;
+    }
+    if (bl + tl >= n) bl = n - 1 - tl;
+    if (bl < 1) bl = 1;
+    if (!base) base = "Part";
+    memcpy(dst, base, (size_t)bl);
+    memcpy(dst + bl, tail, (size_t)tl);
+    dst[bl + tl] = 0;
+}
+
+/* Where a to b crosses height z. The same point either way round. */
+static gs_v cross_z(gs_v a, gs_v b, float z)
+{
+    gs_v r;
+    float t;
+    if (a.x > b.x || (a.x == b.x && (a.y > b.y || (a.y == b.y && a.z > b.z)))) {
+        gs_v v = a;
+        a = b;
+        b = v;
+    }
+    t = (b.z == a.z) ? 0.f : (z - a.z) / (b.z - a.z);
+    r.x = a.x + (b.x - a.x) * t;
+    r.y = a.y + (b.y - a.y) * t;
+    r.z = z;
+    return r;
+}
+
+int ge_clip_below(gs_mesh *dst, const gs_mesh *src, float z)
+{
+    gs_tri *out;
+    int i, o = 0, cap;
+    if (!dst || !src || dst == src) return -1;
+    cap = src->n > 0 ? src->n * 2 : 1;
+    out = (gs_tri *)malloc(sizeof(gs_tri) * (size_t)cap);
+    if (!out) return -1;
+    for (i = 0; src->t && i < src->n; i++) {
+        gs_v v[3], below[4];
+        int s[3], k, nb = 0, f;
+        v[0] = src->t[i].a;
+        v[1] = src->t[i].b;
+        v[2] = src->t[i].c;
+        for (k = 0; k < 3; k++) s[k] = v[k].z > z + 1e-4f ? 1 : -1;
+        if (s[0] < 0 && s[1] < 0 && s[2] < 0) {
+            out[o++] = src->t[i];
+            continue;
+        }
+        if (s[0] > 0 && s[1] > 0 && s[2] > 0) continue;
+        for (k = 0; k < 3; k++) {
+            int j = (k + 1) % 3;
+            if (s[k] < 0) below[nb++] = v[k];
+            if (s[k] * s[j] < 0) below[nb++] = cross_z(v[k], v[j], z);
+        }
+        for (f = 1; f + 1 < nb; f++) {
+            out[o].a = below[0];
+            out[o].b = below[f];
+            out[o].c = below[f + 1];
+            o++;
+        }
+    }
+    gs_mesh_free(dst);
+    dst->t = out;
+    dst->n = o;
+    dst->cap = cap;
+    bound(dst);
+    return 0;
+}
+
+int ge_split(gs_parts *ps, float z, int have_z, char *line, int len)
+{
+    gs_mesh *m, below, above, low, high;
+    char lower[GS_PARTS_NAME + 1], upper[GS_PARTS_NAME + 1];
+    float pad = 2.f, sx, sy, lo, hi;
+    int at, colour, k, rc;
+    at = arrange_part(ps, line, len);
+    if (at < 0) return -1;
+    if (!room_for(ps, 1, "split", line, len)) return -1;
+    m = gs_parts_mesh(ps, at);
+    bound(m);
+    if (!have_z) z = (m->min.z + m->max.z) * 0.5f;
+    if (!(z > m->min.z + 0.4f && z < m->max.z - 0.4f)) {
+        snprintf(line, (size_t)len, "The section misses the part.");
+        return -1;
+    }
+    if (m->n > 2500) {
+        snprintf(line, (size_t)len, "That part is over 2,500 triangles, so it stays in one piece.");
+        return -1;
+    }
+    sx = m->max.x - m->min.x + pad * 2.f;
+    sy = m->max.y - m->min.y + pad * 2.f;
+    memset(&below, 0, sizeof below);
+    memset(&above, 0, sizeof above);
+    memset(&low, 0, sizeof low);
+    memset(&high, 0, sizeof high);
+    rc = gm_cube(&below, m->min.x - pad, m->min.y - pad, m->min.z - 8.f, sx, sy, z - (m->min.z - 8.f)) ||
+         gm_cube(&above, m->min.x - pad, m->min.y - pad, z, sx, sy, m->max.z + 8.f - z) ||
+         gm_intersect(&low, m, &below) || gm_intersect(&high, m, &above) || low.n < 4 || high.n < 4;
+    gs_mesh_free(&below);
+    gs_mesh_free(&above);
+    if (rc) {
+        gs_mesh_free(&low);
+        gs_mesh_free(&high);
+        snprintf(line, (size_t)len, "The section did not cut a solid.");
+        return -1;
+    }
+    colour = gs_parts_colour(ps, at);
+    named_tail(lower, (int)sizeof lower, gs_parts_name(ps, at), " lower");
+    named_tail(upper, (int)sizeof upper, gs_parts_name(ps, at), " upper");
+    lo = z - m->min.z;
+    hi = m->max.z - z;
+    gs_mesh_free(m);
+    *m = low;
+    bound(m);
+    gs_parts_rename(ps, at, lower);
+    k = gs_parts_add(ps, &high, upper);
+    if (k < 0) {
+        gs_mesh_free(&high);
+        snprintf(line, (size_t)len, "The upper half did not fit in the list.");
+        return -1;
+    }
+    gs_parts_set_colour(ps, at, colour);
+    gs_parts_set_colour(ps, k, colour);
+    snprintf(line, (size_t)len, "Split at %.1f mm. %.1f mm below, %.1f mm above.", (double)z, (double)lo, (double)hi);
+    return 0;
+}
+
 /* The face's plane: its unit normal and how far along it; 0, or -1 for a
  * face with no area. */
 static int plane_of(const gs_tri *t, gs_v *n, float *w)

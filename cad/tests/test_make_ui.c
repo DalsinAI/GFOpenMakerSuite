@@ -310,8 +310,8 @@ int main(void)
          * Add, On top and Cut; Face's distance, Pull, Chamfer and Drag (drag to pull); and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
-        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer", "fdrag"};
-        static const char tags[] = "snnnbbbnbbb"; /* select, number, button */
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer", "fdrag", "sect", "sectz", "split"};
+        static const char tags[] = "snnnbbbnbbbcnb"; /* select, number, button, checkbox */
         const int nx = (int)(sizeof ids / sizeof ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
@@ -325,11 +325,11 @@ int main(void)
             olui_box(ui, olui_find(ui, "status"), &st);
             for (a = 0; a < nx; a++) {
                 olui_el *el = olui_find(ui, ids[a]);
+                int least = tags[a] == 'b' ? 60 : tags[a] == 'c' ? 36 : 72;
+                const char *tag = tags[a] == 's' ? "select" : tags[a] == 'n' ? "spinner" : tags[a] == 'c' ? "checkbox" : "button";
                 snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", ids[a], at[s][0], at[s][1]);
                 expect(el && olui_box(ui, el, &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
-                           r[a].y + r[a].h <= st.y &&
-                           !strcmp(olui_tag(el), tags[a] == 's' ? "select" : tags[a] == 'n' ? "spinner" : "button") &&
-                           r[a].w >= (tags[a] == 'b' ? 60 : 72),
+                           r[a].y + r[a].h <= st.y && !strcmp(olui_tag(el), tag) && r[a].w >= least,
                        what);
                 for (b = 0; b < a; b++) {
                     snprintf(what, sizeof what, "%s is clear of %s", ids[a], ids[b]);
@@ -474,6 +474,9 @@ int main(void)
     expect(gm_command_key('p', 0, 0) == GM_KEY_PULL && gm_command_key('P', 0, 1) == GM_KEY_PULL &&
                gm_command_key(27, 0, 0) == GM_KEY_LEAVE && gm_command_key('p', 1, 0) == 0,
            "P drags to pull, as the bench's; Escape leaves it");
+    expect(gm_command_key('c', 0, 0) == GM_KEY_SECTION && gm_command_key('[', 0, 0) == GM_KEY_SECT_DOWN &&
+               gm_command_key(']', 0, 0) == GM_KEY_SECT_UP && gm_command_key('c', 1, 0) == 0,
+           "C sections, and the brackets move the plane");
     expect(seen.save_bg == ACCENT && seen.save_text == 0xffffffffu, "Save STL is the accent primary button");
     expect(seen.open_bg == 0xfffefefeu && seen.open_border == 0xffd0d0d0u && seen.open_radius == 4,
            "the other buttons are Clear's, with radius 4");

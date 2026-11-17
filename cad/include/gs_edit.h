@@ -153,6 +153,18 @@ int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
  * past the parts shown, a new part picked. 0, line saying so; or -1. */
 int ge_washer(gs_parts *ps, char *line, int len);
 
+/* The bench's Split. The picked part is cut by a horizontal plane at z
+ * (have_z 0: through the middle) into two closed halves, the lower one
+ * keeping the part's place in the list and the upper one added and
+ * picked. Both keep its colour. Over 2,500 triangles it is refused, as
+ * the bench's cut. 0, line saying so; or -1, the list as it was. */
+int ge_split(gs_parts *ps, float z, int have_z, char *line, int len);
+
+/* The part at or below z, for a section view. Triangles that cross the
+ * plane are cut. The cut is open: no lid. dst is replaced. 0, or -1.
+ * dst and src must not be the same mesh. */
+int ge_clip_below(gs_mesh *dst, const gs_mesh *src, float z);
+
 /* The bench's Pull by a distance: face and every face in its plane (its
  * normal within 7 degrees, its points within 0.4 mm of the plane) moved
  * mm along its normal (less than 0: pushed in), with the points of other
