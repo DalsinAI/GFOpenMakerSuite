@@ -12,6 +12,8 @@
  * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
  * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
  * FIT=axis:mm and AT=x,y[,z]: Place's Size and At on the added shape first.
+ * HOLES: 0 bolt circle, 1 hole row, 2 counterbore cut first, with HD, HN,
+ * HPCD, HPITCH, HCB and HDEEP for the Holes fields (as shown).
  * OPEN: a select's id, shown open (the side on Model for "shape").
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
@@ -118,6 +120,21 @@ int main(int argc, char **argv)
                getenv("OP") && atoi(getenv("OP")) == 1 ? "cut" : getenv("OP") && atoi(getenv("OP")) == 2 ? "met" : "joined",
                part.n);
     }
+    if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
+        ge_holes hs;
+        char why[96];
+        hs.d = getenv("HD") ? (float)atof(getenv("HD")) : 3.f;
+        hs.n = getenv("HN") ? atoi(getenv("HN")) : 4;
+        hs.pcd = getenv("HPCD") ? (float)atof(getenv("HPCD")) : 16.f;
+        hs.pitch = getenv("HPITCH") ? (float)atof(getenv("HPITCH")) : 8.f;
+        hs.cb = getenv("HCB") ? (float)atof(getenv("HCB")) : 16.f;
+        hs.deep = getenv("HDEEP") ? (float)atof(getenv("HDEEP")) : 4.f;
+        if (ge_drill(&part, atoi(getenv("HOLES")), &hs, why, (int)sizeof why)) {
+            fprintf(stderr, "HOLES: %s\n", why);
+            return 1;
+        }
+        printf("holes cut: %d triangles\n", part.n);
+    }
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
     if (!olui_load(ui, gm_markup, gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
@@ -171,6 +188,15 @@ int main(int argc, char **argv)
             olui_set_number(ui, olui_find(ui, ids[k]), (int)(size[k] * 10.f + 0.5f));
             olui_set_number(ui, olui_find(ui, ids[3 + k]), (int)(pos[k] < 0.f ? pos[k] * 10.f - 0.5f : pos[k] * 10.f + 0.5f));
         }
+    }
+    {
+        static const char *const ids[6][2] = {{"hd", "HD"}, {"hn", "HN"}, {"hpcd", "HPCD"},
+                                              {"hpitch", "HPITCH"}, {"hcb", "HCB"}, {"hdeep", "HDEEP"}};
+        int k;
+        for (k = 0; k < 6; k++)
+            if (getenv(ids[k][1]))
+                olui_set_number(ui, olui_find(ui, ids[k][0]),
+                                (int)(atof(getenv(ids[k][1])) * (k == 1 ? 1.0 : 10.0) + 0.5));
     }
     if (!olui_layout(ui, w, h)) return 1;
     if (getenv("OPEN")) {

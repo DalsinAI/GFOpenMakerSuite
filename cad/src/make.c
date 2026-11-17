@@ -613,6 +613,44 @@ static void on_place(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* Holes: the bench's bolt circle, hole row or counterbore, cut through the
+ * picked part about its middle (ge_drill), with Undo; refused, the status
+ * line says why and nothing changes. */
+static void on_holes(olui *ui, const olui_event *ev, void *userdata)
+{
+    int kind = (int)(intptr_t)userdata;
+    ge_holes h;
+    gs_mesh copy;
+    char why[96];
+    (void)ev;
+    why[0] = 0;
+    h.d = omv_number(ui, "hd");
+    h.n = (int)(omv_number(ui, "hn") + 0.5f);
+    h.pcd = omv_number(ui, "hpcd");
+    h.pitch = omv_number(ui, "hpitch");
+    h.cb = omv_number(ui, "hcb");
+    h.deep = omv_number(ui, "hdeep");
+    memset(&copy, 0, sizeof copy);
+    if (ge_copy(&copy, work()) || ge_drill(&copy, kind, &h, why, (int)sizeof why)) {
+        gs_mesh_free(&copy);
+        say(ui, why[0] ? why : "Not enough memory for the holes.");
+        return;
+    }
+    remember();
+    gs_mesh_free(work());
+    *work() = copy;
+    picked = -1;
+    refresh(ui);
+    if (kind == GE_BOLT_CIRCLE)
+        snprintf(why, sizeof why, "%d holes %.1f mm on a %.1f mm circle, cut.", h.n, (double)h.d, (double)h.pcd);
+    else if (kind == GE_HOLE_ROW)
+        snprintf(why, sizeof why, "%d holes %.1f mm, %.1f mm apart, cut.", h.n, (double)h.d, (double)h.pitch);
+    else
+        snprintf(why, sizeof why, "A %.1f mm hole with a %.1f mm counterbore %.1f deep, cut.", (double)h.d, (double)h.cb,
+                 (double)h.deep);
+    say(ui, why);
+}
+
 static void take_added(olui *ui, gs_mesh box)
 {
     remember();
@@ -833,6 +871,9 @@ int main(int argc, char **argv)
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
+    olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
+    olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
+    olui_on(ui, "cbore", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_COUNTERBORE);
     {
         int k;
         for (k = 0; k < 6; k++) olui_on(ui, place_ids[k], OLUI_CHANGE, on_place, (void *)(intptr_t)k);

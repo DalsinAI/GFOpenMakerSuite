@@ -251,6 +251,39 @@ int main(void)
         expect(olui_box(ui, olui_find(ui, "side"), &side) && inside(&side, w, h) && side.y + side.h <= status.y,
                "and the Model tab");
     }
+    {
+        /* The Holes tab: drill, holes, the patterns and the counterbore,
+         * each field with its label and unit in the side, every button
+         * clear, above the status line, at 640 by 480 and sized up. */
+        static const char *const hole_ids[] = {"hd", "hn", "hpcd", "hpitch", "hcb", "hdeep", "bolt", "row", "cbore"};
+        const int nh = (int)(sizeof hole_ids / sizeof hole_ids[0]);
+        static const int at[][2] = {{640, 480}, {1912, 1048}};
+        int s;
+        for (s = 0; s < 2; s++) {
+            olui_rect side, st, r[9];
+            int a, b;
+            char what[96];
+            olui_tabs_select(ui, side_tabs, 2);
+            expect(olui_layout(ui, at[s][0], at[s][1]), "the Holes tab lays out");
+            olui_box(ui, olui_find(ui, "side"), &side);
+            olui_box(ui, olui_find(ui, "status"), &st);
+            for (a = 0; a < nh; a++) {
+                olui_el *el = olui_find(ui, hole_ids[a]);
+                snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", hole_ids[a], at[s][0], at[s][1]);
+                expect(el && olui_box(ui, el, &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
+                           r[a].y + r[a].h <= st.y && !strcmp(olui_tag(el), a < 6 ? "spinner" : "button") &&
+                           r[a].w >= (a < 6 ? 72 : 90),
+                       what);
+                for (b = 0; b < a; b++) {
+                    snprintf(what, sizeof what, "%s is clear of %s", hole_ids[a], hole_ids[b]);
+                    expect(!overlap(&r[a], &r[b]), what);
+                }
+            }
+            expect(side.w == OMV_SETTINGS_W, "the side keeps its width on the Holes tab");
+        }
+        olui_tabs_select(ui, side_tabs, 0);
+        olui_layout(ui, w, h);
+    }
     expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
     /* The Clear look (docs/HANDOVER.md). */
