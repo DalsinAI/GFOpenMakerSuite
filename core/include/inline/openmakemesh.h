@@ -317,4 +317,24 @@ static __inline__ int GM_Facts(const gs_mesh *m, gs_facts *f)
 #endif
 }
 
+static __inline__ int GM_Extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gs_mesh *, const gs_mesh *, int, int, ULONG, ULONG, ULONG, ULONG, ULONG, struct Library *))om_host_vector(OpenMakeMeshBase, 144))(m, part, kind, op, om_lib_bits(x), om_lib_bits(y), om_lib_bits(w), om_lib_bits(d), om_lib_bits(h), OpenMakeMeshBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeMeshBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(part);
+    register ULONG _d0 __asm("d0") = (ULONG)(kind);
+    register ULONG _d1 __asm("d1") = (ULONG)(op);
+    register ULONG _d2 __asm("d2") = om_lib_bits(x);
+    register ULONG _d3 __asm("d3") = om_lib_bits(y);
+    register ULONG _d4 __asm("d4") = om_lib_bits(w);
+    register ULONG _d5 __asm("d5") = om_lib_bits(d);
+    register ULONG _d6 __asm("d6") = om_lib_bits(h);
+    __asm__ volatile("jsr a6@(-144:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

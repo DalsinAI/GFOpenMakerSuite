@@ -137,6 +137,35 @@ int main(void)
                "no part: all nought");
         expect(gm_facts(NULL, &f) == -1 && gm_facts(&c, NULL) == -1, "no mesh or no facts: refused");
     }
+    {
+        /* The bench's Extrude: a footprint stood on the bed, on a part's
+         * top (0.4 into it, so it joins), or down from its top (0.4 over
+         * it), right through when as deep as the part. */
+        gs_mesh p = {0}, j = {0};
+        float round = 0.5f * 40.f * 25.f * sinf(2.f * pi / 40.f);
+        gm_cube(&p, 100, 100, 8, 20, 20, 20);
+        expect(gm_extrude(&m, NULL, GM_RECT, GM_ON_BED, 110, 110, 30, 10, 5) == 0 && gm_open_edges(&m) == 0 &&
+                   box_is(&m, 95, 105, 0, 125, 115, 5),
+               "extrude: a block 30 by 10, 5 up from the bed");
+        expect(gm_extrude(&m, &p, GM_ROUND, GM_ON_TOP, 110, 110, 10, 0, 6) == 0 && box_is(&m, 105, 105, 27.6f, 115, 115, 34),
+               "extrude: a round 10 across stood 6 on the part's top, 0.4 into it");
+        expect(gm_union(&j, &p, &m) == 0 && gm_open_edges(&j) == 0 && near(volume(&j), 8000.f + round * 6.f, 2.f),
+               "and joined, a boss on the part");
+        expect(gm_extrude(&m, &p, GM_SLOT, GM_FROM_TOP, 110, 110, 16, 6, 4) == 0 &&
+                   box_is(&m, 102, 107, 24, 118, 113, 28.4f),
+               "extrude: a slot 16 by 6 down 4 from the top, 0.4 over it");
+        expect(gm_extrude(&m, &p, GM_RECT, GM_FROM_TOP, 110, 110, 6, 6, 20) == 0 && box_is(&m, 107, 107, 7.6f, 113, 113, 28.4f) &&
+                   gm_subtract(&j, &p, &m) == 0 && gm_open_edges(&j) == 0 && near(volume(&j), 8000.f - 36.f * 20.f, 2.f),
+               "extrude: as deep as the part goes right through");
+        expect(gm_extrude(&m, NULL, GM_RECT, GM_ON_BED, 0, 0, 0, 10, 5) == -1 &&
+                   gm_extrude(&m, NULL, GM_RECT, GM_ON_BED, 0, 0, 10, 10, 0) == -1 &&
+                   gm_extrude(&m, NULL, GM_ROUND, GM_ON_TOP, 0, 0, 10, 0, 5) == -1 &&
+                   gm_extrude(&m, &p, 3, GM_ON_BED, 0, 0, 10, 10, 5) == -1 &&
+                   gm_extrude(&m, &p, GM_RECT, 3, 0, 0, 10, 10, 5) == -1,
+               "extrude: no footprint, no height, no part to stand on, or no such kind: refused");
+        gs_mesh_free(&p);
+        gs_mesh_free(&j);
+    }
     gs_mesh_free(&m);
     if (failed) {
         printf("%d failed\n", failed);

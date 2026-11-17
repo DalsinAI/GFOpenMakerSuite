@@ -97,3 +97,8 @@ int gm_facts(const gs_mesh *m, gs_facts *f)
 {
     return GM_Facts(m, f);
 }
+
+int gm_extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h)
+{
+    return GM_Extrude(m, part, kind, op, x, y, w, d, h);
+}
