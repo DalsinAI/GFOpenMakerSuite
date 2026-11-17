@@ -53,7 +53,8 @@ be `openmakemachine.library`, loaded once for every app.
 | `printer/marlin` | Written: a generic 220 mm profile, the Creality Ender-3 V2 and the Original Prusa i3 MK3S+ |
 | `printer/klipper` | Written: the Voron 2.4 (300 mm) |
 | `printer/reprap` | Written (RepRapFirmware, Duet): a generic 300 mm profile |
-| `laser/grbl`, `laser/ruida-later` | Not yet |
+| `laser/grbl` | Written: a generic 400 mm diode-laser profile |
+| `laser/ruida-later` | Later: a binary job, not G-code |
 | `cnc/grbl`, `cnc/linuxcnc` | Not yet |
 
 Clean room: every driver is written from the firmware's public G-code

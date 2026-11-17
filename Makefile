@@ -99,8 +99,8 @@ $(BUILD)/test_view_ui: core/tests/test_view_ui.c core/ui/view_ui.c core/ui/omvie
 $(BUILD)/test_machine: machines/tests/test_machine.c machines/src/machine.c machines/include/om_machine.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_machine.c machines/src/machine.c
 
-# Every printer profile, loaded over its driver; the test target slices with each.
-$(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c machines/include/om_machine.h $(wildcard machines/printer/*/driver.om machines/printer/*/profiles/*.om) | $(BUILD)
+# Every machine profile, loaded over its driver; the test target slices with each printer.
+$(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c machines/include/om_machine.h $(wildcard machines/printer/*/driver.om machines/printer/*/profiles/*.om machines/laser/*/driver.om machines/laser/*/profiles/*.om) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
 
 # openmakemachine.library's calls through its jump table, on the host; the

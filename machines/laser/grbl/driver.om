@@ -1,0 +1,22 @@
+# Grbl in laser mode. Written from Grbl's public laser-mode documentation
+# (gnea/grbl, "Laser Mode"), no firmware source.
+#
+# The machine is expected to have laser mode on ($32=1), set in the
+# firmware, so a change of power does not stop the move. That is not
+# written in the job: $ settings stay in the controller. $30 is the S
+# at 100% power, often 1000; OpenMakeBurn uses 1000 unless you say
+# otherwise.
+# G21 is mm, G90 absolute, G94 mm per minute (Grbl's feed). M5 leaves
+# the laser off. G0 at the end goes back to the origin. $H homes, when
+# the machine has endstops; it is not in the start code, so a job can
+# begin from the origin you set.
+family = laser
+dialect = grbl
+send = file
+features = laser-power homing
+start = G21 ; mm
+start += G90 ; absolute
+start += G94 ; mm per minute
+start += M5 ; laser off
+end = M5
+end += G0 X0 Y0

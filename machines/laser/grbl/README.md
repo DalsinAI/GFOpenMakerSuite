@@ -1,5 +1,9 @@
 # Grbl (laser)
 
-Not written yet. Grbl in laser mode ($32=1): M3/M4 with S for power, which
-M4 scales with speed. For OpenMakeBurn. Clean room: from Grbl's public
-documentation only.
+Written from Grbl's public laser-mode documentation only, no firmware
+source. Laser mode ($32=1) is set in the firmware, not in the job. M3
+holds power constant; M4 scales it with speed. S is the power, scaled
+to $30 (often 1000). For OpenMakeBurn.
+
+A generic 400 mm diode-laser profile is in `profiles/`. Change its
+numbers to the machine's own.
