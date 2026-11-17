@@ -14,7 +14,7 @@ and shared by every app: `openmakemachine.library` first, then
 | `openmakepath_lib.*` | openmakepath.library: a part cut into layers, the walls welded into loops and inset (`core/src/layer.c`, `loops.c`, `inset.c`), the toolpath and its fill (`toolpath.c`, `fill.c`), and a printer's layers planned (`plan.c`). |
 | `openmakemesh_lib.*` | openmakemesh.library: STL in and out, repair, and the solids and booleans (`core/src/model.c`, `stl.c`). |
 | `openmakegcode_lib.*` | openmakegcode.library: a printer's G-code from a toolpath, its time and filament, and the job for om_check (`core/src/gcode.c`). It writes to the program's own `gc_put`, not a file, and opens openmakemachine.library at init for the start and end code: without that it does not open. |
-| `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`), and the walls and the toolpath drawn (`layer_paint.c`, `toolpath_paint.c`). |
+| `openmakeview_lib.*` | openmakeview.library: the view every app shows: the turntable camera, the part and the plate framed, the CPU drawer's solid and plate pictures and their pens (`core/src/solid.c`, `view.c`), the walls and the toolpath drawn (`layer_paint.c`, `toolpath_paint.c`), and the same as OpenGPU batches and streams (`gpu.c`). |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 
 Each library's `.sfd` is the list of its calls, in order. Never reorder or

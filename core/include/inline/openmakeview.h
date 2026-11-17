@@ -6,6 +6,7 @@
 #include <gs_view.h>
 #include <gs_layer.h>
 #include <gs_toolpath.h>
+#include <gs_gpu.h>
 
 extern struct Library *OpenMakeViewBase;
 
@@ -269,6 +270,124 @@ static __inline__ int GT_PaintPart(const gt_path *p, const gs_cam *cam, int upto
     register ULONG _d1 __asm("d1") = (ULONG)(w);
     register ULONG _d2 __asm("d2") = (ULONG)(h);
     __asm__ volatile("jsr a6@(-132:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_d2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuVertices(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, const gs_cam *, int, int, uint32_t *, int, struct Library *))om_host_vector(OpenMakeViewBase, 138))(m, cam, w, h, verts, cap, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(cam);
+    register ULONG _d0 __asm("d0") = (ULONG)(w);
+    register ULONG _d1 __asm("d1") = (ULONG)(h);
+    register ULONG _a2 __asm("a2") = (ULONG)(verts);
+    register ULONG _d2 __asm("d2") = (ULONG)(cap);
+    __asm__ volatile("jsr a6@(-138:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_d2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuVerticesPlate(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, const gs_cam *, int, int, uint32_t *, int, struct Library *))om_host_vector(OpenMakeViewBase, 144))(m, cam, w, h, verts, cap, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(cam);
+    register ULONG _d0 __asm("d0") = (ULONG)(w);
+    register ULONG _d1 __asm("d1") = (ULONG)(h);
+    register ULONG _a2 __asm("a2") = (ULONG)(verts);
+    register ULONG _d2 __asm("d2") = (ULONG)(cap);
+    __asm__ volatile("jsr a6@(-144:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_d2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuWallsPlate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gl_walls *, const gs_mesh *, const gs_cam *, int, int, uint32_t *, int, struct Library *))om_host_vector(OpenMakeViewBase, 150))(wl, m, cam, w, h, verts, cap, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(wl);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(cam);
+    register ULONG _d0 __asm("d0") = (ULONG)(w);
+    register ULONG _d1 __asm("d1") = (ULONG)(h);
+    register ULONG _a3 __asm("a3") = (ULONG)(verts);
+    register ULONG _d2 __asm("d2") = (ULONG)(cap);
+    __asm__ volatile("jsr a6@(-150:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3), "r"(_d2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuToolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gt_path *, const gs_cam *, int, int, int, int, uint32_t *, int, struct Library *))om_host_vector(OpenMakeViewBase, 156))(p, cam, upto, part, w, h, verts, cap, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(cam);
+    register ULONG _d0 __asm("d0") = (ULONG)(upto);
+    register ULONG _d1 __asm("d1") = (ULONG)(part);
+    register ULONG _d2 __asm("d2") = (ULONG)(w);
+    register ULONG _d3 __asm("d3") = (ULONG)(h);
+    register ULONG _a2 __asm("a2") = (ULONG)(verts);
+    register ULONG _d4 __asm("d4") = (ULONG)(cap);
+    __asm__ volatile("jsr a6@(-156:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_a2), "r"(_d4) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuStream(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(uint32_t *, int, uint32_t, int, uint32_t, int, uint32_t, int, int, const gs_mesh *, const gs_cam *, int, struct Library *))om_host_vector(OpenMakeViewBase, 162))(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(stream);
+    register ULONG _d0 __asm("d0") = (ULONG)(cap);
+    register ULONG _d1 __asm("d1") = (ULONG)(vert_addr);
+    register ULONG _d2 __asm("d2") = (ULONG)(nverts);
+    register ULONG _d3 __asm("d3") = (ULONG)(picture);
+    register ULONG _d4 __asm("d4") = (ULONG)(picture_bpr);
+    register ULONG _d5 __asm("d5") = (ULONG)(depth);
+    register ULONG _d6 __asm("d6") = (ULONG)(w);
+    register ULONG _d7 __asm("d7") = (ULONG)(h);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(cam);
+    register ULONG _a3 __asm("a3") = (ULONG)(grid);
+    __asm__ volatile("jsr a6@(-162:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6), "r"(_d7), "r"(_a2), "r"(_a3) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuStreamPlate(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid, int plate)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(uint32_t *, int, uint32_t, int, uint32_t, int, uint32_t, int, int, const gs_mesh *, const gs_cam *, int, int, struct Library *))om_host_vector(OpenMakeViewBase, 168))(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, plate, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(stream);
+    register ULONG _d0 __asm("d0") = (ULONG)(cap);
+    register ULONG _d1 __asm("d1") = (ULONG)(vert_addr);
+    register ULONG _d2 __asm("d2") = (ULONG)(nverts);
+    register ULONG _d3 __asm("d3") = (ULONG)(picture);
+    register ULONG _d4 __asm("d4") = (ULONG)(picture_bpr);
+    register ULONG _d5 __asm("d5") = (ULONG)(depth);
+    register ULONG _d6 __asm("d6") = (ULONG)(w);
+    register ULONG _d7 __asm("d7") = (ULONG)(h);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(cam);
+    register ULONG _a3 __asm("a3") = (ULONG)(grid);
+    register ULONG _a4 __asm("a4") = (ULONG)(plate);
+    __asm__ volatile("jsr a6@(-168:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6), "r"(_d7), "r"(_a2), "r"(_a3), "r"(_a4) : "fp0", "fp1", "cc", "memory");
     return (int)_d0;
 #endif
 }

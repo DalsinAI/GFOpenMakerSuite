@@ -102,7 +102,7 @@ for v in fpu soft; do
         core/library/openmakegcode_lib.c core/src/gcode.c machines/library/openmakemachine_link.c
     lib "$v" "$flags" openmakeview.library core/include \
         core/library/openmakeview_lib.c core/src/solid.c core/src/view.c core/src/layer_paint.c \
-        core/src/toolpath_paint.c core/src/toolpath.c
+        core/src/toolpath_paint.c core/src/toolpath.c core/src/gpu.c
     # core/tests/test_toolpath_paint.c: the toolpath planned through
     # openmakepath.library and drawn through openmakeview.library
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestToolpathPaintLib" core/tests/test_toolpath_paint.c \

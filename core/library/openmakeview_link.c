@@ -92,3 +92,33 @@ int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *
 {
     return GT_PaintPart(p, cam, upto, rgb, w, h);
 }
+
+int gs_gpu_vertices(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+    return GS_GpuVertices(m, cam, w, h, verts, cap);
+}
+
+int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+    return GS_GpuVerticesPlate(m, cam, w, h, verts, cap);
+}
+
+int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
+{
+    return GS_GpuWallsPlate(wl, m, cam, w, h, verts, cap);
+}
+
+int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)
+{
+    return GS_GpuToolpath(p, cam, upto, part, w, h, verts, cap);
+}
+
+int gs_gpu_stream(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid)
+{
+    return GS_GpuStream(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid);
+}
+
+int gs_gpu_stream_plate(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid, int plate)
+{
+    return GS_GpuStreamPlate(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, plate);
+}
