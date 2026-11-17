@@ -90,4 +90,66 @@ static __inline__ void GV_PathBox(const gv_path *p, float *minx, float *miny, fl
 #endif
 }
 
+static __inline__ int GV_LoadDxf(gv_doc *d, const char *path, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gv_doc *, const char *, char *, int, struct Library *))om_host_vector(OpenMakeVecBase, 66))(d, path, err, errlen, OpenMakeVecBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeVecBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(d);
+    register ULONG _a1 __asm("a1") = (ULONG)(path);
+    register ULONG _a2 __asm("a2") = (ULONG)(err);
+    register ULONG _d0 __asm("d0") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-66:W)" : "+r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GV_LoadDxfText(gv_doc *d, const char *text, int n, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gv_doc *, const char *, int, char *, int, struct Library *))om_host_vector(OpenMakeVecBase, 72))(d, text, n, err, errlen, OpenMakeVecBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeVecBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(d);
+    register ULONG _a1 __asm("a1") = (ULONG)(text);
+    register ULONG _d0 __asm("d0") = (ULONG)(n);
+    register ULONG _a2 __asm("a2") = (ULONG)(err);
+    register ULONG _d1 __asm("d1") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-72:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GV_Load(gv_doc *d, const char *path, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gv_doc *, const char *, char *, int, struct Library *))om_host_vector(OpenMakeVecBase, 78))(d, path, err, errlen, OpenMakeVecBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeVecBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(d);
+    register ULONG _a1 __asm("a1") = (ULONG)(path);
+    register ULONG _a2 __asm("a2") = (ULONG)(err);
+    register ULONG _d0 __asm("d0") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-78:W)" : "+r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GV_LoadText(gv_doc *d, const char *text, int n, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gv_doc *, const char *, int, char *, int, struct Library *))om_host_vector(OpenMakeVecBase, 84))(d, text, n, err, errlen, OpenMakeVecBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeVecBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(d);
+    register ULONG _a1 __asm("a1") = (ULONG)(text);
+    register ULONG _d0 __asm("d0") = (ULONG)(n);
+    register ULONG _a2 __asm("a2") = (ULONG)(err);
+    register ULONG _d1 __asm("d1") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-84:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

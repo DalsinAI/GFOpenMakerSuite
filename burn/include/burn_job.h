@@ -1,4 +1,4 @@
-/* OpenMakeBurn's job: an SVG to Grbl laser G-code, through openmakevec
+/* OpenMakeBurn's job: an SVG or DXF to Grbl laser G-code, through openmakevec
  * and openmakegcode. Line mode follows each path; fill mode scans back
  * and forth inside closed shapes (openmakepath's gt_fill); offset
  * fill follows them inwards (gl_inset). A layer can
@@ -74,7 +74,7 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o);
 
 /* Load svg, build the path, check it against m, write gcode. 0, or -1
  * with why in err. st (may be NULL) is filled as the writer left it. */
-int burn_write(const char *svg, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st, char *err,
+int burn_write(const char *drawing, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st, char *err,
                int errlen);
 
 /* A travel around the job's box (laser off). Replaces out. 0, or -1 if

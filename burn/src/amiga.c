@@ -1,5 +1,5 @@
 /* OpenMakeBurn on the Amiga. The window is GFOpenLayout (markup.h): Open
- * asks ASL for an SVG, Preview builds the line toolpath at the layer
+ * asks ASL for an SVG or a DXF, Preview builds the line toolpath at the layer
  * settings, Frame writes a travel around the job with the laser off, and
  * Save G-code writes Grbl laser G-code for the laser picked (core/ui's
  * machine picker). The view is drawn by OpenGPU when gfopengpu.library
@@ -75,7 +75,7 @@ static int preview_job(olui *ui, om_machine *m, char *err, int errlen)
     char status[180];
     int have;
     if (!have_doc) {
-        snprintf(err, (size_t)errlen, "Open an SVG first");
+        snprintf(err, (size_t)errlen, "Open a drawing first");
         return -1;
     }
     have = laser(ui, m, err, errlen) == 0;
@@ -190,13 +190,13 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     om_machine m;
     (void)ev;
     (void)userdata;
-    if (!ask_file(ui, "Open an SVG", FALSE, "#?.svg", pathbuf, (int)sizeof pathbuf)) return;
+    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf)", pathbuf, (int)sizeof pathbuf)) return;
     gv_doc_free(&doc);
     gv_doc_init(&doc);
     have_doc = 0;
     gt_free(&path);
     have_path = 0;
-    if (gv_load_svg(&doc, pathbuf, err, (int)sizeof err)) {
+    if (gv_load(&doc, pathbuf, err, (int)sizeof err)) {
         omv_say(ui, err);
         refresh(ui);
         return;
@@ -230,7 +230,7 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
     (void)ev;
     (void)userdata;
     if (!have_doc) {
-        omv_say(ui, "Open an SVG first");
+        omv_say(ui, "Open a drawing first");
         return;
     }
     if (laser(ui, &m, err, (int)sizeof err)) {

@@ -86,8 +86,22 @@ int main(void)
            "GV_LoadSvg says why it failed");
     GV_DocFree(&a);
     gv_doc_free(&b);
-    expect(calls == 9, "every call went through the table");
-    if (calls != 9)
+
+    expect(gv_load_dxf(&b, "core/tests/data/square-10mm.dxf", errb, (int)sizeof errb) == 0, "the C DXF load");
+    expect(GV_LoadDxf(&a, "core/tests/data/square-10mm.dxf", err, (int)sizeof err) == 0 && same_doc(&a, &b),
+           "GV_LoadDxf matches the C function");
+    GV_DocFree(&a);
+    expect(GV_Load(&a, "core/tests/data/square-10mm.dxf", err, (int)sizeof err) == 0 && same_doc(&a, &b),
+           "GV_Load picks the DXF");
+    GV_DocFree(&a);
+    err[0] = 0;
+    expect(GV_LoadDxf(&a, "core/tests/data/no-such.dxf", err, (int)sizeof err) == -1 && err[0],
+           "GV_LoadDxf says why it failed");
+    GV_DocFree(&a);
+    gv_doc_free(&b);
+
+    expect(calls == 15, "every call went through the table");
+    if (calls != 15)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);

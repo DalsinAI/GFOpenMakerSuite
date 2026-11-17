@@ -1,5 +1,5 @@
-/* OpenMakeBurn, from the shell: an SVG to Grbl laser G-code.
- *   openmake-burn in.svg out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
+/* OpenMakeBurn, from the shell: an SVG or DXF to Grbl laser G-code.
+ *   openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
  *       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]
  *       [layer=#rrggbb,power=80,speed=10,passes=2] [mode=line] [interval=0.2]
  * The machine is the generic 400 mm diode (machines/laser/grbl) unless
@@ -44,7 +44,7 @@ static int known_key(const char *s)
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: openmake-burn in.svg out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
+    fprintf(stderr, "usage: openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
                     "       [mode=line] [interval=0.2]\n"

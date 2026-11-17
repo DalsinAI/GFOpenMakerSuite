@@ -535,7 +535,7 @@ static int check_indexes(const gv_doc *d, const burn_opts *o, char *err, int err
     return 0;
 }
 
-int burn_write(const char *svg, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st, char *err,
+int burn_write(const char *drawing, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st, char *err,
                int errlen)
 {
     gv_doc d;
@@ -548,7 +548,7 @@ int burn_write(const char *svg, const char *gcode, const om_machine *m, const bu
     }
     gv_doc_init(&d);
     gt_init(&p);
-    if (gv_load_svg(&d, svg, err, errlen)) {
+    if (gv_load(&d, drawing, err, errlen)) {
         gv_doc_free(&d);
         return -1;
     }

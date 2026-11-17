@@ -84,10 +84,10 @@ build() {
         core/ui/view_gpu.c core/ui/view_gpu_amiga.c core/src/gpu.c core/src/plan_par.c \
         core/src/par_exec.c core/src/gcode.c core/src/settings.c machines/src/machine.c $PLAN core/src/layer.c \
         core/src/loops.c $CORE "$OLUI" -lm
-    # OpenMakeBurn's window (burn/src/amiga.c): SVG to Grbl laser G-code,
+    # OpenMakeBurn's window (burn/src/amiga.c): SVG or DXF to Grbl laser G-code,
     # core/ui's helpers, the laser picker and the OpenGPU view
     "$CC" $cf -Iburn/include -Iburn/src -s -o "$dir/GFOpenBurn" burn/src/amiga.c burn/src/burn_job.c burn/src/burn_ui.c \
-        core/src/vec.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c core/src/toolpath_paint.c core/src/gpu.c \
+        core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c core/src/toolpath_paint.c core/src/gpu.c \
         core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c core/ui/view_gpu.c core/ui/view_gpu_amiga.c \
         machines/src/machine.c $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
@@ -98,7 +98,8 @@ build() {
         core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c core/src/parts.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
-    "$CC" $cf -s -o "$dir/TestVec" core/tests/test_vec.c core/src/vec.c -lm
+    "$CC" $cf -s -o "$dir/TestVec" core/tests/test_vec.c core/src/vec.c core/src/dxf.c -lm
+    "$CC" $cf -s -o "$dir/TestDxf" core/tests/test_dxf.c core/src/vec.c core/src/dxf.c -lm
     for f in "$dir"/[A-Z]*; do
         # fpu-count.sh: the FPU instructions, not counting addresses.
         n=$(OBJDUMP=$OBJDUMP sh "$HERE/fpu-count.sh" "$f")

@@ -36,7 +36,7 @@ static const char burn_markup[] =
     "<button id=\"gcode\">Save G-code</button>"
     "</row>"
     "<hr>"
-    "<div id=\"status\">Open an SVG.</div>";
+    "<div id=\"status\">Open a drawing.</div>";
 
 static const char burn_css[] =
     "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:6px}"

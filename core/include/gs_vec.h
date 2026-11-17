@@ -1,6 +1,8 @@
-/* 2D vector drawings, and an SVG reader for them (W3C SVG 1.1: paths,
- * basic shapes, paint, coordinates and the path grammar). Written from
- * that public specification, never from another application's source.
+/* 2D vector drawings, an SVG reader (W3C SVG 1.1: paths, basic shapes,
+ * paint, coordinates and the path grammar), and an ASCII DXF reader
+ * (Autodesk's published DXF reference: lines, arcs, circles, polylines
+ * with bulge, blocks, colours and units). Written from those public
+ * specifications, never from another application's source.
  * Coordinates are millimetres, origin at the bottom-left of the view box,
  * Y up. The Amiga build is to be openmakevec.library; this is its C API.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -49,6 +51,17 @@ void gv_doc_free(gv_doc *d);
  * element are not read. */
 int gv_load_svg(gv_doc *d, const char *path, char *err, int errlen);
 int gv_load_svg_text(gv_doc *d, const char *text, int n, char *err, int errlen);
+
+/* Replaces d with the ASCII DXF at path, or the n bytes at text (n may
+ * be -1 when text has a 0 at the end). 0, or -1 with why in err. Units
+ * follow HEADER $INSUNITS (unitless is millimetres). Binary DXF, font
+ * text, hatches, splines and ellipses are not read. */
+int gv_load_dxf(gv_doc *d, const char *path, char *err, int errlen);
+int gv_load_dxf_text(gv_doc *d, const char *text, int n, char *err, int errlen);
+
+/* SVG or ASCII DXF, chosen from the contents (and a .dxf suffix). */
+int gv_load(gv_doc *d, const char *path, char *err, int errlen);
+int gv_load_text(gv_doc *d, const char *text, int n, char *err, int errlen);
 
 /* The colour that puts p on a layer: its stroke, or its fill if it has
  * no stroke. GV_NONE if it has neither. */

@@ -150,8 +150,8 @@ int main(int argc, char **argv)
         char name[64], status[180];
         const char *base;
         if (argc < 4 || omv_machines_load(&lasers, 0, &m, err, (int)sizeof err) ||
-            gv_load_svg(&d, argv[3], err, (int)sizeof err)) {
-            fprintf(stderr, "%s\n", argc < 4 ? "need an svg" : err);
+            gv_load(&d, argv[3], err, (int)sizeof err)) {
+            fprintf(stderr, "%s\n", argc < 4 ? "need a drawing" : err);
             return 1;
         }
         if (burn_ui_layers(ui, &d, &o, err, (int)sizeof err)) {

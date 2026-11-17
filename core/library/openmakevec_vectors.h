@@ -39,11 +39,39 @@ static void LIB_GV_PathBox(REG(a0, const gv_path *p), REG(a1, float *minx), REG(
     gv_path_box(p, minx, miny, maxx, maxy);
 }
 
-#define OPENMAKEVEC_LAST_BIAS 60
+static int LIB_GV_LoadDxf(REG(a0, gv_doc *d), REG(a1, const char *path), REG(a2, char *err), REG(d0, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gv_load_dxf(d, path, err, errlen);
+}
+
+static int LIB_GV_LoadDxfText(REG(a0, gv_doc *d), REG(a1, const char *text), REG(d0, int n), REG(a2, char *err), REG(d1, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gv_load_dxf_text(d, text, n, err, errlen);
+}
+
+static int LIB_GV_Load(REG(a0, gv_doc *d), REG(a1, const char *path), REG(a2, char *err), REG(d0, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gv_load(d, path, err, errlen);
+}
+
+static int LIB_GV_LoadText(REG(a0, gv_doc *d), REG(a1, const char *text), REG(d0, int n), REG(a2, char *err), REG(d1, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gv_load_text(d, text, n, err, errlen);
+}
+
+#define OPENMAKEVEC_LAST_BIAS 84
 #define OPENMAKEVEC_VECTORS \
     (APTR)LIB_GV_DocInit, \
     (APTR)LIB_GV_DocFree, \
     (APTR)LIB_GV_LoadSvg, \
     (APTR)LIB_GV_LoadSvgText, \
     (APTR)LIB_GV_PathColour, \
-    (APTR)LIB_GV_PathBox
+    (APTR)LIB_GV_PathBox, \
+    (APTR)LIB_GV_LoadDxf, \
+    (APTR)LIB_GV_LoadDxfText, \
+    (APTR)LIB_GV_Load, \
+    (APTR)LIB_GV_LoadText
