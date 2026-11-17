@@ -19,6 +19,7 @@
 #include "omview_ui.h"
 #include "omview_window.h"
 #include "sl_job.h"
+#include "slicer_rexx.h"
 #include "slicer_ui.h"
 
 #include <devices/inputevent.h>
@@ -46,6 +47,19 @@ static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static int show_layer, layer_no = 1;
 static omv_gpu gpu;
+
+/* ARexx: the port OPENMAKESLICER.1, and the command table in slicer_rexx.c. */
+static os_rexx rexx;
+static omr_port *rexx_port;
+static char stl_path[256];
+
+static void rexx_activate(void *win)
+{
+    WindowToFront((struct Window *)win);
+    ActivateWindow((struct Window *)win);
+}
+
+static void rexx_hide(void *win) { WindowToBack((struct Window *)win); }
 
 /* The printer picked, loaded; a 220 mm bed when there is none. 0, or -1. */
 static int printer(olui *ui, om_machine *m, char *err, int errlen)
@@ -158,6 +172,7 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
         omv_say(ui, err);
         return;
     }
+    snprintf(stl_path, sizeof stl_path, "%s", path);
     olui_set_text(ui, olui_find(ui, "path"), path);
     gs_cam_home(&cam);
     snprintf(err, sizeof err, "%d triangles. Slice when ready.", job.part.n);
@@ -306,9 +321,44 @@ int main(void)
     olui_amiga_layout(a);
     if (printers.skipped) omv_say(ui, printers.why);
     else on_machine(ui, NULL, NULL);
+    /* ARexx: Wait() on the window and OPENMAKESLICER.1 together. */
+    os_rexx_init(&rexx);
+    rexx.job = &job;
+    rexx.version = "GFOpenSlicer 0.1.0";
+    rexx.activate = rexx_activate;
+    rexx.hide = rexx_hide;
+    rexx.win = w;
+    rexx.ui = ui;
+    rexx.tasks = gs_par_cores();
+    sl_ui_settings(ui, &rexx.set);
+    rexx_port = omr_open(OS_REXX_PORT, rexx.version);
+    if (rexx_port) {
+        rexx.port_name = omr_name(rexx_port);
+        omr_attach(rexx_port, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
+    }
     for (;;) {
         int r;
-        WaitPort(w->UserPort);
+        ULONG mask = 1UL << w->UserPort->mp_SigBit, got, rmask = omr_mask(rexx_port);
+        got = Wait(mask | rmask);
+        if (rmask && (got & rmask)) {
+            omr_cmd *cmd;
+            char why[160];
+            snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
+            sl_ui_settings(ui, &rexx.set);
+            rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
+            omv_settings_show(ui, &rexx.set);
+            strncpy(stl_path, rexx.file, sizeof stl_path - 1);
+            stl_path[sizeof stl_path - 1] = 0;
+            if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), stl_path);
+            if (job.sliced) {
+                layer_no = job.path.nlayers;
+                if (olui_find(ui, "layerno")) olui_set_slider(ui, olui_find(ui, "layerno"), 100);
+            }
+            refresh(ui);
+            if (rexx.quit) goto done;
+        }
+        if (!(got & mask)) continue;
         while ((m = (struct IntuiMessage *)GetMsg(w->UserPort))) {
             WORD mx = m->MouseX, my = m->MouseY;
             ULONG cls = m->Class;
@@ -341,6 +391,7 @@ int main(void)
         olui_amiga_draw(a);
     }
 done:
+    omr_close(rexx_port);
     olui_amiga_free(a);
     CloseWindow(w);
     sl_free(&job);

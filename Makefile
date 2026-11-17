@@ -16,7 +16,7 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/sr
 SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_slicer_rexx $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -80,6 +80,11 @@ $(BUILD)/test_settings_ui: core/tests/test_settings_ui.c core/ui/settings_ui.c c
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # OpenMakeSlicer's job: the toolpath engine on tasks, checked and written.
+# GFOpenSlicer's ARexx commands (slicer/src/slicer_rexx.c), on the host stub.
+$(BUILD)/test_slicer_rexx: slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c $(SL_JOB) slicer/src/slicer_rexx.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/src -Islicer/include -Islicer/src -Imachines/include -o $@ \
+	    slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c $(SL_JOB) -lm
+
 $(BUILD)/test_sl_job: slicer/tests/test_sl_job.c slicer/include/sl_job.h $(SL_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Islicer/include -Imachines/include -o $@ slicer/tests/test_sl_job.c \
 	    $(sort $(SL_JOB)) -lm
@@ -256,7 +261,7 @@ $(BUILD)/test_rexx_lib: core/tests/test_rexx_lib.c core/src/rexx.c $(REXX_LIB) c
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_slicer_rexx $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_solids
@@ -267,6 +272,7 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	$(BUILD)/test_layer
 	$(BUILD)/test_make_ui
 	$(BUILD)/test_slicer_ui
+	$(BUILD)/test_slicer_rexx
 	$(BUILD)/test_sl_job
 	$(BUILD)/test_view_ui
 	$(BUILD)/test_view_gpu
