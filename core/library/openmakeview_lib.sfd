@@ -1,14 +1,16 @@
-==id $Id: openmakeview_lib.sfd 1.2 (17.11.2026) $
+==id $Id: openmakeview_lib.sfd 1.3 (17.11.2026) $
 * "openmakeview.library": OpenMakeCore's view, the one every app of the
 * suite shows (gs_view.h): the turntable camera, the part and the plate
 * framed, and the CPU drawer's pictures and pens for a machine with no
 * graphics chip; 1.1 the walls and the toolpath drawn; 1.2 the same as
-* OpenGPU batches for a chip. Each call is its C function in snake case
+* OpenGPU batches for a chip; 1.3 a point mapped, a face's colour, a
+* G-code's lines and its picture. Each call is its C function in snake case
 * (GS_ViewFrameBed is gs_view_frame_bed); floats travel as their bits.
 * Never reorder or take a call out; add new ones at the end.
 * core/library/gen-library.py writes the rest from this.
 * gs_view_map and gs_view_colour take points by value and gs_view_lines
-* hands back memory the program frees, so they are not here.
+* hands back memory the program frees, so they are here as their _at, _of
+* and _into forms, which take addresses and fill the program's room.
 ==base _OpenMakeViewBase
 ==basetype struct Library *
 ==libname openmakeview.library
@@ -45,4 +47,9 @@ int GS_GpuWallsPlate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, in
 int GS_GpuToolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)(a0,a1,d0,d1,d2,d3,a2,d4)
 int GS_GpuStream(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid)(a0,d0,d1,d2,d3,d4,d5,d6,d7,a1,a2,a3)
 int GS_GpuStreamPlate(uint32_t *stream, int cap, uint32_t vert_addr, int nverts, uint32_t picture, int picture_bpr, uint32_t depth, int w, int h, const gs_mesh *m, const gs_cam *cam, int grid, int plate)(a0,d0,d1,d2,d3,d4,d5,d6,d7,a1,a2,a3,a4)
+* 1.3: a point on the screen, a face's colour, a G-code's lines and picture
+void GS_ViewMapAt(const gs_frame *f, const gs_cam *cam, const gs_v *p, float *xyz)(a0,a1,a2,a3)
+int GS_ViewColourOf(const gs_cam *cam, const gs_v *pts, int *rgb)(a0,a1,a2)
+int GS_ViewLinesInto(const char *gcode, int len, gs_line *lines, int cap, float *box)(a0,d0,a1,d1,a2)
+int GS_ViewPaint(const char *gcode, int len, unsigned char *rgb, int w, int h)(a0,d0,a1,d1,d2)
 ==end

@@ -452,3 +452,13 @@ int gs_view_bed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, 
     free(zb);
     return 0;
 }
+
+void gs_view_map_at(const gs_frame *f, const gs_cam *cam, const gs_v *p, float *xyz)
+{
+    gs_view_map(f, cam, *p, &xyz[0], &xyz[1], &xyz[2]);
+}
+
+int gs_view_colour_of(const gs_cam *cam, const gs_v *pts, int *rgb)
+{
+    return gs_view_colour(cam, pts[0], pts[1], pts[2], pts[3], &rgb[0], &rgb[1], &rgb[2]);
+}

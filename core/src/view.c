@@ -177,3 +177,15 @@ int gs_pen_row(const unsigned char *rgb, int w, gs_run *runs)
     }
     return n;
 }
+
+int gs_view_lines_into(const char *gcode, int len, gs_line *lines, int cap, float *box)
+{
+    gs_line *ls = NULL;
+    float b[4];
+    int n = 0;
+    if (gs_view_lines(gcode, len, &ls, &n, &b[0], &b[1], &b[2], &b[3])) return -1;
+    if (lines && cap > 0) memcpy(lines, ls, (size_t)(n < cap ? n : cap) * sizeof *lines);
+    if (box) memcpy(box, b, sizeof b);
+    free(ls);
+    return n;
+}
