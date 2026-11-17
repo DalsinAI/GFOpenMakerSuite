@@ -246,4 +246,61 @@ static __inline__ int GM_Slot(gs_mesh *m, float x, float y, float z, float sx, f
 #endif
 }
 
+static __inline__ int GM_BoltCircle(gs_mesh *m, float x, float y, float z, float h, float d, float pcd, int n)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gs_mesh *, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, int, struct Library *))om_host_vector(OpenMakeMeshBase, 120))(m, om_lib_bits(x), om_lib_bits(y), om_lib_bits(z), om_lib_bits(h), om_lib_bits(d), om_lib_bits(pcd), n, OpenMakeMeshBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeMeshBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = om_lib_bits(x);
+    register ULONG _d1 __asm("d1") = om_lib_bits(y);
+    register ULONG _d2 __asm("d2") = om_lib_bits(z);
+    register ULONG _d3 __asm("d3") = om_lib_bits(h);
+    register ULONG _d4 __asm("d4") = om_lib_bits(d);
+    register ULONG _d5 __asm("d5") = om_lib_bits(pcd);
+    register ULONG _d6 __asm("d6") = (ULONG)(n);
+    __asm__ volatile("jsr a6@(-120:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6) : "a1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GM_HoleRow(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gs_mesh *, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, int, struct Library *))om_host_vector(OpenMakeMeshBase, 126))(m, om_lib_bits(x), om_lib_bits(y), om_lib_bits(z), om_lib_bits(h), om_lib_bits(d), om_lib_bits(pitch), n, OpenMakeMeshBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeMeshBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = om_lib_bits(x);
+    register ULONG _d1 __asm("d1") = om_lib_bits(y);
+    register ULONG _d2 __asm("d2") = om_lib_bits(z);
+    register ULONG _d3 __asm("d3") = om_lib_bits(h);
+    register ULONG _d4 __asm("d4") = om_lib_bits(d);
+    register ULONG _d5 __asm("d5") = om_lib_bits(pitch);
+    register ULONG _d6 __asm("d6") = (ULONG)(n);
+    __asm__ volatile("jsr a6@(-126:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6) : "a1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GM_Counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gs_mesh *, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, struct Library *))om_host_vector(OpenMakeMeshBase, 132))(m, om_lib_bits(x), om_lib_bits(y), om_lib_bits(z), om_lib_bits(h), om_lib_bits(d), om_lib_bits(cb), om_lib_bits(deep), OpenMakeMeshBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeMeshBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = om_lib_bits(x);
+    register ULONG _d1 __asm("d1") = om_lib_bits(y);
+    register ULONG _d2 __asm("d2") = om_lib_bits(z);
+    register ULONG _d3 __asm("d3") = om_lib_bits(h);
+    register ULONG _d4 __asm("d4") = om_lib_bits(d);
+    register ULONG _d5 __asm("d5") = om_lib_bits(cb);
+    register ULONG _d6 __asm("d6") = om_lib_bits(deep);
+    __asm__ volatile("jsr a6@(-132:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0) : "r"(_a6), "r"(_d2), "r"(_d3), "r"(_d4), "r"(_d5), "r"(_d6) : "a1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

@@ -93,7 +93,25 @@ static int LIB_GM_Slot(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), 
     return gm_slot(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(sx), om_lib_float(sy), om_lib_float(sz), seg);
 }
 
-#define OPENMAKEMESH_LAST_BIAS 114
+static int LIB_GM_BoltCircle(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG h), REG(d4, ULONG d), REG(d5, ULONG pcd), REG(d6, int n), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_bolt_circle(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(h), om_lib_float(d), om_lib_float(pcd), n);
+}
+
+static int LIB_GM_HoleRow(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG h), REG(d4, ULONG d), REG(d5, ULONG pitch), REG(d6, int n), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_hole_row(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(h), om_lib_float(d), om_lib_float(pitch), n);
+}
+
+static int LIB_GM_Counterbore(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG h), REG(d4, ULONG d), REG(d5, ULONG cb), REG(d6, ULONG deep), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_counterbore(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(h), om_lib_float(d), om_lib_float(cb), om_lib_float(deep));
+}
+
+#define OPENMAKEMESH_LAST_BIAS 132
 #define OPENMAKEMESH_VECTORS \
     (APTR)LIB_GS_StlLoad, \
     (APTR)LIB_GS_MeshFree, \
@@ -109,4 +127,7 @@ static int LIB_GM_Slot(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), 
     (APTR)LIB_GM_Cone, \
     (APTR)LIB_GM_Torus, \
     (APTR)LIB_GM_Wedge, \
-    (APTR)LIB_GM_Slot
+    (APTR)LIB_GM_Slot, \
+    (APTR)LIB_GM_BoltCircle, \
+    (APTR)LIB_GM_HoleRow, \
+    (APTR)LIB_GM_Counterbore

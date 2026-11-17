@@ -77,3 +77,18 @@ int gm_slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz,
 {
     return GM_Slot(m, x, y, z, sx, sy, sz, seg);
 }
+
+int gm_bolt_circle(gs_mesh *m, float x, float y, float z, float h, float d, float pcd, int n)
+{
+    return GM_BoltCircle(m, x, y, z, h, d, pcd, n);
+}
+
+int gm_hole_row(gs_mesh *m, float x, float y, float z, float h, float d, float pitch, int n)
+{
+    return GM_HoleRow(m, x, y, z, h, d, pitch, n);
+}
+
+int gm_counterbore(gs_mesh *m, float x, float y, float z, float h, float d, float cb, float deep)
+{
+    return GM_Counterbore(m, x, y, z, h, d, cb, deep);
+}
