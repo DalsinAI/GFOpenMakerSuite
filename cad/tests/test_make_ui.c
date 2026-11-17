@@ -225,6 +225,9 @@ int main(void)
         omv_settings_tab(ui, 0);
         olui_layout(ui, w, h);
     }
+    /* the longest name in machines/printer, as make.c fills the picker */
+    olui_select_add(ui, olui_find(ui, "machine"), "Generic Marlin 220", "Generic Marlin 220");
+    olui_select_add(ui, olui_find(ui, "machine"), "Generic RepRapFirmware 300", "Generic RepRapFirmware 300");
     olui_tabs_select(ui, side_tabs, GM_TAB_PRINT);
     olui_layout(ui, w, h);
     for (i = 0; i < NCONTROLS; i++) {
@@ -252,10 +255,11 @@ int main(void)
            "the status line is under the view");
     expect(status.y + status.h >= h - 16, "the status line is along the bottom");
     {
-        olui_rect pick, sl;
+        olui_rect pick, sl, side;
         expect(olui_box(ui, olui_find(ui, "machine"), &pick) && olui_box(ui, olui_find(ui, "slice"), &sl) &&
-                   pick.y + pick.h <= sl.y && pick.w >= 150 && pick.y + pick.h <= status.y,
-               "the printer picker is over Slice, wide enough for a name, above the status line");
+                   olui_box(ui, olui_find(ui, "side"), &side) && pick.y + pick.h <= sl.y && pick.w >= 150 &&
+                   pick.y + pick.h <= status.y && pick.x + pick.w <= side.x + side.w,
+               "the printer picker is over Slice, wide enough for a name, in the side, above the status line");
     }
     {
         olui_rect side;
