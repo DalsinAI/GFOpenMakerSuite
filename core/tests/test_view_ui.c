@@ -72,6 +72,17 @@ int main(void)
                omv_layer_of(1, 1) == 1,
            "the ends are the ends");
 
+    {
+        char line[160];
+        omv_slice_status(line, (int)sizeof line, 130, 161919, 5160.f, 5610.f, 0);
+        expect(!strcmp(line, "Sliced: 130 layers, 161919 moves, about 1 h 26 min, 5.61 m of filament."),
+               "omv_slice_status, all the layers shown");
+        omv_slice_status(line, (int)sizeof line, 130, 161919, 5160.f, 5610.f, 40);
+        expect(!strcmp(line, "Sliced: 130 layers, 161919 moves, about 1 h 26 min, 5.61 m of filament. Layers 1 to 40."),
+               "and layers 1 to 40");
+        printf("%s\n", line);
+    }
+
     memset(&box, 0, sizeof box);
     expect(gm_cube(&box, 90, 90, 0, 40, 30, 20) == 0, "a box");
     gs_cam_home(&cam);

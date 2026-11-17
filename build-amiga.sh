@@ -36,7 +36,12 @@ build() {
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
     "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
-        core/ui/view_ui.c core/ui/view_gpu_amiga.c $PLAN $CORE "$OLUI" -lm
+        core/ui/view_ui.c core/ui/view_gpu_amiga.c core/src/plan_par.c core/src/par_exec.c core/src/gcode.c \
+        machines/src/machine.c $PLAN $CORE "$OLUI" -lm
+    # Save G-code's printer, PROGDIR:machines/printer/marlin (the picker is to choose)
+    mkdir -p "$dir/machines/printer/marlin/profiles"
+    cp machines/printer/marlin/driver.om "$dir/machines/printer/marlin/"
+    cp machines/printer/marlin/profiles/generic-220.om "$dir/machines/printer/marlin/profiles/"
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
@@ -45,7 +50,7 @@ build() {
         core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
-    for f in "$dir"/*; do
+    for f in "$dir"/[A-Z]*; do
         # Decoded as a 68040's, or objdump shows FPU words as .short and
         # misses them. Every FPU mnemonic starts with f; no other does.
         # libnix's start-up clears the FPCR only when AttnFlags says there

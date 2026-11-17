@@ -2,6 +2,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "omview_ui.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 void omv_say(olui *ui, const char *text)
@@ -49,4 +50,12 @@ int omv_pens(const unsigned char *rgb, int w, int h, omv_put_fn put, void *ud)
     }
     free(runs);
     return total;
+}
+
+void omv_slice_status(char *buf, int len, int layers, int moves, float seconds, float filament, int upto)
+{
+    long min = (long)(seconds / 60.f + 0.5f);
+    int n = snprintf(buf, (size_t)len, "Sliced: %d layers, %d moves, about %ld h %02ld min, %.2f m of filament.", layers,
+                     moves, min / 60, min % 60, (double)(filament / 1000.f));
+    if (upto > 0 && n > 0 && n < len) snprintf(buf + n, (size_t)(len - n), " Layers 1 to %d.", upto);
 }

@@ -33,7 +33,7 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
 /* Every id make.c hands to olui_on. */
 static const char *const buttons[] = {
     "open", "save", "undo", "orbit", "move", "rot", "scale", "drop", "centre", "lay",
-    "addcube", "addcyl", "join", "cut", "meet", "prev", "next"
+    "addcube", "addcyl", "join", "cut", "meet", "prev", "next", "slice", "gcode"
 };
 
 /* The Layers group's other controls, and what they are. */
@@ -52,6 +52,7 @@ static struct {
     const olui_el *last_group;
     int legends;            /* File, Tool, Parts, Place, Layers */
     int layers_legend;
+    int slice_legend;
     uint32_t save_bg, save_text;
     uint32_t move_bg, open_bg, open_border;
     int open_radius;
@@ -88,6 +89,7 @@ static void collect(void *userdata, const olui_draw_op *op)
         if (id && !strcmp(id, "save")) seen.save_text = op->argb;
         if (!strcmp(tag, "legend")) seen.legends++;
         if (!strcmp(tag, "legend") && op->length == 6 && !memcmp(op->text, "Layers", 6)) seen.layers_legend++;
+        if (!strcmp(tag, "legend") && op->length == 5 && !memcmp(op->text, "Slice", 5)) seen.slice_legend++;
         if (!strcmp(tag, "label") && op->length == 4 && !memcmp(op->text, "Face", 4)) {
             seen.face_label_x = op->box.x;
             seen.face_label_y = op->baseline;
@@ -110,10 +112,10 @@ int main(void)
     olui *ui = olui_new();
     char err[160];
     olui_rect box[NBUTTONS], view, status;
-    int w = 640, h = 520, i, j;
+    int w = 640, h = 580, i, j;
     olui_set_measure(ui, measure, NULL);
     expect(olui_load(ui, gm_markup, gm_css, err, sizeof err), "the window loads"); if (failed) printf("%s\n", err);
-    expect(olui_layout(ui, w, h), "the window lays out at 640 by 520, as make.c opens it");
+    expect(olui_layout(ui, w, h), "the window lays out at 640 by 580, as make.c opens it");
     for (i = 0; i < NBUTTONS; i++) {
         olui_el *el = olui_find(ui, buttons[i]);
         char what[80];
@@ -156,7 +158,11 @@ int main(void)
     /* The Clear look (docs/HANDOVER.md). */
     olui_draw(ui, NULL, collect, NULL);
     expect(seen.window_bg == WINDOW_BG, "the window is Clear's light #f9f9f9");
-    expect(seen.groups == 5 && seen.legends == 5 && seen.layers_legend == 1, "the controls are in five groups with legends, one of them Layers");
+    expect(seen.groups == 6 && seen.legends == 6 && seen.layers_legend == 1 && seen.slice_legend == 1,
+           "the controls are in six groups with legends, Layers and Slice among them");
+    expect(strcmp(olui_get_text(olui_find(ui, "slice")), "Slice") == 0 &&
+               strcmp(olui_get_text(olui_find(ui, "gcode")), "Save G-code") == 0,
+           "the Slice group: Slice, and Save G-code");
     expect(strcmp(olui_get_text(olui_find(ui, "save")), "Save STL") == 0, "the primary button says Save STL");
     expect(seen.save_bg == ACCENT && seen.save_text == 0xffffffffu, "Save STL is the accent primary button");
     expect(seen.open_bg == 0xfffefefeu && seen.open_border == 0xffd0d0d0u && seen.open_radius == 4,
