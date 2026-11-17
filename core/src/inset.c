@@ -2,8 +2,9 @@
  * anticlockwise and holes clockwise, so the material is always on the
  * left: each edge moves left by d and each corner goes where its two
  * edges' lines meet (a mitre). A very sharp corner's mitre is cut short.
- * An edge the move turns round has closed up and goes. A d below 0 moves
- * out of the material instead, as a brim does.
+ * An edge the move turns round has closed up and goes. Where the moved
+ * loops then cross themselves or each other, gl_union joins them. A d
+ * below 0 moves out of the material instead, as a brim does.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_layer.h"
 
@@ -91,6 +92,7 @@ static int move(const gl_loop *src, float d, gl_loop *o)
 
 int gl_inset(const gl_loops *in, float d, gl_loops *out)
 {
+    gl_loops moved;
     int i;
     gl_loops_free(out);
     if (!in->n) return 0;
@@ -118,5 +120,10 @@ int gl_inset(const gl_loops *in, float d, gl_loops *out)
         }
         out->n++;
     }
-    return 0;
+    /* Walls that met: one material, as loops that do not cross. */
+    moved = *out;
+    memset(out, 0, sizeof *out);
+    i = gl_union(&moved, out);
+    gl_loops_free(&moved);
+    return i;
 }

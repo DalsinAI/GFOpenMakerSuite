@@ -11,7 +11,7 @@ LAYOUT ?= ../gfopenlayout
 .PHONY: all test preview clean
 
 # OpenMakeCore's slice: a part's layers as a toolpath.
-PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/layer.c core/src/loops.c
+PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/src/toolpath.c core/src/layer.c core/src/loops.c
 SL_JOB = slicer/src/sl_job.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
@@ -94,7 +94,7 @@ $(BUILD)/test_machine_lib: machines/tests/test_machine_lib.c machines/src/machin
 # openmakepath.library's calls, the same way.
 PATH_LIB = core/library/openmakepath_lib.sfd
 # What the library is built from.
-PATH_SRC = core/src/layer.c core/src/loops.c core/src/inset.c core/src/toolpath.c core/src/fill.c core/src/plan.c
+PATH_SRC = core/src/layer.c core/src/loops.c core/src/inset.c core/src/union.c core/src/toolpath.c core/src/fill.c core/src/plan.c
 $(BUILD)/test_path_lib: core/tests/test_path_lib.c $(PATH_SRC) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c $(PATH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
 	python3 core/library/gen-library.py $(PATH_LIB) --check
 	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_path_lib.c $(PATH_SRC) core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
@@ -102,8 +102,8 @@ $(BUILD)/test_path_lib: core/tests/test_path_lib.c $(PATH_SRC) core/src/model.c 
 $(BUILD)/test_toolpath: core/tests/test_toolpath.c core/src/toolpath.c core/include/gs_toolpath.h core/include/gs_layer.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_toolpath.c core/src/toolpath.c -lm
 
-$(BUILD)/test_inset: core/tests/test_inset.c core/src/inset.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_inset.c core/src/inset.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c -lm
+$(BUILD)/test_inset: core/tests/test_inset.c core/src/inset.c core/src/union.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_inset.c core/src/inset.c core/src/union.c core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c -lm
 
 $(BUILD)/test_fill: core/tests/test_fill.c core/src/fill.c core/src/toolpath.c core/include/gs_toolpath.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_fill.c core/src/fill.c core/src/toolpath.c -lm

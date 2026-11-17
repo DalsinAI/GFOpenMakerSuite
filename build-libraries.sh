@@ -70,7 +70,7 @@ for v in fpu soft; do
         -DLINK_BASE=OpenMakeMachineBase '-DLINK_NAME="openmakemachine.library"' -lm
     echo "$OUT/$v/TestMachineLib: $(wc -c < "$OUT/$v/TestMachineLib") bytes"
     lib "$v" "$flags" openmakepath.library core/include \
-        core/library/openmakepath_lib.c core/src/layer.c core/src/loops.c core/src/inset.c \
+        core/library/openmakepath_lib.c core/src/layer.c core/src/loops.c core/src/inset.c core/src/union.c \
         core/src/toolpath.c core/src/fill.c core/src/plan.c
     # core/tests/test_layer.c, the cut and the loops through the library
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestLayerLib" core/tests/test_layer.c \
@@ -115,7 +115,7 @@ for v in fpu soft; do
         core/library/openmaketask_lib.c core/src/par_exec.c
     # core/tests/test_plan_par.c, the wrench's layers on tasks the library makes
     "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestPlanParLib" core/tests/test_plan_par.c \
-        core/src/plan_par.c core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c \
+        core/src/plan_par.c core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/src/toolpath.c \
         core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c \
         core/library/openmaketask_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeTaskBase '-DLINK_NAME="openmaketask.library"' -lm

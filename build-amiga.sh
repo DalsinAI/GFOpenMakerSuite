@@ -52,7 +52,7 @@ fi
 
 CORE="core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c"
 # The slice as a toolpath, and its picture (gpu.c draws it for a chip).
-PLAN="core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/toolpath_paint.c"
+PLAN="core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/src/toolpath.c core/src/toolpath_paint.c"
 WARN="-Wall -Wextra -Werror"
 INC="-Icore/include -Icore/ui -Icad/include -Icad/src -Imachines/include -I$LAYOUT/include -I$SDK/Include"
 
