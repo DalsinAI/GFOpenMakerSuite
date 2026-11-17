@@ -94,6 +94,9 @@ void ge_steps_free(ge_steps *s);
 int ge_steps_push(ge_steps *s, const gs_parts *now);
 gs_parts *ge_steps_undo(ge_steps *s, gs_parts *now);
 gs_parts *ge_steps_redo(ge_steps *s, gs_parts *now);
+/* Takes back the step just pushed when the change did not happen: as
+ * undo, but now is freed, not kept for redo. */
+gs_parts *ge_steps_forget(ge_steps *s, gs_parts *now);
 int ge_steps_back(const ge_steps *s);
 int ge_steps_ahead(const ge_steps *s);
 

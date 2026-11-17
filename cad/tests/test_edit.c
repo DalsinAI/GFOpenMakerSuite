@@ -483,6 +483,11 @@ int main(void)
             ge_steps_push(st, was);
             expect(ge_steps_ahead(st) == 0, "a new step empties redo");
             ps = was;
+            ge_steps_push(st, ps);
+            gs_parts_rename(ps, 0, "Changed");
+            ps = ge_steps_forget(st, ps);
+            expect(ps && !strcmp(gs_parts_name(ps, 0), "Peg and Plate") && ge_steps_ahead(st) == 0,
+                   "forget takes the step back and keeps nothing to redo");
             for (i = 0; i < 40; i++) ge_steps_push(st, ps);
             expect(ge_steps_back(st) == 32, "32 steps back at most");
             ge_steps_free(st);

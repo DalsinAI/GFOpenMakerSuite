@@ -504,6 +504,13 @@ gs_parts *ge_steps_redo(ge_steps *s, gs_parts *now)
     return s->ahead[--s->na];
 }
 
+gs_parts *ge_steps_forget(ge_steps *s, gs_parts *now)
+{
+    if (!s || !now || s->nb < 1) return NULL;
+    gs_parts_free(now);
+    return s->back[--s->nb];
+}
+
 int ge_steps_back(const ge_steps *s) { return s ? s->nb : 0; }
 int ge_steps_ahead(const ge_steps *s) { return s ? s->na : 0; }
 
