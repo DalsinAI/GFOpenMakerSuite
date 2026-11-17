@@ -11,14 +11,16 @@
  * along the bottom, Save STL the accent primary button. The chosen tool
  * is :selected and lit in the accent too. Slice turns the part into a
  * toolpath, shown in the view, its layers up to the Layers slider's;
- * Save G-code writes it for the printer picked (core/ui's machine picker). */
+ * Save G-code writes it for the printer picked (core/ui's machine picker).
+ * 640 by 480 inside, to fit a 640 by 512 PAL screen with the window's
+ * borders: the name and version are in the title bar, not a heading row,
+ * and the groups are a row shorter where they can be. */
 static const char gm_markup[] =
-    "<row><h2>GFOpenMake</h2><spacer></spacer><span id=\"ver\">0.1.0</span></row>"
     "<row id=\"body\">"
     "<column id=\"side\">"
     "<fieldset><legend>File</legend>"
-    "<row><button id=\"open\">Open</button><button id=\"undo\">Undo</button></row>"
-    "<button id=\"save\" class=\"primary\">Save STL</button>"
+    "<row><button id=\"open\">Open</button><button id=\"undo\">Undo</button>"
+    "<button id=\"save\" class=\"primary\">Save STL</button></row>"
     "</fieldset>"
     "<fieldset><legend>Tool</legend>"
     "<row><button id=\"orbit\">Orbit</button><button id=\"move\">Move</button></row>"
@@ -33,8 +35,8 @@ static const char gm_markup[] =
     "<row><label for=\"face\">Face</label><span id=\"face\">no face</span></row>"
     "</fieldset>"
     "<fieldset><legend>Layers</legend>"
-    "<row><label for=\"lh\">Height</label><spinner id=\"lh\" value=\"0.20\" min=\"0.08\" max=\"0.80\" step=\"0.01\"></row>"
-    "<checkbox id=\"show\">Show layer</checkbox>"
+    "<row><label for=\"lh\">Height</label><spinner id=\"lh\" value=\"0.20\" min=\"0.08\" max=\"0.80\" step=\"0.01\">"
+    "<checkbox id=\"show\">Show</checkbox></row>"
     "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
     "</fieldset>"
     "<fieldset><legend>Slice</legend>"
@@ -48,10 +50,10 @@ static const char gm_markup[] =
     "<div id=\"status\">A 20 mm cube, with a hole.</div>";
 
 static const char gm_css[] =
-    "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:8px}"
+    "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:6px}"
     "#body{flex:1;padding:0;gap:8px}"
-    "#side{width:224px;gap:6px}"
-    "fieldset{border:1px solid #d0d0d0;border-radius:8px;padding:0 8px 8px}"
+    "#side{width:224px;gap:4px}"
+    "fieldset{border:1px solid #d0d0d0;border-radius:8px;padding:0 8px 6px}"
     "fieldset row{padding:0;gap:6px}"
     "button{flex:1;border:1px solid #d0d0d0;border-radius:4px;color:#1b1b1b;"
     "background:linear-gradient(#fefefe,#fbfbfb)}"

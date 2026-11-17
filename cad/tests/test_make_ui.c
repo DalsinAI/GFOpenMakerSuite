@@ -113,10 +113,12 @@ int main(void)
     olui *ui = olui_new();
     char err[160];
     olui_rect box[NBUTTONS], view, status;
-    int w = 640, h = 580, i, j;
+    /* 640 by 480 inside: with the title bar and the sizing border (about
+     * 21 px in Topaz 8) it fits a 640 by 512 PAL screen. */
+    int w = 640, h = 480, i, j;
     olui_set_measure(ui, measure, NULL);
     expect(olui_load(ui, gm_markup, gm_css, err, sizeof err), "the window loads"); if (failed) printf("%s\n", err);
-    expect(olui_layout(ui, w, h), "the window lays out at 640 by 580, as make.c opens it");
+    expect(olui_layout(ui, w, h), "the window lays out at 640 by 480, as make.c opens it");
     for (i = 0; i < NBUTTONS; i++) {
         olui_el *el = olui_find(ui, buttons[i]);
         char what[80];
@@ -160,6 +162,11 @@ int main(void)
         expect(olui_box(ui, olui_find(ui, "machine"), &pick) && olui_box(ui, olui_find(ui, "slice"), &sl) &&
                    pick.y + pick.h <= sl.y && pick.w >= 150 && pick.y + pick.h <= status.y,
                "the printer picker is over Slice, wide enough for a name, above the status line");
+    }
+    {
+        olui_rect side;
+        expect(olui_box(ui, olui_find(ui, "side"), &side) && inside(&side, w, h) && side.y + side.h <= status.y,
+               "every group fits above the status line at 480");
     }
     expect(status.w >= 78 * 8, "the status line holds 78 characters of Topaz 8 (omv_slice_status keeps to them)");
 
