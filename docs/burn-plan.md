@@ -151,7 +151,16 @@ The first window has:
 Pictures (raster engraving), text that is still a font, DXF, Ruida, sending
 over serial or the network, a rotary axis, air assist as a live control,
 galvo marking heads, and the user's own start and end G-code in the window
-(the profile already has start and end). A materials library comes later.
+(the profile already has start and end).
+
+### Materials
+
+A small library of starting-point profiles lives in `materials/laser`, as
+plain-text `.om` files like the machines/ and settings/ ones (key = value,
+`#` a comment). They are not a measured cut, and not any maker's numbers:
+tune them to the machine and the sheet. The command uses `material=`; the
+window has a Material picker (None, then the library). Keys after
+`material=` still win.
 
 A laser job must never leave the beam on during a travel or at the end of
 the file. Tests hold that.

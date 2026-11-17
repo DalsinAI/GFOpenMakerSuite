@@ -11,6 +11,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 #include "burn_ui.h"
+#include "burn_material.h"
 #include "markup.h"
 #include "omview_machines.h"
 #include "gs_gpu.h"
@@ -138,6 +139,13 @@ int main(int argc, char **argv)
     memset(&lasers, 0, sizeof lasers);
     omv_machines_scan(&lasers, "machines", "laser");
     omv_machines_fill(ui, "machine", &lasers, "No lasers");
+    {
+        burn_materials stocks;
+        burn_materials_init(&stocks);
+        burn_materials_scan(&stocks, "materials/laser");
+        burn_ui_materials_fill(ui, "material", &stocks);
+        burn_materials_free(&stocks);
+    }
     gv_doc_init(&d);
     gt_init(&path);
     burn_defaults(&o);

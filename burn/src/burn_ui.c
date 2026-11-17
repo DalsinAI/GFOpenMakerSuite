@@ -239,6 +239,89 @@ int burn_ui_move(olui *ui, const gv_doc *d, burn_opts *o, burn_layer *store, int
     return burn_ui_layers(ui, d, o, err, errlen);
 }
 
+
+static float scale_dec(int dec)
+{
+    float d = 1.f;
+    int k;
+    for (k = 0; k < dec; k++) d *= 10.f;
+    return d;
+}
+
+int burn_ui_materials_fill(olui *ui, const char *id, const burn_materials *l)
+{
+    olui_el *sel = olui_find(ui, id);
+    int i;
+    if (!sel) return 0;
+    olui_select_clear(ui, sel);
+    olui_select_add(ui, sel, "None", "none");
+    if (l) {
+        for (i = 0; i < l->n; i++) olui_select_add(ui, sel, l->at[i].name, NULL);
+    }
+    olui_select_set(ui, sel, 0);
+    return l ? l->n : 0;
+}
+
+int burn_ui_materials_chosen(olui *ui, const char *id, const burn_materials *l)
+{
+    olui_el *sel = olui_find(ui, id);
+    int i = sel ? olui_select_index(sel) : 0;
+    if (!l || i <= 0 || i > l->n) return -1;
+    return i - 1;
+}
+
+void burn_ui_material(olui *ui, burn_opts *o, const burn_material *m)
+{
+    int i, n;
+    olui_el *el;
+    if (!m) return;
+    if (o) burn_material_apply(m, o);
+    if (ui && (m->set & BURN_SET_CONSTANT)) {
+        el = olui_find(ui, "constant");
+        if (el) olui_set_checked(ui, el, m->constant);
+    }
+    if (!ui) return;
+    n = burn_ui_count(ui);
+    for (i = 0; i < n; i++) {
+        char id[32];
+        int dec;
+        if (m->set & BURN_SET_POWER) {
+            id_of(id, (int)sizeof id, i, "power");
+            el = olui_find(ui, id);
+            if (el) {
+                dec = olui_number_decimals(el);
+                olui_set_number(ui, el, (int)(m->power * scale_dec(dec) + 0.5f));
+            }
+        }
+        if (m->set & BURN_SET_SPEED) {
+            id_of(id, (int)sizeof id, i, "speed");
+            el = olui_find(ui, id);
+            if (el) {
+                dec = olui_number_decimals(el);
+                olui_set_number(ui, el, (int)(m->speed * scale_dec(dec) + 0.5f));
+            }
+        }
+        if (m->set & BURN_SET_PASSES) {
+            id_of(id, (int)sizeof id, i, "passes");
+            el = olui_find(ui, id);
+            if (el) olui_set_number(ui, el, m->passes);
+        }
+        if (m->set & BURN_SET_MODE) {
+            id_of(id, (int)sizeof id, i, "mode");
+            el = olui_find(ui, id);
+            if (el) olui_select_set(ui, el, m->mode == BURN_OFFSET ? 2 : m->mode == BURN_FILL ? 1 : 0);
+        }
+        if (m->set & BURN_SET_INTERVAL) {
+            id_of(id, (int)sizeof id, i, "interval");
+            el = olui_find(ui, id);
+            if (el) {
+                dec = olui_number_decimals(el);
+                olui_set_number(ui, el, (int)(m->interval * scale_dec(dec) + 0.5f));
+            }
+        }
+    }
+}
+
 void burn_ui_status(char *buf, int len, const char *name, int moves, float seconds)
 {
     char time[40];

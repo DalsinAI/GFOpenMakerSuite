@@ -24,7 +24,7 @@ static const char burn_markup[] =
     "<row id=\"body\">"
     "<column id=\"side\">"
     "<fieldset id=\"settingsbox\"><legend>Settings</legend>"
-    "<row><label for=\"machine\">Laser</label><select id=\"machine\"></select></row>"
+    "<row><label for=\"machine\">Laser</label><select id=\"machine\"></select></row>""<row><label for=\"material\">Material</label><select id=\"material\"></select></row>"
     "<column id=\"layers\"></column>"
     "<row><checkbox id=\"cuts_last\" checked>Cuts last</checkbox></row>""<row><checkbox id=\"constant\">M3 (constant)</checkbox></row>"
     "</fieldset>"

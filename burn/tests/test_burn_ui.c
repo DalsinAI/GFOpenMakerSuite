@@ -5,6 +5,7 @@
  * list is burn_ui.h.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_ui.h"
+#include "burn_material.h"
 #include "markup.h"
 #include "omview_machines.h"
 #include "omview_ui.h"
@@ -45,7 +46,7 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
     {"path", "input"},   {"open", "button"}, {"preview", "button"}, {"machine", "select"},
-    {"constant", "checkbox"}, {"cuts_last", "checkbox"}, {"frame", "button"}, {"gcode", "button"},
+    {"constant", "checkbox"}, {"cuts_last", "checkbox"}, {"material", "select"}, {"frame", "button"}, {"gcode", "button"},
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
 
@@ -88,6 +89,15 @@ int main(void)
     expect(omv_machines_fill(ui, "machine", &lasers, "No lasers") > 0, "the picker lists them");
     expect(strstr(lasers.at[omv_machines_chosen(ui, "machine", &lasers)].name, "Generic Diode 400") != NULL,
            "Generic Diode 400 is first");
+
+    {
+        burn_materials stocks;
+        burn_materials_init(&stocks);
+        expect(burn_materials_scan(&stocks, "materials/laser") == 0 && stocks.n == 3, "the materials library");
+        expect(burn_ui_materials_fill(ui, "material", &stocks) == 3, "the picker lists them");
+        expect(burn_ui_materials_chosen(ui, "material", &stocks) < 0, "None is first");
+        burn_materials_free(&stocks);
+    }
 
     gv_doc_init(&d);
     burn_defaults(&o);
@@ -165,6 +175,33 @@ int main(void)
         n = burn_ui_order(ui, seq, 4);
         expect(n == 2 && seq[0] == 1 && seq[1] == 0 && olui_get_checked(olui_find(ui, "cuts_last")),
                "the shown list keeps the user's order when Cuts last is on");
+    }
+    {
+        burn_materials stocks;
+        burn_materials_init(&stocks);
+        expect(burn_materials_scan(&stocks, "materials/laser") == 0, "rescan the library");
+        burn_ui_materials_fill(ui, "material", &stocks);
+        /* 3 mm plywood is first by name, index 1 in the picker (0 is None). */
+        olui_select_set(ui, olui_find(ui, "material"), 1);
+        expect(burn_ui_materials_chosen(ui, "material", &stocks) == 0 &&
+                   !strcmp(stocks.at[0].name, "3 mm plywood"),
+               "the first library entry is 3 mm plywood");
+        burn_ui_material(ui, &o, &stocks.at[0]);
+        expect(olui_layout(ui, w, h), "it still lays out with a material applied");
+        expect(o.power == 80.f && o.speed == 8.f && o.passes == 3 && o.mode == BURN_LINE &&
+                   omv_number(ui, "layer-0-power") == 80.f && omv_number(ui, "layer-1-speed") == 8.f &&
+                   omv_number(ui, "layer-0-passes") == 3.f,
+               "a material fills the job and both layer rows");
+        {
+            olui_rect boxset, pass, mat;
+            expect(olui_box(ui, olui_find(ui, "settingsbox"), &boxset) &&
+                       olui_box(ui, olui_find(ui, "layer-0-passes"), &pass) &&
+                       olui_box(ui, olui_find(ui, "material"), &mat) &&
+                       pass.x >= boxset.x && pass.x + pass.w <= boxset.x + boxset.w &&
+                       mat.x >= boxset.x && mat.x + mat.w <= boxset.x + boxset.w,
+                   "the Material picker and the pass spinner stay inside the settings box");
+        }
+        burn_materials_free(&stocks);
     }
 
     /* Sized up, as on an RTG screen: the view takes the room. */

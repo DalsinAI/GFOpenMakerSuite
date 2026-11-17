@@ -105,11 +105,11 @@ $(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c ma
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
 
 # OpenMakeBurn: an SVG to Grbl laser G-code (line mode).
-BURN_JOB = burn/src/burn_job.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
-$(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h $(BURN_JOB) | $(BUILD)
+BURN_JOB = burn/src/burn_job.c burn/src/material.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
+$(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h burn/include/burn_material.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/tests/test_burn.c $(BURN_JOB) -lm
 
-$(BUILD)/openmake-burn: burn/src/cli.c burn/include/burn_job.h $(BURN_JOB) | $(BUILD)
+$(BUILD)/openmake-burn: burn/src/cli.c burn/include/burn_job.h burn/include/burn_material.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/src/cli.c $(BURN_JOB) -lm
 
 # OpenMakeBurn's window at 640 by 480, its status and layer list.
@@ -345,6 +345,19 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	grep -q 'not a laser' $(BUILD)/burn-pr.txt && test ! -e $(BUILD)/burn-pr.gcode
 	$(BUILD)/openmake-burn burn/tests/data/square-10mm.dxf $(BUILD)/burn-square-dxf.gcode > /dev/null
 	grep -q '^M4' $(BUILD)/burn-square-dxf.gcode && grep -q '^G1 ' $(BUILD)/burn-square-dxf.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-card.gcode \
+	    material=materials/laser/card.om > /dev/null
+	grep -q '^S400' $(BUILD)/burn-card.gcode && grep -q ' F2400' $(BUILD)/burn-card.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-ply.gcode \
+	    material=materials/laser/plywood-3mm.om > /dev/null
+	grep -q '^S800' $(BUILD)/burn-ply.gcode && grep -q ' F480' $(BUILD)/burn-ply.gcode && \
+	    test $$(grep -c '^G1 ' $(BUILD)/burn-ply.gcode) -ge 12
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-mat-over.gcode \
+	    material=materials/laser/card.om power=100 > /dev/null
+	grep -q '^S1000' $(BUILD)/burn-mat-over.gcode
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-matbad.gcode \
+	    material=materials/laser/no-such.om 2> $(BUILD)/burn-matbad.txt
+	grep -q 'cannot open' $(BUILD)/burn-matbad.txt && test ! -e $(BUILD)/burn-matbad.gcode
 	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview

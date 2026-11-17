@@ -1,0 +1,8 @@
+# Starting point for a small diode laser on 3 mm plywood.
+# Tune to the machine and the sheet. Not a measured cut, and not any
+# maker's numbers. Several passes is usual; one pass is often not enough.
+name = 3 mm plywood
+power = 80
+speed = 8
+passes = 3
+mode = line
