@@ -12,6 +12,8 @@
 #include "gs_layer.h"
 #include "gs_model.h"
 #include "make_ui.h"
+#include "omview_gpu.h"
+#include "omview_ui.h"
 
 #include <devices/inputevent.h>
 #include <proto/asl.h>
@@ -26,10 +28,6 @@
 
 #include <gfopenlayout_ui.h>
 #include <gfopenlayout_ui_amiga.h>
-#include <gfopengpu/gfopengpu.h>
-#include <gfopengpu/retained.h>
-#include <gfopengpu/stream3d.h>
-#include <proto/gfopengpu.h>
 
 #include <math.h>
 #include <stdint.h>
@@ -54,12 +52,8 @@ static char stl_path[256] = "RAM:hole.stl";
 static float layer_h = 0.2f;
 static int show_layer, layer_no = 1;
 static gl_walls walls;
-struct Library *OpenGPUBase;
-
-static struct OGPURetained *rs;
-static uint32_t *depth, *verts, *batch;
-static ULONG depth_bytes, vert_bytes, batch_bytes;
-static int pic_w, pic_h, vert_cap;
+/* The view on OpenGPU (core/ui): its picture, depth, vertices and stream. */
+static omv_gpu gpu;
 
 static gs_mesh *work(void)
 {
@@ -110,49 +104,7 @@ static void rebuild_shown(void)
 
 static void say(olui *ui, const char *text)
 {
-    olui_set_text(ui, olui_find(ui, "status"), text);
-}
-
-static void gpu_free(void)
-{
-    if (rs && OpenGPUBase) OGPU_RetainedDestroy(rs);
-    rs = NULL;
-    if (depth) FreeMem(depth, depth_bytes);
-    depth = NULL;
-    depth_bytes = 0;
-    if (verts) FreeMem(verts, vert_bytes);
-    verts = NULL;
-    vert_bytes = 0;
-    if (batch) FreeMem(batch, batch_bytes);
-    batch = NULL;
-    batch_bytes = 0;
-    pic_w = pic_h = 0;
-}
-
-static int gpu_ensure(int w, int h)
-{
-    ULONG bytes;
-    if (w < 4 || h < 4 || w > 2048 || h > 2048) return 0;
-    if (rs && depth && pic_w == w && pic_h == h && rs->rs_Pixels) return 1;
-    if (rs && OpenGPUBase) OGPU_RetainedDestroy(rs);
-    rs = NULL;
-    if (depth) FreeMem(depth, depth_bytes);
-    depth = NULL;
-    depth_bytes = 0;
-    rs = OGPU_RetainedCreate((ULONG)w, (ULONG)h, OGPU_FMT_ARGB32, 0);
-    bytes = (ULONG)w * (ULONG)h * 4UL;
-    if (rs && rs->rs_Pixels) depth = (uint32_t *)AllocMem(bytes, MEMF_PUBLIC | MEMF_CLEAR);
-    if (!rs || !rs->rs_Pixels || !depth || rs->rs_BytesPerRow < (ULONG)w * 4UL) {
-        if (rs && OpenGPUBase) OGPU_RetainedDestroy(rs);
-        rs = NULL;
-        if (depth) FreeMem(depth, bytes);
-        depth = NULL;
-        return 0;
-    }
-    depth_bytes = bytes;
-    pic_w = w;
-    pic_h = h;
-    return 1;
+    omv_say(ui, text);
 }
 
 static void verts_fit(int extra);
@@ -160,36 +112,36 @@ static void verts_fit(int extra);
 static int draw_gpu(int x, int y, int w, int h)
 {
     int nv, nw;
-    ULONG fence = 0;
-    if (!gpu_on || !verts || !batch) return 0;
-    if (!gpu_ensure(w, h)) return 0;
+    if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
     verts_fit(show_layer ? walls.n * 6 : 0);
-    nv = gs_gpu_vertices_plate(&shown, &cam, w, h, verts, vert_cap);
+    nv = gs_gpu_vertices_plate(&shown, &cam, w, h, gpu.verts, gpu.vert_cap);
     if (nv < 3) return 0;
     /* The layer's walls go after the part's, in the same batch. */
     if (show_layer && walls.n) {
-        int nw2 = gs_gpu_walls_plate(&walls, &shown, &cam, w, h, verts + nv * 6, vert_cap - nv);
+        int nw2 = gs_gpu_walls_plate(&walls, &shown, &cam, w, h, gpu.verts + nv * 6, gpu.vert_cap - nv);
         if (nw2 > 0) nv += nw2;
     }
-    nw = gs_gpu_stream_plate(batch, (int)(batch_bytes / 4),
-                       (uint32_t)(uintptr_t)verts, nv,
-                       (uint32_t)(uintptr_t)rs->rs_Pixels, (int)rs->rs_BytesPerRow,
-                       (uint32_t)(uintptr_t)depth, w, h, &shown, &cam, draw_grid, 1);
-    if (nw < 1) return 0;
-    if (OGPU_Submit(batch, (ULONG)nw, &fence) != OGPU_OK) return 0;
-    if (OGPU_Wait(fence) != OGPU_OK) return 0;
-    OGPU_RetainedMark(rs, 0, 0, w, h);
-    if (OGPU_RetainedPresent(rs, win->RPort, x, y, w, h) < 0) return 0;
+    nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
+                             (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, &shown, &cam, draw_grid, 1);
+    if (!omv_gpu_show(&gpu, nw, win->RPort, x, y)) return 0;
     presented = 1;
     return 1;
+}
+
+/* One run of one pen: one RectFill, at the view's corner in ud. */
+static void put_run(void *ud, int x, int y, int n, int pen)
+{
+    const int *at = ud;
+    SetAPen(win->RPort, (UBYTE)pen);
+    RectFill(win->RPort, at[0] + x, at[1] + y, at[0] + x + n - 1, at[1] + y);
 }
 
 static void draw_pens(int x, int y, int w, int h)
 {
     unsigned char *rgb;
-    gs_run *runs;
-    int row;
+    int at[2];
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     vw = w;
@@ -200,17 +152,11 @@ static void draw_pens(int x, int y, int w, int h)
         return;
     }
     if (show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
-    /* A run of one pen is one RectFill. Grey goes to the three greys,
-     * the walls' blue to the window's fourth pen, the Workbench blue. */
-    runs = (gs_run *)malloc((size_t)w * sizeof *runs);
-    for (row = 0; runs && row < h; row++) {
-        int n = gs_pen_row(rgb + (size_t)row * (size_t)w * 3, w, runs), k;
-        for (k = 0; k < n; k++) {
-            SetAPen(win->RPort, runs[k].pen);
-            RectFill(win->RPort, x + runs[k].x, y + row, x + runs[k].x + runs[k].n - 1, y + row);
-        }
-    }
-    free(runs);
+    /* Grey goes to the three greys, the walls' blue to the window's fourth
+     * pen, the Workbench blue. */
+    at[0] = x;
+    at[1] = y;
+    omv_pens(rgb, w, h, put_run, at);
     free(rgb);
 }
 
@@ -309,17 +255,7 @@ static void forget(void)
 static void verts_fit(int extra)
 {
     int need = hole.n + (has_added ? added.n : 0);
-    need = need * 3 + extra;
-    uint32_t *p;
-    ULONG bytes;
-    if (!verts || need <= vert_cap) return;
-    bytes = (ULONG)need * 6UL * 4UL;
-    p = (uint32_t *)AllocMem(bytes, MEMF_PUBLIC | MEMF_CLEAR);
-    if (!p) return;
-    FreeMem(verts, vert_bytes);
-    verts = p;
-    vert_bytes = bytes;
-    vert_cap = need;
+    omv_gpu_room(&gpu, need * 3 + extra);
 }
 
 static void path_join(char *path, int n, const char *drawer, const char *file)
@@ -479,7 +415,7 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
 static void slider_to_layer(olui *ui)
 {
     int n = gl_layers(&shown, layer_h);
-    olui_set_slider(ui, olui_find(ui, "layer"), n > 1 ? 1 + (layer_no - 1) * 99 / (n - 1) : 1);
+    olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(layer_no, n));
 }
 
 static void on_height(olui *ui, const olui_event *ev, void *userdata)
@@ -514,7 +450,7 @@ static void on_slide(olui *ui, const olui_event *ev, void *userdata)
 {
     int n = gl_layers(&shown, layer_h);
     (void)userdata;
-    layer_no = n > 1 ? 1 + ((ev->index - 1) * (n - 1) + 49) / 99 : 1;
+    layer_no = omv_layer_of(ev->index, n);
     if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
     refresh(ui);
 }
@@ -658,11 +594,6 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
-static int takes(unsigned long op, unsigned long fmt)
-{
-    return OGPU_ANSWER(OGPU_Query(op, fmt)) != OGPU_NONE;
-}
-
 int main(int argc, char **argv)
 {
     olui *ui;
@@ -686,26 +617,10 @@ int main(int argc, char **argv)
         return 20;
     }
     hist = ge_hist_new();
-    OpenGPUBase = OpenLibrary((CONST_STRPTR)OPENGPU_NAME, OPENGPU_VERSION);
-    gpu_on = 0;
-    on_chip = 0;
-    draw_grid = 0;
-    if (OpenGPUBase && OpenGPUBase->lib_Revision >= OGPU_RETAINED_REVISION &&
-        takes(OGPU_OP_TRIANGLES, OGPU_FMT_ARGB32) &&
-        takes(OGPU_OP_RENDER3D, OGPU_FMT_ARGB32) &&
-        (takes(OGPU_OP_DEPTH, OGPU_FMT_ARGB32) || takes(OGPU_OP_DEPTH, OGPU_FMT_Z32)) &&
-        (takes(OGPU_OP_CLEAR3D, OGPU_FMT_ARGB32) || takes(OGPU_OP_CLEAR3D, 0))) {
-        unsigned long q = OGPU_Query(OGPU_OP_TRIANGLES, OGPU_FMT_ARGB32);
-        on_chip = OGPU_ONGPU(q);
-        draw_grid = takes(OGPU_OP_LINE, OGPU_FMT_ARGB32);
-        vert_cap = hole.n * 3;
-        vert_bytes = (ULONG)vert_cap * 6UL * 4UL;
-        batch_bytes = 512UL * 4UL;
-        verts = (uint32_t *)AllocMem(vert_bytes, MEMF_PUBLIC | MEMF_CLEAR);
-        batch = (uint32_t *)AllocMem(batch_bytes, MEMF_PUBLIC | MEMF_CLEAR);
-        gpu_on = verts && batch;
-        if (!gpu_on) gpu_free();
-    }
+    omv_gpu_open(&gpu, hole.n * 3, 512);
+    gpu_on = gpu.on;
+    on_chip = gpu.on_chip;
+    draw_grid = gpu.grid;
     ui = olui_new();
     if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err)) {
         if (ui) olui_free(ui);
@@ -713,8 +628,7 @@ int main(int argc, char **argv)
         gs_mesh_free(&hole);
         gs_mesh_free(&added);
         gs_mesh_free(&shown);
-        gpu_free();
-        if (OpenGPUBase) CloseLibrary(OpenGPUBase);
+        omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenMake: %s\n", ui ? err : "GFOpenLayout is not open");
         return 20;
     }
@@ -762,8 +676,7 @@ int main(int argc, char **argv)
         gs_mesh_free(&added);
         gs_mesh_free(&shown);
         olui_free(ui);
-        gpu_free();
-        if (OpenGPUBase) CloseLibrary(OpenGPUBase);
+        omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenMake: the window did not open\n");
         return 20;
     }
@@ -776,8 +689,7 @@ int main(int argc, char **argv)
         gs_mesh_free(&added);
         gs_mesh_free(&shown);
         olui_free(ui);
-        gpu_free();
-        if (OpenGPUBase) CloseLibrary(OpenGPUBase);
+        omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenMake: GFOpenLayout could not draw the window\n");
         return 20;
     }
@@ -852,7 +764,6 @@ done:
     gs_mesh_free(&shown);
     gl_walls_free(&walls);
     olui_free(ui);
-    gpu_free();
-    if (OpenGPUBase) CloseLibrary(OpenGPUBase);
+    omv_gpu_close(&gpu);
     return 0;
 }
