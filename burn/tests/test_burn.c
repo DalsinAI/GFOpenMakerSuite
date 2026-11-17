@@ -1,6 +1,8 @@
 /* OpenMakeBurn's job: an SVG to a line toolpath and Grbl laser G-code.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_material.h"
+#include "burn_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -472,6 +474,129 @@ int main(void)
     free(g);
     gv_doc_free(&d);
     gt_free(&p);
+
+    {
+        burn_material mat;
+        burn_materials lib;
+        burn_opts o2;
+        expect(burn_material_load(&mat, "materials/laser/card.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "Card") && mat.power == 40.f && mat.speed == 40.f && mat.passes == 1 &&
+                   mat.mode == BURN_LINE && (mat.set & BURN_SET_POWER) && (mat.set & BURN_SET_SPEED),
+               "card starting point");
+        expect(burn_material_load(&mat, "materials/laser/plywood-3mm.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "3 mm plywood") && mat.power == 80.f && mat.speed == 8.f && mat.passes == 3 &&
+                   mat.mode == BURN_LINE,
+               "3 mm plywood starting point");
+        expect(burn_material_load(&mat, "materials/laser/draft-engrave.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "Draft engrave") && mat.mode == BURN_FILL && mat.interval == 0.2f &&
+                   mat.power == 20.f,
+               "draft engrave starting point");
+        burn_defaults(&o2);
+        burn_material_apply(&mat, &o2);
+        expect(o2.power == 20.f && o2.speed == 40.f && o2.mode == BURN_FILL && o2.interval == 0.2f,
+               "apply sets the job defaults that were in the profile");
+        err[0] = 0;
+        expect(burn_material_load(&mat, "materials/laser/no-such.om", err, (int)sizeof err) == -1 &&
+                   strstr(err, "cannot open"),
+               "a missing profile says why");
+        {
+            FILE *f = fopen("build/bad-material.om", "w");
+            expect(f != NULL, "a typo profile");
+            if (f) {
+                fputs("name = typo\nspped = 10\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_material_load(&mat, "build/bad-material.om", err, (int)sizeof err) == -1 &&
+                       strstr(err, "spped"),
+                   "an unknown key is refused");
+        }
+        {
+            FILE *f = fopen("build/noname-material.om", "w");
+            expect(f != NULL, "a nameless profile");
+            if (f) {
+                fputs("power = 50\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_material_load(&mat, "build/noname-material.om", err, (int)sizeof err) == -1 &&
+                       strstr(err, "wants a name"),
+                   "a profile without a name is refused");
+        }
+        burn_materials_init(&lib);
+        expect(burn_materials_scan(&lib, "materials/laser") == 0 && lib.n == 3, "the shipped library has three profiles");
+        expect(!strcmp(lib.at[0].name, "3 mm plywood") && !strcmp(lib.at[1].name, "Card") &&
+                   !strcmp(lib.at[2].name, "Draft engrave"),
+               "the library is sorted by name");
+        burn_materials_free(&lib);
+    }
+
+    {
+        burn_image im;
+        float *spd = NULL;
+        burn_image_init(&im);
+        expect(burn_is_image("burn/tests/data/bars-8x2.pgm") && !burn_is_image("core/tests/data/rect-10mm.svg"),
+               "a PGM is a picture, an SVG is not");
+        expect(burn_image_load(&im, "burn/tests/data/bars-8x2.pgm", err, (int)sizeof err) == 0 && im.cols == 8 &&
+                   im.rows == 2 && im.grey[0] == 1.f && im.grey[4] == 0.f,
+               "the 8 by 2 bars, black then white on the top row");
+        burn_defaults(&o);
+        o.power = 100.f;
+        o.interval = 1.f;
+        gt_init(&p);
+        expect(burn_image_path(&p, &spd, &im, &o) == 0 && p.n == 4 && spd && p.m[0].kind == GT_TRAVEL &&
+                   p.m[0].w == 0.f && p.m[0].x == 0.f && p.m[0].y == 1.f && p.m[1].kind == GT_CUT && p.m[1].w == 100.f &&
+                   p.m[1].x == 4.f && p.m[1].y == 1.f,
+               "top row: travel to 0,1, cut to 4,1 at 100%");
+        expect(p.m[2].kind == GT_TRAVEL && p.m[2].w == 0.f && p.m[2].x == 8.f && p.m[2].y == 0.f &&
+                   p.m[3].kind == GT_CUT && p.m[3].w == 100.f && p.m[3].x == 4.f && p.m[3].y == 0.f && spd[1] == 20.f,
+               "bottom row snakes: travel to 8,0, cut to 4,0, laser off on the travel");
+        free(spd);
+        o.invert = 1;
+        expect(burn_image_path(&p, NULL, &im, &o) == 0 && p.n == 4 && p.m[1].x == 8.f && p.m[1].y == 1.f &&
+                   p.m[0].x == 4.f && p.m[3].x == 0.f,
+               "invert burns the other half");
+        o.invert = 0;
+        o.width = 16.f;
+        expect(burn_image_px(&o, 8) == 2.f && burn_image_path(&p, NULL, &im, &o) == 0 && p.m[1].x == 8.f,
+               "width=16 mm makes each pixel 2 mm");
+        memset(&st, 0, sizeof st);
+        o.width = 0.f;
+        expect(burn_write("burn/tests/data/bars-8x2.pgm", "build/bars.gcode", &m, &o, &st, err, (int)sizeof err) == 0 &&
+                   st.moves == 4 && (g = slurp("build/bars.gcode")) && strstr(g, "M4") && strstr(g, "S1000") &&
+                   strstr(g, "G0") && strstr(g, "G1 "),
+               "wrote G-code from a PGM");
+        expect(g && strstr(g, "G0") && strstr(g, "S0"), "travels are G0, and S0 appears for a dark travel");
+        free(g);
+        {
+            FILE *f = fopen("build/white.pgm", "w");
+            expect(f != NULL, "a white picture");
+            if (f) {
+                fputs("P2\n1 1\n255\n255\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_write("build/white.pgm", "build/white.gcode", &m, &o, NULL, err, (int)sizeof err) == -1 &&
+                       strstr(err, "no paths to burn") && !exists("build/white.gcode"),
+                   "an all-white picture has nothing to burn");
+        }
+        burn_image_free(&im);
+        gt_free(&p);
+    }
+
+    expect(!strcmp(burn_drawing_kind(NULL), "File") && !strcmp(burn_drawing_kind(""), "File") &&
+               !strcmp(burn_drawing_kind("notes.txt"), "File"),
+           "no path, or an unknown name, is File");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/two-rects.svg"), "SVG") &&
+               !strcmp(burn_drawing_kind("Work:Box.SVG"), "SVG"),
+           "an SVG, whatever the case");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/two-rects.dxf"), "DXF") &&
+               !strcmp(burn_drawing_kind("part.DXF"), "DXF"),
+           "a DXF");
+    expect(!strcmp(burn_drawing_kind("burn/tests/data/bars-8x2.pgm"), "Picture") &&
+               !strcmp(burn_drawing_kind("a.PBM"), "Picture") &&
+               !strcmp(burn_drawing_kind("a.ppm"), "Picture"),
+           "a Netpbm picture");
 
     if (fails) {
         printf("%d failed\\n", fails);

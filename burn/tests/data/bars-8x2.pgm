@@ -1,0 +1,6 @@
+# Two rows of four black then four white, then the reverse. OpenMakeBurn tests.
+P2
+8 2
+255
+0 0 0 0 255 255 255 255
+255 255 255 255 0 0 0 0

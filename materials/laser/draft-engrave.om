@@ -1,0 +1,9 @@
+# Starting point for a light fill engrave on a small diode laser.
+# Tune to the machine and the sheet. Not a measured cut, and not any
+# maker's numbers.
+name = Draft engrave
+power = 20
+speed = 40
+passes = 1
+mode = fill
+interval = 0.2

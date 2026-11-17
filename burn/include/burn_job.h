@@ -54,9 +54,15 @@ typedef struct {
     int cuts_last;     /* 1: fills first, heavier lines last; 0: seq or file order */
     const int *seq;    /* 0-based document layers, nseq long; NULL: file order */
     int nseq;
+    int invert;   /* 1: white is more power on a picture */
+    float width;  /* picture width mm; 0: interval times the columns */
 } burn_opts;
 
 void burn_defaults(burn_opts *o);
+
+/* "SVG", "DXF" or "Picture" from the path's suffix, or a peek at the
+ * file when the suffix is not enough. Empty or unknown is "File". */
+const char *burn_drawing_kind(const char *path);
 
 /* line, fill, offset, or -1 if s is not a known mode. */
 int burn_mode_parse(const char *s);

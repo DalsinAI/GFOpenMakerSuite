@@ -1,5 +1,5 @@
 /* OpenMakeBurn on the Amiga. The window is GFOpenLayout (markup.h): Open
- * asks ASL for an SVG or a DXF, Preview builds the line toolpath at the layer
+ * asks ASL for an SVG, a DXF or a picture, Preview builds the line toolpath at the layer
  * settings, Frame writes a travel around the job with the laser off, and
  * Save G-code writes Grbl laser G-code for the laser picked (core/ui's
  * machine picker). The view is drawn by OpenGPU when gfopengpu.library
@@ -9,6 +9,8 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 #include "burn_ui.h"
+#include "burn_image.h"
+#include "burn_material.h"
 #include "markup.h"
 #include "omview_gpu.h"
 #include "omview_machines.h"
@@ -36,13 +38,15 @@
 static const char version[] = "OpenMakeBurn 0.1.0";
 static char svg_path[256];
 static gv_doc doc;
-static int have_doc;
+static burn_image pic;
+static int have_doc, have_image;
 static gt_path path;
 static int have_path;
 static burn_opts opts;
 static burn_layer layers[64];
 static int layer_seq[64];
 static omv_machines lasers;
+static burn_materials stocks;
 static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
@@ -94,6 +98,16 @@ static void hook_shifts(olui *ui)
     }
 }
 
+static void on_material(olui *ui, const olui_event *ev, void *userdata)
+{
+    int i;
+    (void)ev;
+    (void)userdata;
+    i = burn_ui_materials_chosen(ui, "material", &stocks);
+    if (i < 0) return;
+    burn_ui_material(ui, &opts, &stocks.at[i]);
+}
+
 /* The laser picked, loaded; a 400 mm bed when there is none. 0, or -1. */
 static int laser(olui *ui, om_machine *m, char *err, int errlen)
 {
@@ -123,7 +137,7 @@ static int preview_job(olui *ui, om_machine *m, char *err, int errlen)
     read_opts(ui);
     gt_free(&path);
     have_path = 0;
-    if (burn_path(&path, &speeds, &doc, &opts)) {
+    if (have_image ? burn_image_path(&path, &speeds, &pic, &opts) : burn_path(&path, &speeds, &doc, &opts)) {
         snprintf(err, (size_t)errlen, "out of memory");
         free(speeds);
         return -1;
@@ -231,13 +245,23 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     om_machine m;
     (void)ev;
     (void)userdata;
-    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf)", pathbuf, (int)sizeof pathbuf)) return;
+    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf|pbm|pgm|ppm)", pathbuf, (int)sizeof pathbuf)) return;
+    burn_image_free(&pic);
     gv_doc_free(&doc);
     gv_doc_init(&doc);
     have_doc = 0;
+    have_image = 0;
     gt_free(&path);
     have_path = 0;
-    if (gv_load(&doc, pathbuf, err, (int)sizeof err)) {
+    burn_defaults(&opts);
+    if (burn_is_image(pathbuf)) {
+        if (burn_image_load(&pic, pathbuf, err, (int)sizeof err) || burn_image_doc(&doc, &pic, &opts)) {
+            omv_say(ui, err[0] ? err : "the picture did not load");
+            refresh(ui);
+            return;
+        }
+        have_image = 1;
+    } else if (gv_load(&doc, pathbuf, err, (int)sizeof err)) {
         omv_say(ui, err);
         refresh(ui);
         return;
@@ -245,11 +269,12 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     have_doc = 1;
     snprintf(svg_path, sizeof svg_path, "%s", pathbuf);
     olui_set_text(ui, olui_find(ui, "path"), svg_path);
-    burn_defaults(&opts);
+    burn_ui_kind(ui, svg_path);
     if (burn_ui_layers(ui, &doc, &opts, err, (int)sizeof err)) {
         omv_say(ui, err);
         return;
     }
+    if (have_image && olui_find(ui, "layer-0-name")) olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
     hook_shifts(ui);
     gs_cam_home(&cam);
     if (preview_job(ui, &m, err, (int)sizeof err)) omv_say(ui, err);
@@ -334,7 +359,9 @@ int main(void)
     olui_on(ui, "preview", OLUI_CLICK, on_preview, NULL);
     olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     olui_on(ui, "frame", OLUI_CLICK, on_frame, NULL);
+    olui_on(ui, "material", OLUI_CHANGE, on_material, NULL);
     gv_doc_init(&doc);
+    burn_image_init(&pic);
     gt_init(&path);
     burn_defaults(&opts);
     gs_cam_home(&cam);
@@ -360,6 +387,10 @@ int main(void)
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
     if (omv_machines_scan(&lasers, "PROGDIR:machines", "laser") < 0) lasers.n = 0;
     omv_machines_fill(ui, "machine", &lasers, "No lasers");
+    burn_materials_init(&stocks);
+    if (burn_materials_scan(&stocks, "PROGDIR:materials/laser") < 0) stocks.n = 0;
+    burn_ui_materials_fill(ui, "material", &stocks);
+    if (stocks.skipped) omv_say(ui, stocks.why);
     olui_amiga_layout(a);
     if (lasers.skipped) omv_say(ui, lasers.why);
     for (;;) {
@@ -399,6 +430,8 @@ int main(void)
 done:
     olui_amiga_free(a);
     CloseWindow(w);
+    burn_materials_free(&stocks);
+    burn_image_free(&pic);
     gv_doc_free(&doc);
     gt_free(&path);
     omv_machines_free(&lasers);

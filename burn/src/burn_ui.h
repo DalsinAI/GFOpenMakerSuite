@@ -5,6 +5,7 @@
 #define BURN_UI_H
 
 #include "burn_job.h"
+#include "burn_material.h"
 
 #include <gfopenlayout_ui.h>
 
@@ -29,6 +30,19 @@ int burn_ui_move(olui *ui, const gv_doc *d, burn_opts *o, burn_layer *store, int
  * o's job-wide fields are left as they were, except constant and
  * cuts_last, which are read from the window. */
 void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap);
+
+/* The materials picker: "None" first, then the library, sorted as scanned. */
+int burn_ui_materials_fill(olui *ui, const char *id, const burn_materials *l);
+
+/* The chosen profile, or -1 when "None" (or there is no list). */
+int burn_ui_materials_chosen(olui *ui, const char *id, const burn_materials *l);
+
+/* Put a profile's settings into every layer row that is on the list, and
+ * into o's job-wide defaults. */
+void burn_ui_material(olui *ui, burn_opts *o, const burn_material *m);
+
+/* Set the Drawing field's label to SVG, DXF, Picture, or File. */
+void burn_ui_kind(olui *ui, const char *path);
 
 /* A short status line: moves, the machine's name, and how long. */
 void burn_ui_status(char *buf, int len, const char *name, int moves, float seconds);

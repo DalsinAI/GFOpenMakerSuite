@@ -1,8 +1,8 @@
 /* OpenMakeBurn, from the shell: an SVG or DXF to Grbl laser G-code.
- *   openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
+ *   openmake-burn in.svg|in.dxf|in.pgm out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
  *       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]
  *       [layer=#rrggbb,power=80,speed=10,passes=2] [mode=line] [interval=0.2]
- *       [cuts_last=1] [order=1,2]
+ *       [cuts_last=1] [order=1,2] [material=materials/laser/card.om]
  * The machine is the generic 400 mm diode (machines/laser/grbl) unless
  * DRIVER or PROFILE say otherwise. Power is a percentage, speed is mm/s.
  * A layer= sets power, speed, passes or on for one colour (or a 1-based
@@ -10,6 +10,7 @@
  * cuts_last=1 (the default) burns fills first, then lines, heavier last;
  * cuts_last=0 uses the file order, or order= of 1-based layers. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_material.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +36,8 @@ static int known_key(const char *s)
     static const char *const keys[] = {"DRIVER", "PROFILE", "power", "POWER", "speed", "SPEED",
                                        "passes", "PASSES", "constant", "CONSTANT", "s100", "S100",
                                        "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER",
-                                       "cuts_last", "CUTS_LAST", "order", "ORDER", NULL};
+                                       "cuts_last", "CUTS_LAST", "order", "ORDER", "material", "MATERIAL",
+                                       "invert", "INVERT", "width", "WIDTH", NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -48,14 +50,17 @@ static int known_key(const char *s)
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: openmake-burn in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
+    fprintf(stderr, "usage: openmake-burn in.svg|in.dxf|in.pgm out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
-                    "       [mode=line] [interval=0.2] [cuts_last=1] [order=1,2]\n"
+                    "       [mode=line] [interval=0.2] [cuts_last=1] [order=1,2]\n"                    "       [material=materials/laser/card.om]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
                     "mode=fill scans inside closed shapes, mode=offset follows them inwards; interval is the gap in mm.\n"
                     "cuts_last=1 (the default) burns fills first, then lines, with the heavier lines last.\n"
                     "cuts_last=0 uses the file order, or order= of 1-based layers.\n"
+                    "material= is a starting-point profile; power, speed and the other keys after it still win.\n"
+                    "A Netpbm PBM, PGM or PPM is engraved as scan lines (black is more power).\n"
+                    "width= is the picture width in mm; invert=1 burns white.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
                     "The machine is Generic Diode 400 unless DRIVER or PROFILE say otherwise.\n");
 }
@@ -98,6 +103,14 @@ int main(int argc, char **argv)
     if (!profile && !arg(argc, argv, "DRIVER"))
         profile = "machines/laser/grbl/profiles/generic-diode-400.om";
     burn_defaults(&o);
+    if ((v = arg2(argc, argv, "material", "MATERIAL")) != NULL) {
+        burn_material mat;
+        if (burn_material_load(&mat, v, err, (int)sizeof err)) {
+            fprintf(stderr, "openmake-burn: %s\n", err);
+            return 1;
+        }
+        burn_material_apply(&mat, &o);
+    }
     if ((v = arg2(argc, argv, "power", "POWER")) != NULL) o.power = (float)atof(v);
     if ((v = arg2(argc, argv, "speed", "SPEED")) != NULL) o.speed = (float)atof(v);
     if ((v = arg2(argc, argv, "passes", "PASSES")) != NULL) o.passes = atoi(v);
@@ -105,6 +118,8 @@ int main(int argc, char **argv)
     if ((v = arg2(argc, argv, "s100", "S100")) != NULL) o.s100 = (float)atof(v);
     if ((v = arg2(argc, argv, "mode", "MODE")) != NULL) o.mode = burn_mode_parse(v);
     if ((v = arg2(argc, argv, "interval", "INTERVAL")) != NULL) o.interval = (float)atof(v);
+    if ((v = arg2(argc, argv, "invert", "INVERT")) != NULL) o.invert = atoi(v) ? 1 : 0;
+    if ((v = arg2(argc, argv, "width", "WIDTH")) != NULL) o.width = (float)atof(v);
     if ((v = arg2(argc, argv, "cuts_last", "CUTS_LAST")) != NULL) o.cuts_last = atoi(v) ? 1 : 0;
     if (o.passes < 1) o.passes = 1;
     for (i = 3; i < argc; i++) {

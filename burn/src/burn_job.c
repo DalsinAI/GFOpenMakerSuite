@@ -1,6 +1,7 @@
 /* An SVG to a laser toolpath and its Grbl G-code (burn_job.h).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_image.h"
 
 #include "gs_layer.h"
 #include "gs_toolpath.h"
@@ -20,6 +21,44 @@ void burn_defaults(burn_opts *o)
     o->s100 = 1000.f;
     o->interval = 0.2f;
     o->cuts_last = 1;
+}
+
+
+static int suf_is(const char *path, const char *ext)
+{
+    size_t n, m, i;
+    if (!path || !ext) return 0;
+    n = strlen(path);
+    m = strlen(ext);
+    if (n < m) return 0;
+    for (i = 0; i < m; i++) {
+        char a = path[n - m + i], b = ext[i];
+        if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+        if (a != b) return 0;
+    }
+    return 1;
+}
+
+const char *burn_drawing_kind(const char *path)
+{
+    FILE *f;
+    int c;
+    if (!path || !path[0]) return "File";
+    if (suf_is(path, ".svg")) return "SVG";
+    if (suf_is(path, ".dxf")) return "DXF";
+    if (suf_is(path, ".pbm") || suf_is(path, ".pgm") || suf_is(path, ".ppm")) return "Picture";
+    if (burn_is_image(path)) return "Picture";
+    f = fopen(path, "rb");
+    if (!f) return "File";
+    do {
+        c = fgetc(f);
+    } while (c == ' ' || c == '\t' || c == '\r' || c == '\n');
+    fclose(f);
+    if (c == '<') return "SVG";
+    /* ASCII DXF often starts with a group code 0 or a 999 comment. */
+    if (c == '0' || c == '9') return "DXF";
+    return "File";
 }
 
 int burn_mode_parse(const char *s)
@@ -652,6 +691,32 @@ int burn_write(const char *drawing, const char *gcode, const om_machine *m, cons
     }
     gv_doc_init(&d);
     gt_init(&p);
+    if (burn_is_image(drawing)) {
+        burn_image im;
+        burn_image_init(&im);
+        if (burn_image_load(&im, drawing, err, errlen)) {
+            burn_image_free(&im);
+            return -1;
+        }
+        if (burn_image_path(&p, &speeds, &im, o)) {
+            snprintf(err, (size_t)errlen, "out of memory");
+            burn_image_free(&im);
+            gt_free(&p);
+            return -1;
+        }
+        if (p.n < 2) {
+            snprintf(err, (size_t)errlen, "no paths to burn");
+            burn_image_free(&im);
+            gt_free(&p);
+            free(speeds);
+            return -1;
+        }
+        rc = burn_write_path(&p, speeds, gcode, m, o, st, err, errlen);
+        burn_image_free(&im);
+        gt_free(&p);
+        free(speeds);
+        return rc;
+    }
     if (gv_load(&d, drawing, err, errlen)) {
         gv_doc_free(&d);
         return -1;
