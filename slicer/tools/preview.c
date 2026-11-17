@@ -1,7 +1,8 @@
 /* Host picture of the GFOpenLayout window. The layout is the real one;
  * this only records the draw operations.
  *   preview empty out.ops
- *   preview sliced stl out.ops
+ *   preview sliced out.ops stl
+ * with SIZE=WxH last: the window's inside (640x480 to start)
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_job.h"
 #include "gs_view.h"
@@ -55,6 +56,10 @@ int main(int argc, char **argv)
     int w = 640, h = 480; /* as amiga.c opens it */
     gs_job job;
     int have = 0;
+    if (argc > 3 && !strncmp(argv[argc - 1], "SIZE=", 5)) {
+        if (sscanf(argv[argc - 1] + 5, "%dx%d", &w, &h) != 2 || w < 64 || h < 64) return 2;
+        argc--;
+    }
     if (argc < 3) return 2;
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);

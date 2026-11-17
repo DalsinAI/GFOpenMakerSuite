@@ -6,6 +6,7 @@
 #include "gs_view.h"
 #include "markup.h"
 #include "omview_ui.h"
+#include "omview_window.h"
 
 #include <devices/inputevent.h>
 #include <proto/asl.h>
@@ -158,23 +159,8 @@ int main(void)
     olui_on(ui, "layers", OLUI_SELECT, on_layer, NULL);
     gs_job_init(&job);
     gs_cam_home(&cam);
-    w = OpenWindowTags(NULL,
-        WA_Title, (ULONG)"GFOpenSlicer 0.1.0",
-        WA_InnerWidth, 640,
-        WA_InnerHeight, 480, /* with its borders, a 640 by 512 PAL screen */
-        WA_MinWidth, 360,
-        WA_MinHeight, 240,
-        WA_MaxWidth, (ULONG)~0,
-        WA_MaxHeight, (ULONG)~0,
-        WA_DragBar, TRUE,
-        WA_DepthGadget, TRUE,
-        WA_CloseGadget, TRUE,
-        WA_SizeGadget, TRUE,
-        WA_SizeBBottom, TRUE,
-        WA_IDCMP, olui_amiga_idcmp(),
-        WA_ReportMouse, TRUE,
-        WA_Activate, TRUE,
-        TAG_END);
+    /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
+    w = omv_window_open("GFOpenSlicer 0.1.0", olui_amiga_idcmp());
     if (!w) {
         gs_job_free(&job);
         olui_free(ui);

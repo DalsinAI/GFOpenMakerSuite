@@ -73,6 +73,18 @@ int main(void)
            "the status line is under the view");
     expect(status.y + status.h >= h - 40 && status.w >= 78 * 8, "the status line along the bottom, 78 characters wide");
 
+    /* Sized up, as on an RTG screen: the view takes the room. */
+    {
+        olui_rect view1, st1, r;
+        int big_w = 1024, big_h = 768, ok = 1;
+        expect(olui_layout(ui, big_w, big_h), "the window lays out at 1024 by 768");
+        for (i = 0; i < N; i++) ok &= olui_box(ui, olui_find(ui, controls[i][0]), &r) && inside(&r, big_w, big_h);
+        expect(ok, "at 1024 by 768 every control is in the window");
+        expect(olui_box(ui, olui_find(ui, "view"), &view1) && view1.w >= view.w + 384 - 8 && view1.h >= view.h + 288 - 8,
+               "the view grows with the window");
+        expect(olui_box(ui, olui_find(ui, "status"), &st1) && st1.y + st1.h >= big_h - 40 && st1.w >= big_w - 16,
+               "the status line along the bottom, the window's width");
+    }
     omv_say(ui, "Sliced: 100 layers");
     expect(!strcmp(olui_get_text(olui_find(ui, "status")), "Sliced: 100 layers"), "omv_say says it on the status line");
     expect(omv_number(ui, "layer") == 0.2f && omv_number(ui, "infill") == 20.f && omv_number(ui, "filament") == 1.75f,
