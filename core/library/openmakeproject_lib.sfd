@@ -1,0 +1,39 @@
+==id $Id: openmakeproject_lib.sfd 1.0 (17.11.2026) $
+* "openmakeproject.library": OpenMakeCore's GFOpenMakerWorkshop project
+* (gs_project.h): a drawer and its project.om manifest. Each call is its
+* C function in snake case (GPR_Init is gpr_init). Never reorder or take
+* a call out; add new ones at the end. core/library/gen-library.py writes
+* the rest from this.
+==base _OpenMakeProjectBase
+==basetype struct Library *
+==libname openmakeproject.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_project.h>
+void GPR_Init(gpr_project *p)(a0)
+void GPR_Free(gpr_project *p)(a0)
+int GPR_Parse(gpr_project *p, const char *text, char *err, int errlen)(a0,a1,a2,d0)
+int GPR_Format(const gpr_project *p, char *buf, int len)(a0,a1,d0)
+int GPR_Create(gpr_project *p, const char *drawer, const char *name, char *err, int errlen)(a0,a1,a2,a3,d0)
+int GPR_Open(gpr_project *p, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+int GPR_Save(gpr_project *p, char *err, int errlen)(a0,a1,d0)
+int GPR_SetName(gpr_project *p, const char *name)(a0,a1)
+int GPR_SetNotes(gpr_project *p, const char *notes)(a0,a1)
+void GPR_AddDefaults(gpr_add_opts *o)(a0)
+int GPR_Add(gpr_project *p, const gpr_add_opts *o, char *err, int errlen)(a0,a1,a2,d0)
+int GPR_Remove(gpr_project *p, int index)(a0,d0)
+int GPR_Rename(gpr_project *p, int index, const char *name)(a0,d0,a1)
+int GPR_Find(const gpr_project *p, const char *item)(a0,a1)
+int GPR_Resolve(const gpr_project *p, int index, char *buf, int buflen)(a0,d0,a1,d1)
+int GPR_KindKnown(const char *kind)(a0)
+const char *GPR_KindGroup(const char *kind)(a0)
+const char *GPR_KindApp(const char *kind)(a0)
+const char *GPR_KindPort(const char *kind)(a0)
+const char *GPR_KindSuggest(const char *path)(a0)
+int GPR_KicadFiles(const char *pro, char *pcb, char *sch, int buflen)(a0,a1,a2,d0)
+void GPR_RecentInit(gpr_recent *r)(a0)
+int GPR_RecentLoad(gpr_recent *r, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+int GPR_RecentSave(const gpr_recent *r, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+int GPR_RecentTouch(gpr_recent *r, const char *project)(a0,a1)
+==end

@@ -19,7 +19,8 @@ cd "$HERE"
 python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
     core/library/openmakemesh_lib.sfd core/library/openmakegcode_lib.sfd \
     core/library/openmakeview_lib.sfd core/library/openmaketask_lib.sfd \
-    core/library/openmakevec_lib.sfd core/library/openmakerexx_lib.sfd --check
+    core/library/openmakevec_lib.sfd core/library/openmakeproject_lib.sfd \
+    core/library/openmakerexx_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -132,6 +133,13 @@ for v in fpu soft; do
         core/library/openmakevec_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeVecBase '-DLINK_NAME="openmakevec.library"' -lm
     echo "$OUT/$v/TestDxfLib: $(wc -c < "$OUT/$v/TestDxfLib") bytes"
+    lib "$v" "$flags" openmakeproject.library core/include \
+        core/library/openmakeproject_lib.c core/src/project.c
+    # core/tests/test_project.c, the project manifest through the library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestProjectLib" core/tests/test_project.c \
+        core/library/openmakeproject_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeProjectBase '-DLINK_NAME="openmakeproject.library"'
+    echo "$OUT/$v/TestProjectLib: $(wc -c < "$OUT/$v/TestProjectLib") bytes"
     lib "$v" "$flags" openmakerexx.library core/include \
         core/library/openmakerexx_lib.c core/src/rexx.c core/src/rexx_amiga.c
     "$CC" $prog -Icore/include -Icore/src -I"$SDK/Include" -s -o "$OUT/$v/TestRexxLib" core/tests/test_rexx.c \
