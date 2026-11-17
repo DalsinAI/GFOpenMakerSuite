@@ -63,12 +63,28 @@ int burn_ui_layers(olui *ui, const gv_doc *d, const burn_opts *o, char *err, int
                  "<spinner id=\"layer-%d-speed\" min=\"0.1\" max=\"500\" step=\"0.1\" value=\"%.1f\"></row>"
                  "<row><label for=\"layer-%d-passes\">Pass</label>"
                  "<spinner id=\"layer-%d-passes\" min=\"1\" max=\"100\" step=\"1\" value=\"%d\"></row>"
+                 "<row><label for=\"layer-%d-mode\">Mode</label>"
+                 "<select id=\"layer-%d-mode\"></select></row>"
+                 "<row><label for=\"layer-%d-interval\">Gap</label>"
+                 "<spinner id=\"layer-%d-interval\" min=\"0.01\" max=\"20\" step=\"0.01\" value=\"%.2f\">"
+                 "<span>mm</span></row>"
                  "</column>",
-                 i, i, i, i, (unsigned)ly.colour, i, i, (double)ly.power, i, i, (double)ly.speed, i, i, ly.passes);
+                 i, i, i, i, (unsigned)ly.colour, i, i, (double)ly.power, i, i, (double)ly.speed, i, i, ly.passes, i, i,
+                 i, i, (double)ly.interval);
         snprintf(css, sizeof css, "#layer-%d-swatch{background-color:#%06x}", i, (unsigned)ly.colour);
         if (!olui_add_css(ui, css) || !olui_add(ui, parent, m, err, (size_t)errlen)) return -1;
         id_of(id, (int)sizeof id, i, "on");
         olui_set_checked(ui, olui_find(ui, id), ly.on);
+        id_of(id, (int)sizeof id, i, "mode");
+        {
+            olui_el *sel = olui_find(ui, id);
+            if (sel) {
+                olui_select_add(ui, sel, "Line", "line");
+                olui_select_add(ui, sel, "Fill", "fill");
+                olui_select_add(ui, sel, "Offset", "offset");
+                olui_select_set(ui, sel, ly.mode == BURN_OFFSET ? 2 : ly.mode == BURN_FILL ? 1 : 0);
+            }
+        }
     }
     return 0;
 }
@@ -122,6 +138,16 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         el = olui_find(ui, id);
         store[i].on = !el || olui_get_checked(el);
         store[i].set |= BURN_SET_ON;
+        id_of(id, (int)sizeof id, i, "mode");
+        el = olui_find(ui, id);
+        {
+            int idx = el ? olui_select_index(el) : 0;
+            store[i].mode = idx == 2 ? BURN_OFFSET : idx == 1 ? BURN_FILL : BURN_LINE;
+        }
+        store[i].set |= BURN_SET_MODE;
+        id_of(id, (int)sizeof id, i, "interval");
+        store[i].interval = omv_number(ui, id);
+        store[i].set |= BURN_SET_INTERVAL;
     }
 }
 

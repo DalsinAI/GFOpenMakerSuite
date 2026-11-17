@@ -158,6 +158,29 @@ int main(int argc, char **argv)
             fprintf(stderr, "%s\n", err);
             return 1;
         }
+        if (getenv("MODE") || getenv("INTERVAL")) {
+            int i, n = burn_ui_count(ui);
+            char id[32];
+            int mode = getenv("MODE") && !strcmp(getenv("MODE"), "offset") ? 2
+                       : getenv("MODE") && !strcmp(getenv("MODE"), "fill")  ? 1
+                                                                            : 0;
+            float gap = getenv("INTERVAL") ? (float)atof(getenv("INTERVAL")) : 0.2f;
+            int dec;
+            for (i = 0; i < n; i++) {
+                snprintf(id, sizeof id, "layer-%d-mode", i);
+                if (getenv("MODE") && olui_find(ui, id)) olui_select_set(ui, olui_find(ui, id), mode);
+                snprintf(id, sizeof id, "layer-%d-interval", i);
+                if (getenv("INTERVAL") && olui_find(ui, id)) {
+                    dec = olui_number_decimals(olui_find(ui, id));
+                    {
+                        float d = 1.f;
+                        int k;
+                        for (k = 0; k < dec; k++) d *= 10.f;
+                        olui_set_number(ui, olui_find(ui, id), (int)(gap * d + 0.5f));
+                    }
+                }
+            }
+        }
         burn_ui_read(ui, &o, store, 64);
         if (burn_path(&path, &speeds, &d, &o) || path.n < 2) {
             fprintf(stderr, "no paths to burn\n");

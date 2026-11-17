@@ -2,6 +2,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 
+#include "gs_layer.h"
 #include "gs_toolpath.h"
 
 #include <stdio.h>
@@ -16,6 +17,30 @@ void burn_defaults(burn_opts *o)
     o->speed = 20.f;
     o->passes = 1;
     o->s100 = 1000.f;
+    o->interval = 0.2f;
+}
+
+int burn_mode_parse(const char *s)
+{
+    if (!s || !s[0]) return -1;
+    if (!strcmp(s, "line") || !strcmp(s, "LINE")) return BURN_LINE;
+    if (!strcmp(s, "fill") || !strcmp(s, "FILL")) return BURN_FILL;
+    if (!strcmp(s, "offset") || !strcmp(s, "OFFSET")) return BURN_OFFSET;
+    return -1;
+}
+
+const char *burn_mode_name(int mode)
+{
+    if (mode == BURN_FILL) return "fill";
+    if (mode == BURN_OFFSET) return "offset";
+    return "line";
+}
+
+static float interval_of(float v)
+{
+    if (v <= 0.f) v = 0.2f;
+    if (v < 0.01f) v = 0.01f;
+    return v;
 }
 
 static float power_of(float p)
@@ -146,6 +171,21 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen)
             }
             L->on = (int)v;
             L->set |= BURN_SET_ON;
+        } else if (parse_key(buf, "mode", &rest) || parse_key(buf, "MODE", &rest)) {
+            int m = burn_mode_parse(rest);
+            if (m < 0) {
+                snprintf(err, (size_t)errlen, "layer=: mode=%s: line, fill or offset", rest);
+                return -1;
+            }
+            L->mode = m;
+            L->set |= BURN_SET_MODE;
+        } else if (parse_key(buf, "interval", &rest) || parse_key(buf, "INTERVAL", &rest)) {
+            L->interval = strtof(rest, &end);
+            if (end == rest || *end) {
+                snprintf(err, (size_t)errlen, "layer=: interval is a number, in mm");
+                return -1;
+            }
+            L->set |= BURN_SET_INTERVAL;
         } else {
             snprintf(err, (size_t)errlen, "%s: no such setting", buf);
             return -1;
@@ -164,6 +204,8 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
     out->speed = speed_of(o->speed);
     out->passes = passes_of(o->passes);
     out->on = 1;
+    out->mode = o->mode;
+    out->interval = interval_of(o->interval);
     if (!d || L < 0 || L >= d->nlayer) return;
     out->colour = d->layer[L].colour;
     out->index = L + 1;
@@ -177,13 +219,36 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
         if (s->set & BURN_SET_SPEED) out->speed = speed_of(s->speed);
         if (s->set & BURN_SET_PASSES) out->passes = passes_of(s->passes);
         if (s->set & BURN_SET_ON) out->on = s->on ? 1 : 0;
+        if (s->set & BURN_SET_MODE) out->mode = s->mode;
+        if (s->set & BURN_SET_INTERVAL) out->interval = interval_of(s->interval);
     }
 }
 
-/* Follow one path, starting with a travel to its first point. */
-static int add_path(gt_path *p, float *speed, int *n, int cap, const gv_path *v, float power, float vcut)
+static int grow_speed(float **spd, int *cap, int need)
 {
-    int i, start = p->n;
+    int ncap;
+    float *n;
+    if (need <= *cap) return 0;
+    ncap = *cap ? *cap : 64;
+    while (ncap < need) ncap = ncap * 2 + 32;
+    n = (float *)realloc(*spd, (size_t)ncap * sizeof *n);
+    if (!n) return -1;
+    *spd = n;
+    *cap = ncap;
+    return 0;
+}
+
+static int tag_speeds(float *spd, int *nspd, const gt_path *p, int start, float vcut)
+{
+    int i;
+    for (i = start; i < p->n; i++) spd[(*nspd)++] = (p->m[i].kind == GT_CUT) ? vcut : 0.f;
+    return *nspd == p->n ? 0 : -1;
+}
+
+/* Follow one path, starting with a travel to its first point. */
+static int add_path(gt_path *p, float **spd, int *nspd, int *cap, const gv_path *v, float power, float vcut)
+{
+    int start = p->n, i;
     if (v->n < 2) return 0;
     if (gt_add(p, GT_TRAVEL, v->xy[0], v->xy[1], 0.f, 0.f)) return -1;
     for (i = 1; i < v->n; i++)
@@ -191,12 +256,213 @@ static int add_path(gt_path *p, float *speed, int *n, int cap, const gv_path *v,
     if (v->closed) {
         if (gt_add(p, GT_CUT, v->xy[0], v->xy[1], 0.f, power)) return -1;
     }
-    if (speed) {
-        for (i = start; i < p->n && *n < cap; i++) {
-            speed[*n] = (p->m[i].kind == GT_CUT) ? vcut : 0.f;
-            (*n)++;
+    if (spd && *spd) {
+        if (grow_speed(spd, cap, p->n)) return -1;
+        if (tag_speeds(*spd, nspd, p, start, vcut)) return -1;
+    }
+    return 0;
+}
+
+/* Closed paths of one colour as loops for gt_fill. xy is copied. */
+static int loops_of(const gv_doc *d, unsigned colour, gl_loops *out)
+{
+    int i, n = 0;
+    memset(out, 0, sizeof *out);
+    for (i = 0; i < d->n; i++)
+        if (gv_path_colour(&d->p[i]) == colour && d->p[i].closed && d->p[i].n >= 3) n++;
+    if (!n) return 0;
+    out->l = (gl_loop *)calloc((size_t)n, sizeof *out->l);
+    if (!out->l) return -1;
+    for (i = 0; i < d->n; i++) {
+        const gv_path *v = &d->p[i];
+        int np, k;
+        float *xy;
+        if (gv_path_colour(v) != colour || !v->closed || v->n < 3) continue;
+        np = v->n;
+        if (np >= 2 && v->xy[0] == v->xy[(np - 1) * 2] && v->xy[1] == v->xy[(np - 1) * 2 + 1]) np--;
+        if (np < 3) continue;
+        xy = (float *)malloc((size_t)np * 2 * sizeof *xy);
+        if (!xy) {
+            gl_loops_free(out);
+            return -1;
         }
-        if (*n != p->n) return -1;
+        for (k = 0; k < np * 2; k++) xy[k] = v->xy[k];
+        out->l[out->n].xy = xy;
+        out->l[out->n].n = np;
+        out->l[out->n].closed = 1;
+        out->n++;
+    }
+    return 0;
+}
+
+static void remap_cuts(gt_path *p, int from, float power)
+{
+    int i;
+    for (i = from; i < p->n; i++) {
+        if (p->m[i].kind == GT_TRAVEL) p->m[i].w = 0.f;
+        else {
+            p->m[i].kind = GT_CUT;
+            p->m[i].w = power;
+        }
+    }
+}
+
+/* Scan-line fill of the layer's closed paths, through gt_fill (every line,
+ * no skin, along x). Open paths of the same colour are still followed. */
+static int add_fill(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
+{
+    gl_loops region;
+    gt_path hatch;
+    int start = p->n, i;
+    if (loops_of(d, ly->colour, &region)) return -1;
+    if (region.n) {
+        gt_init(&hatch);
+        if (gt_fill(&hatch, &region, NULL, 0, 0.f, ly->interval, 1, 0)) {
+            gt_free(&hatch);
+            gl_loops_free(&region);
+            return -1;
+        }
+        remap_cuts(&hatch, 0, ly->power);
+        if (gt_append(p, &hatch)) {
+            gt_free(&hatch);
+            gl_loops_free(&region);
+            return -1;
+        }
+        gt_free(&hatch);
+        if (spd && *spd) {
+            if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
+                gl_loops_free(&region);
+                return -1;
+            }
+        }
+    }
+    gl_loops_free(&region);
+    for (i = 0; i < d->n; i++) {
+        if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
+        if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
+    }
+    return 0;
+}
+
+
+/* Even-odd as the SVG reader: a loop whose inside sits in an odd number of
+ * others is a hole and must wind clockwise, so gl_union and gl_inset keep
+ * the hole and grow it. An outside winds anticlockwise. */
+static void reverse_loop(gl_loop *l)
+{
+    int i, j;
+    for (i = 0, j = l->n - 1; i < j; i++, j--) {
+        float x = l->xy[i * 2], y = l->xy[i * 2 + 1];
+        l->xy[i * 2] = l->xy[j * 2];
+        l->xy[i * 2 + 1] = l->xy[j * 2 + 1];
+        l->xy[j * 2] = x;
+        l->xy[j * 2 + 1] = y;
+    }
+}
+
+static int loop_contains(const gl_loop *l, float x, float y)
+{
+    int c = 0, i, j;
+    for (i = 0, j = l->n - 1; i < l->n; j = i++) {
+        float xi = l->xy[i * 2], yi = l->xy[i * 2 + 1];
+        float xj = l->xy[j * 2], yj = l->xy[j * 2 + 1];
+        if ((yi > y) != (yj > y)) {
+            float xh = xi + (y - yi) / (yj - yi) * (xj - xi);
+            if (x < xh) c++;
+        }
+    }
+    return c & 1;
+}
+
+static int inside_point(const gl_loop *l, float *px, float *py)
+{
+    int i;
+    for (i = 0; i < l->n; i++) {
+        float x0 = l->xy[i * 2], y0 = l->xy[i * 2 + 1];
+        float x1 = l->xy[((i + 1) % l->n) * 2], y1 = l->xy[((i + 1) % l->n) * 2 + 1];
+        float dx = x1 - x0, dy = y1 - y0, s = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+        float mx, my, nx, ny;
+        if (s < 1e-8f) continue;
+        mx = (x0 + x1) * 0.5f;
+        my = (y0 + y1) * 0.5f;
+        nx = -dy * 0.001f / s;
+        ny = dx * 0.001f / s;
+        if (loop_contains(l, mx + nx, my + ny)) {
+            *px = mx + nx;
+            *py = my + ny;
+            return 0;
+        }
+        if (loop_contains(l, mx - nx, my - ny)) {
+            *px = mx - nx;
+            *py = my - ny;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static void face_even_odd(gl_loops *ls)
+{
+    int i, j, n;
+    float x, y, a;
+    for (i = 0; i < ls->n; i++) {
+        if (!ls->l[i].closed || ls->l[i].n < 3) continue;
+        if (inside_point(&ls->l[i], &x, &y)) continue;
+        n = 0;
+        for (j = 0; j < ls->n; j++) {
+            if (j == i || !ls->l[j].closed) continue;
+            if (loop_contains(&ls->l[j], x, y)) n++;
+        }
+        a = gl_loop_area(&ls->l[i]);
+        if ((n % 2 == 0 && a < 0.f) || (n % 2 == 1 && a > 0.f)) reverse_loop(&ls->l[i]);
+    }
+}
+
+/* Offset fill: the outline, then gl_inset by the interval, until nothing
+ * is left. Open paths of the same colour are still followed. */
+static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
+{
+    gl_loops region, cur, next;
+    int ring, i, start;
+    if (loops_of(d, ly->colour, &region)) return -1;
+    face_even_odd(&region);
+    memset(&cur, 0, sizeof cur);
+    memset(&next, 0, sizeof next);
+    if (region.n) {
+        if (gl_union(&region, &cur)) {
+            gl_loops_free(&region);
+            return -1;
+        }
+        gl_loops_free(&region);
+        for (ring = 0; cur.n > 0 && ring < 10000; ring++) {
+            start = p->n;
+            for (i = 0; i < cur.n; i++) {
+                if (!cur.l[i].closed || cur.l[i].n < 3) continue;
+                if (gt_loop(p, GT_CUT, &cur.l[i], 0.f, ly->power)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (spd && *spd) {
+                if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (gl_inset(&cur, ly->interval, &next)) {
+                gl_loops_free(&cur);
+                return -1;
+            }
+            gl_loops_free(&cur);
+            cur = next;
+            memset(&next, 0, sizeof next);
+        }
+        gl_loops_free(&cur);
+    } else
+        gl_loops_free(&region);
+    for (i = 0; i < d->n; i++) {
+        if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
+        if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
     }
     return 0;
 }
@@ -212,27 +478,30 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
         cap = 64;
         spd = (float *)malloc((size_t)cap * sizeof *spd);
         if (!spd) return -1;
+        *speed = spd;
     }
     for (L = 0; L < d->nlayer; L++) {
         burn_layer ly;
         burn_layer_of(o, d, L, &ly);
         if (!ly.on || ly.colour == GV_NONE) continue;
         for (pass = 0; pass < ly.passes; pass++) {
+            if (ly.mode == BURN_FILL || ly.mode == BURN_OFFSET) {
+                int rc = (ly.mode == BURN_FILL)
+                             ? add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)
+                             : add_offset(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
+                if (rc) {
+                    free(spd);
+                    if (speed) *speed = NULL;
+                    gt_free(p);
+                    return -1;
+                }
+                continue;
+            }
             for (i = 0; i < d->n; i++) {
                 if (gv_path_colour(&d->p[i]) != ly.colour) continue;
-                if (speed && p->n + 8 > cap) {
-                    int ncap = cap * 2 + 32;
-                    float *nspd_mem = (float *)realloc(spd, (size_t)ncap * sizeof *spd);
-                    if (!nspd_mem) {
-                        free(spd);
-                        gt_free(p);
-                        return -1;
-                    }
-                    spd = nspd_mem;
-                    cap = ncap;
-                }
-                if (add_path(p, spd, &nspd, cap, &d->p[i], ly.power, ly.speed)) {
+                if (add_path(p, speed ? &spd : NULL, &nspd, &cap, &d->p[i], ly.power, ly.speed)) {
                     free(spd);
+                    if (speed) *speed = NULL;
                     gt_free(p);
                     return -1;
                 }
