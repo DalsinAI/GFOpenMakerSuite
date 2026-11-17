@@ -927,3 +927,156 @@ int ge_pull(gs_mesh *m, int face, float mm, char *line, int len)
     snprintf(line, (size_t)len, "Pulled %.1f mm. %d points moved on that face.", (double)mm, moved);
     return moved;
 }
+
+/* Where a to b crosses height cut (ha, hb theirs): the same point whichever
+ * way round, so the faces either side of an edge split it alike. */
+static gs_v cross_at(gs_v a, float ha, gs_v b, float hb, float cut)
+{
+    gs_v r;
+    float t;
+    if (a.x > b.x || (a.x == b.x && (a.y > b.y || (a.y == b.y && a.z > b.z)))) {
+        gs_v v = a;
+        float h = ha;
+        a = b, b = v, ha = hb, hb = h;
+    }
+    t = (cut - ha) / (hb - ha);
+    r.x = a.x + (b.x - a.x) * t, r.y = a.y + (b.y - a.y) * t, r.z = a.z + (b.z - a.z) * t;
+    return r;
+}
+
+/* m's faces across the plane at height cut along n (w the face's) split
+ * there, each into three, no edge split on one side only. 0, or -1. */
+static int split_at(gs_mesh *m, const gs_v *n, float w, float cut)
+{
+    gs_tri *out = (gs_tri *)malloc(sizeof(gs_tri) * (size_t)m->n * 3);
+    int i, k, o = 0;
+    if (!out) return -1;
+    for (i = 0; i < m->n; i++) {
+        gs_v v[3], up[4], down[4];
+        float h[3];
+        int s[3], nu = 0, nd = 0, f;
+        for (k = 0; k < 3; k++) {
+            v[k] = *corner(&m->t[i], k);
+            h[k] = n->x * v[k].x + n->y * v[k].y + n->z * v[k].z - w;
+            s[k] = h[k] > cut + 1e-4f ? 1 : h[k] < cut - 1e-4f ? -1 : 0;
+        }
+        if ((s[0] >= 0 && s[1] >= 0 && s[2] >= 0) || (s[0] <= 0 && s[1] <= 0 && s[2] <= 0)) {
+            out[o++] = m->t[i];
+            continue;
+        }
+        for (k = 0; k < 3; k++) {
+            int j = (k + 1) % 3;
+            if (s[k] >= 0) up[nu++] = v[k];
+            if (s[k] <= 0) down[nd++] = v[k];
+            if (s[k] * s[j] < 0) up[nu++] = down[nd++] = cross_at(v[k], h[k], v[j], h[j], cut);
+        }
+        for (f = 1; f + 1 < nu; f++) out[o].a = up[0], out[o].b = up[f], out[o++].c = up[f + 1];
+        for (f = 1; f + 1 < nd; f++) out[o].a = down[0], out[o].b = down[f], out[o++].c = down[f + 1];
+    }
+    free(m->t);
+    m->t = out;
+    m->n = o;
+    m->cap = (int)(m->n > 0 ? m->n : 1);
+    return 0;
+}
+
+int ge_chamfer(gs_mesh *m, int face, float mm, char *line, int len)
+{
+    unsigned char *on = NULL;
+    gs_v *at = NULL, *wa = NULL, *wb = NULL, *go = NULL, n0, lo, hi;
+    int *cnt = NULL, i, j, k, nr = 0, edges = 0;
+    float d = fabsf(mm) > 0.f ? fabsf(mm) : 1.f, deep_lo = 0.f, deep_hi = 0.f, w0, least = -1.f;
+    if (!m || !m->t || face < 0 || face >= m->n) {
+        snprintf(line, (size_t)len, "Click a face, then chamfer it.");
+        return -1;
+    }
+    d = d < 0.2f ? 0.2f : d > 20.f ? 20.f : d;
+    on = (unsigned char *)calloc((size_t)m->n, 1);
+    at = (gs_v *)malloc(sizeof(gs_v) * (size_t)m->n * 3);
+    wa = (gs_v *)calloc((size_t)m->n * 3, sizeof(gs_v));
+    wb = (gs_v *)calloc((size_t)m->n * 3, sizeof(gs_v));
+    go = (gs_v *)calloc((size_t)m->n * 3, sizeof(gs_v));
+    cnt = (int *)calloc((size_t)m->n * 3, sizeof(int));
+    if (!on || !at || !wa || !wb || !go || !cnt) {
+        snprintf(line, (size_t)len, "Not enough memory to chamfer.");
+        goto fail;
+    }
+    if (!region(m, face, &n0, on)) {
+        snprintf(line, (size_t)len, "That face has nothing to chamfer.");
+        goto fail;
+    }
+    w0 = n0.x * m->t[face].a.x + n0.y * m->t[face].a.y + n0.z * m->t[face].a.z;
+    lo = hi = m->t[face].a;
+    for (i = 0; i < m->n * 3; i++) {
+        const gs_v *p = corner(&m->t[i / 3], i % 3);
+        float h = n0.x * p->x + n0.y * p->y + n0.z * p->z - w0;
+        deep_lo = fminf(deep_lo, h), deep_hi = fmaxf(deep_hi, h);
+        if (!on[i / 3]) continue;
+        at[nr++] = *p; /* the face's points */
+        lo.x = fminf(lo.x, p->x), lo.y = fminf(lo.y, p->y), lo.z = fminf(lo.z, p->z);
+        hi.x = fmaxf(hi.x, p->x), hi.y = fmaxf(hi.y, p->y), hi.z = fmaxf(hi.z, p->z);
+    }
+    /* each face point's walls: their ways out, along the face, the two
+     * most apart kept */
+    for (i = 0; i < m->n; i++) {
+        gs_v n;
+        float w, a, l;
+        if (on[i] || plane_of(&m->t[i], &n, &w)) continue;
+        a = n.x * n0.x + n.y * n0.y + n.z * n0.z;
+        n.x -= n0.x * a, n.y -= n0.y * a, n.z -= n0.z * a;
+        l = sqrtf(n.x * n.x + n.y * n.y + n.z * n.z);
+        if (l < 0.1f) continue; /* along the face: not a wall */
+        n.x /= l, n.y /= l, n.z /= l;
+        for (j = 0; j < 3; j++)
+            for (k = 0; k < nr; k++) {
+                float c;
+                if (!same_point(corner(&m->t[i], j), &at[k])) continue;
+                c = n.x * wa[k].x + n.y * wa[k].y + n.z * wa[k].z;
+                if (!cnt[k]) wa[k] = n, cnt[k] = 1, edges++;
+                else if (c > 0.999f) continue;
+                else if (cnt[k] == 1 || c < wa[k].x * wb[k].x + wa[k].y * wb[k].y + wa[k].z * wb[k].z) wb[k] = n, cnt[k] = 2;
+            }
+    }
+    if (!edges) {
+        snprintf(line, (size_t)len, "That face has no edge to chamfer.");
+        goto fail;
+    }
+    if (hi.x - lo.x > 1e-3f) least = hi.x - lo.x;
+    if (hi.y - lo.y > 1e-3f && (least < 0.f || hi.y - lo.y < least)) least = hi.y - lo.y;
+    if (hi.z - lo.z > 1e-3f && (least < 0.f || hi.z - lo.z < least)) least = hi.z - lo.z;
+    if (d >= deep_hi - deep_lo || (least > 0.f && 2.f * d >= least)) {
+        snprintf(line, (size_t)len, "A %.1f mm chamfer is too big for that face.", (double)d);
+        goto fail;
+    }
+    /* each edge point in from its walls by d: from one wall, along it; from
+     * two, d from each */
+    for (k = 0; k < nr; k++) {
+        float c = wa[k].x * wb[k].x + wa[k].y * wb[k].y + wa[k].z * wb[k].z;
+        if (cnt[k] == 1 || (cnt[k] == 2 && c < -0.9f))
+            go[k].x = -d * wa[k].x, go[k].y = -d * wa[k].y, go[k].z = -d * wa[k].z;
+        else if (cnt[k] == 2) {
+            float f = -d / (1.f + c);
+            go[k].x = f * (wa[k].x + wb[k].x), go[k].y = f * (wa[k].y + wb[k].y), go[k].z = f * (wa[k].z + wb[k].z);
+        }
+    }
+    /* the walls cut at d down, then the edge points moved in: the bevel */
+    if (split_at(m, &n0, w0, -d)) {
+        snprintf(line, (size_t)len, "Not enough memory to chamfer.");
+        goto fail;
+    }
+    for (i = 0; i < m->n * 3; i++) {
+        gs_v *p = corner(&m->t[i / 3], i % 3);
+        for (k = 0; k < nr; k++)
+            if (cnt[k] && same_point(p, &at[k])) {
+                p->x += go[k].x, p->y += go[k].y, p->z += go[k].z;
+                break;
+            }
+    }
+    free(on), free(at), free(wa), free(wb), free(go), free(cnt);
+    bound(m);
+    snprintf(line, (size_t)len, "Chamfered that face's edges by %.1f mm.", (double)d);
+    return 0;
+fail:
+    free(on), free(at), free(wa), free(wb), free(go), free(cnt);
+    return -1;
+}

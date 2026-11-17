@@ -20,6 +20,7 @@
  * hidden, the last picked and named "Bracket", as the Parts tab shows it.
  * PULL=mm: then the top face pulled by mm (Face's distance; less than 0
  * pushes it in), as make.c's Pull on a face clicked at the top.
+ * CHAMFER=mm: then the top face chamfered by mm, as make.c's Chamfer.
  * KEYS: then, in turn, d (Delete the picked part), z (Amiga-Z, Undo), and
  * Z or y (Amiga-Shift-Z or Amiga-Y, Redo), as make.c's steps.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -279,13 +280,14 @@ int main(int argc, char **argv)
         }
         printf("%s\n", said);
     }
-    if (getenv("PULL")) { /* as make.c's Pull on the part's top face */
+    if (getenv("PULL") || getenv("CHAMFER")) { /* as make.c's Pull or Chamfer on the part's top face */
         int k, top = -1;
         for (k = 0; k < part.n && top < 0; k++)
             if (part.t[k].a.z > part.max.z - 1e-3f && part.t[k].b.z > part.max.z - 1e-3f && part.t[k].c.z > part.max.z - 1e-3f)
                 top = k;
-        if (ge_pull(&part, top, (float)atof(getenv("PULL")), said, (int)sizeof said) < 0) {
-            fprintf(stderr, "PULL: %s\n", said);
+        if ((getenv("PULL") ? ge_pull(&part, top, (float)atof(getenv("PULL")), said, (int)sizeof said)
+                            : ge_chamfer(&part, top, (float)atof(getenv("CHAMFER")), said, (int)sizeof said)) < 0) {
+            fprintf(stderr, "PULL or CHAMFER: %s\n", said);
             return 1;
         }
         ge_where(&part, wpos, wsize);
@@ -362,7 +364,9 @@ int main(int argc, char **argv)
                 olui_set_number(ui, olui_find(ui, ids[k][0]),
                                 (int)(atof(getenv(ids[k][1])) * (k == 1 ? 1.0 : 10.0) + 0.5));
     }
-    if (getenv("PULL")) olui_set_number(ui, olui_find(ui, "fmm"), (int)floorf((float)atof(getenv("PULL")) * 10.f + 0.5f));
+    if (getenv("PULL") || getenv("CHAMFER"))
+        olui_set_number(ui, olui_find(ui, "fmm"),
+                        (int)floorf((float)atof(getenv("PULL") ? getenv("PULL") : getenv("CHAMFER")) * 10.f + 0.5f));
     if (!olui_layout(ui, w, h)) return 1;
     if (getenv("OPEN")) {
         olui_select_open(ui, olui_find(ui, getenv("OPEN")), 1);
