@@ -72,7 +72,7 @@ int main(void)
     expect(load_laser(&m, err, (int)sizeof err) == 0 && m.family == OM_LASER, "Generic Diode 400");
     burn_defaults(&o);
     expect(o.size == (int)sizeof o && o.power == 50.f && o.speed == 20.f && o.passes == 1 && o.s100 == 1000.f &&
-               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1 && o.kerf == 0.f && o.tabs == 0 && o.tabw == 1.f,
+               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1 && o.kerf == 0.f && o.tabs == 0 && o.tabw == 1.f && o.x == 0.f && o.y == 0.f && o.rot == 0.f,
            "burn_defaults");
 
     gv_doc_init(&d);
@@ -86,6 +86,76 @@ int main(void)
     expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == 10, "two passes are two rounds");
     gv_doc_free(&d);
     gt_free(&p);
+
+    /* Place: x,y shift; rot around the box centre. */
+    {
+        float mn[3], mx[3];
+        burn_defaults(&o);
+        o.x = 5.f;
+        o.y = 5.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "core/tests/data/rect-10mm.svg", err, (int)sizeof err) == 0, "the square, to place");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0 && gt_bounds(&p, mn, mx) == 0 && mn[0] == 5.f && mn[1] == 5.f &&
+                   mx[0] == 15.f && mx[1] == 15.f,
+               "x=5 y=5 moves the square to 5,5-15,15");
+        memset(&st, 0, sizeof st);
+        expect(burn_write("core/tests/data/rect-10mm.svg", "build/place-xy.gcode", &m, &o, &st, err, (int)sizeof err) == 0,
+               "wrote the moved square");
+        g = slurp("build/place-xy.gcode");
+        expect(g && strstr(g, "X5") && strstr(g, "X15") && strstr(g, "Y5") && strstr(g, "Y15"),
+               "G-code is on the moved square");
+        free(g);
+
+        burn_defaults(&o);
+        o.rot = 90.f;
+        expect(burn_path(&p, NULL, &d, &o) == 0 && gt_bounds(&p, mn, mx) == 0 && mn[0] == 0.f && mn[1] == 0.f &&
+                   mx[0] == 10.f && mx[1] == 10.f,
+               "rot=90 around the centre leaves the square's box");
+        /* (0,0) goes to (0,10) when rotating 90 CCW about (5,5). */
+        {
+            int i, found = 0;
+            for (i = 0; i < p.n; i++)
+                if (p.m[i].x == 0.f && p.m[i].y == 10.f) found = 1;
+            expect(found, "the origin corner moved to 0,10");
+        }
+
+        burn_defaults(&o);
+        o.rot = 90.f;
+        o.x = 20.f;
+        o.y = 0.f;
+        expect(burn_path(&p, NULL, &d, &o) == 0 && gt_bounds(&p, mn, mx) == 0 && mn[0] == 20.f && mx[0] == 30.f &&
+                   mn[1] == 0.f && mx[1] == 10.f,
+               "rot=90 then x=20 places the box at 20,0-30,10");
+
+        /* A kerf at the origin, then a 5 mm shift, stays on a 400 mm bed. */
+        burn_defaults(&o);
+        o.kerf = 0.2f;
+        o.x = 5.f;
+        o.y = 5.f;
+        memset(&st, 0, sizeof st);
+        err[0] = 0;
+        expect(burn_write("core/tests/data/rect-10mm.svg", "build/place-kerf.gcode", &m, &o, &st, err,
+                          (int)sizeof err) == 0 &&
+                   (g = slurp("build/place-kerf.gcode")) && strstr(g, "X4.900") && strstr(g, "X15.100"),
+               "kerf then x=5 y=5 stays on the bed");
+        free(g);
+
+        /* Frame follows the placed box. */
+        burn_defaults(&o);
+        o.x = 5.f;
+        o.y = 5.f;
+        {
+            gt_path fr;
+            gt_init(&fr);
+            expect(burn_path(&p, NULL, &d, &o) == 0 && burn_frame_path(&fr, &p) == 0 && fr.m[0].x == 5.f &&
+                       fr.m[0].y == 5.f && fr.m[2].x == 15.f && fr.m[2].y == 15.f,
+                   "the frame is the placed box");
+            gt_free(&fr);
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+    }
 
     burn_defaults(&o);
     memset(&st, 0, sizeof st);

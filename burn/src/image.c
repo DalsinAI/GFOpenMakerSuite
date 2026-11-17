@@ -375,6 +375,7 @@ int burn_image_path(gt_path *p, float **speed, const burn_image *im, const burn_
             *speed = NULL;
         }
     }
+    if (o && burn_place_path(p, o->x, o->y, o->rot)) goto fail;
     return 0;
 fail:
     free(spd);

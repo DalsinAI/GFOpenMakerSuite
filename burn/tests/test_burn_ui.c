@@ -47,6 +47,7 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 static const char *const controls[][2] = {
     {"kind", "label"}, {"path", "input"},   {"open", "button"}, {"preview", "button"}, {"machine", "select"},
     {"constant", "checkbox"}, {"cuts_last", "checkbox"}, {"material", "select"}, {"frame", "button"}, {"gcode", "button"},
+    {"place-x", "spinner"}, {"place-y", "spinner"}, {"place-rot", "spinner"},
 };
 #define N ((int)(sizeof controls / sizeof controls[0]))
 
@@ -84,6 +85,9 @@ int main(void)
     expect(status.y + status.h >= h - 40 && status.w >= 78 * 8, "the status line along the bottom, 78 characters wide");
     expect(olui_box(ui, olui_find(ui, "side"), &side) && side.w >= 220 && side.w <= 250,
            "the side column holds the picker and the layers");
+    expect(omv_number(ui, "place-x") == 0.f && omv_number(ui, "place-y") == 0.f &&
+               omv_number(ui, "place-rot") == 0.f,
+           "the drawing starts unmoved, unrotated");
 
     memset(&lasers, 0, sizeof lasers);
     expect(omv_machines_scan(&lasers, "machines", "laser") > 0, "the laser profiles");
@@ -182,6 +186,11 @@ int main(void)
                (store[1].set & BURN_SET_KERF) && store[1].tabs == 4 && store[1].tabw == 1.5f &&
                (store[1].set & BURN_SET_TABS) && (store[1].set & BURN_SET_TABW),
            "the list is read back, including M3, fill, kerf and tabs");
+    olui_set_number(ui, olui_find(ui, "place-x"), 50);   /* 5.0 with one decimal */
+    olui_set_number(ui, olui_find(ui, "place-y"), -25);  /* -2.5 */
+    olui_set_number(ui, olui_find(ui, "place-rot"), 90);
+    burn_ui_read(ui, &o, store, 8);
+    expect(o.x == 5.f && o.y == -2.5f && o.rot == 90.f, "X, Y and Rot are read back");
     olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
     burn_ui_read(ui, &o, store, 8);
     expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");

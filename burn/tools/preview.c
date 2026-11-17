@@ -229,6 +229,27 @@ int main(int argc, char **argv)
             }
         }
         burn_ui_read(ui, &o, store, 64);
+        if (getenv("X")) o.x = (float)atof(getenv("X"));
+        if (getenv("Y")) o.y = (float)atof(getenv("Y"));
+        if (getenv("ROT")) o.rot = (float)atof(getenv("ROT"));
+        if (getenv("X") && olui_find(ui, "place-x")) {
+            float d = 1.f;
+            int k, dec = olui_number_decimals(olui_find(ui, "place-x"));
+            for (k = 0; k < dec; k++) d *= 10.f;
+            olui_set_number(ui, olui_find(ui, "place-x"), (int)(o.x * d + (o.x >= 0.f ? 0.5f : -0.5f)));
+        }
+        if (getenv("Y") && olui_find(ui, "place-y")) {
+            float d = 1.f;
+            int k, dec = olui_number_decimals(olui_find(ui, "place-y"));
+            for (k = 0; k < dec; k++) d *= 10.f;
+            olui_set_number(ui, olui_find(ui, "place-y"), (int)(o.y * d + (o.y >= 0.f ? 0.5f : -0.5f)));
+        }
+        if (getenv("ROT") && olui_find(ui, "place-rot")) {
+            float d = 1.f;
+            int k, dec = olui_number_decimals(olui_find(ui, "place-rot"));
+            for (k = 0; k < dec; k++) d *= 10.f;
+            olui_set_number(ui, olui_find(ui, "place-rot"), (int)(o.rot * d + (o.rot >= 0.f ? 0.5f : -0.5f)));
+        }
         if (have_image) {
             if (getenv("INTERVAL")) o.interval = (float)atof(getenv("INTERVAL"));
             if (getenv("KERF")) o.kerf = (float)atof(getenv("KERF"));

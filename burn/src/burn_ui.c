@@ -150,6 +150,9 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         o->constant = con && olui_get_checked(con);
         con = olui_find(ui, "cuts_last");
         o->cuts_last = con && olui_get_checked(con);
+        if (olui_find(ui, "place-x")) o->x = omv_number(ui, "place-x");
+        if (olui_find(ui, "place-y")) o->y = omv_number(ui, "place-y");
+        if (olui_find(ui, "place-rot")) o->rot = omv_number(ui, "place-rot");
         o->layer = (n && store) ? store : NULL;
         o->nlayer = (n && store) ? n : 0;
     }

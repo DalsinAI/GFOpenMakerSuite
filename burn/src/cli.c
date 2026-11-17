@@ -37,7 +37,7 @@ static int known_key(const char *s)
                                        "passes", "PASSES", "constant", "CONSTANT", "s100", "S100",
                                        "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER",
                                        "cuts_last", "CUTS_LAST", "order", "ORDER", "material", "MATERIAL",
-                                       "invert", "INVERT", "width", "WIDTH", "kerf", "KERF", "tabs", "TABS", "tabw", "TABW", "frame", "FRAME", NULL};
+                                       "invert", "INVERT", "width", "WIDTH", "kerf", "KERF", "tabs", "TABS", "tabw", "TABW", "frame", "FRAME", "x", "X", "y", "Y", "rot", "ROT", NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -53,7 +53,8 @@ static void usage(void)
     fprintf(stderr, "usage: openmake-burn in.svg|in.dxf|in.pgm out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
-                    "       [mode=line] [interval=0.2] [kerf=0] [tabs=0] [tabw=1] [frame=0] [cuts_last=1] [order=1,2]\n"
+                    "       [mode=line] [interval=0.2] [kerf=0] [tabs=0] [tabw=1] [frame=0] [x=0] [y=0] [rot=0]\n"
+                    "       [cuts_last=1] [order=1,2]\n"
                     "       [material=materials/laser/card.om]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
                     "mode=fill scans inside closed shapes, mode=offset follows them inwards; interval is the gap in mm.\n"
@@ -64,6 +65,7 @@ static void usage(void)
                     "tabs= is how many holding tabs to leave on each closed cut, after the kerf; 0 leaves none.\n"
                     "tabw= is each tab's width in mm (default 1). Fill, offset, open paths and pictures are unchanged.\n"
                     "frame=1 writes a travel around the job's box with the laser off, never a cut.\n"
+                    "x= and y= (mm) move the drawing on the bed; rot= is degrees CCW around its box centre.\n"
                     "A Netpbm PBM, PGM or PPM is engraved as scan lines (black is more power).\n"
                     "width= is the picture width in mm; invert=1 burns white.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
@@ -129,6 +131,9 @@ int main(int argc, char **argv)
     if ((v = arg2(argc, argv, "invert", "INVERT")) != NULL) o.invert = atoi(v) ? 1 : 0;
     if ((v = arg2(argc, argv, "width", "WIDTH")) != NULL) o.width = (float)atof(v);
     if ((v = arg2(argc, argv, "cuts_last", "CUTS_LAST")) != NULL) o.cuts_last = atoi(v) ? 1 : 0;
+    if ((v = arg2(argc, argv, "x", "X")) != NULL) o.x = (float)atof(v);
+    if ((v = arg2(argc, argv, "y", "Y")) != NULL) o.y = (float)atof(v);
+    if ((v = arg2(argc, argv, "rot", "ROT")) != NULL) o.rot = (float)atof(v);
     if (o.passes < 1) o.passes = 1;
     if (o.tabs < 0) {
         fprintf(stderr, "openmake-burn: tabs is a whole number, 0 to 32\n");
