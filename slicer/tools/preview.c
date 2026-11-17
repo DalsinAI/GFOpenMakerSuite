@@ -5,16 +5,21 @@
  * with SIZE=WxH last: the window's inside (640x480 to start). Sliced as
  * amiga.c's Slice does (sl_job, the toolpath engine on 4 tasks) for the
  * suite's printer picked first, and drawn as its view: the toolpath, layers
- * 1 to upto with Show ticked (0: all).
+ * 1 to upto with Show ticked (0: all). With GPU=1 in the environment the
+ * view is the OpenGPU batch amiga.c submits (omview_scene.h), its triangles
+ * filled here on the host with a depth buffer: not a chip, not OpenGPU.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "markup.h"
 #include "omview_machines.h"
+#include "gs_gpu.h"
+#include "omview_scene.h"
 #include "omview_ui.h"
 #include "sl_job.h"
 #include "slicer_ui.h"
 
 #include <gfopenlayout_ui.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,6 +56,63 @@ static void draw(void *userdata, const olui_draw_op *op)
     } else if (op->kind == OLUI_DRAW_CLIP) {
         fprintf(ops, "C %d %d %d %d\n", op->clip.x, op->clip.y, op->clip.w, op->clip.h);
     }
+}
+
+/* One of the batch's triangles, flat in its first vertex's colour, kept
+ * where it is nearer (a bigger z, as OpenGPU's GREATER compare). */
+static void tri(unsigned char *rgb, uint32_t *zb, int w, int h, const uint32_t *v)
+{
+    float x[3], y[3], area;
+    int i, px, py, x0, x1, y0, y1;
+    uint32_t c = v[2];
+    for (i = 0; i < 3; i++) {
+        x[i] = (float)(int32_t)v[i * 6] / 65536.f;
+        y[i] = (float)(int32_t)v[i * 6 + 1] / 65536.f;
+    }
+    area = (x[1] - x[0]) * (y[2] - y[0]) - (x[2] - x[0]) * (y[1] - y[0]);
+    if (area == 0.f) return;
+    x0 = (int)(x[0] < x[1] ? (x[0] < x[2] ? x[0] : x[2]) : (x[1] < x[2] ? x[1] : x[2]));
+    x1 = (int)(x[0] > x[1] ? (x[0] > x[2] ? x[0] : x[2]) : (x[1] > x[2] ? x[1] : x[2])) + 1;
+    y0 = (int)(y[0] < y[1] ? (y[0] < y[2] ? y[0] : y[2]) : (y[1] < y[2] ? y[1] : y[2]));
+    y1 = (int)(y[0] > y[1] ? (y[0] > y[2] ? y[0] : y[2]) : (y[1] > y[2] ? y[1] : y[2])) + 1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > w) x1 = w;
+    if (y1 > h) y1 = h;
+    for (py = y0; py < y1; py++)
+        for (px = x0; px < x1; px++) {
+            float fx = (float)px + .5f, fy = (float)py + .5f;
+            float a = ((x[1] - fx) * (y[2] - fy) - (x[2] - fx) * (y[1] - fy)) / area;
+            float b = ((x[2] - fx) * (y[0] - fy) - (x[0] - fx) * (y[2] - fy)) / area;
+            float g = 1.f - a - b;
+            uint32_t z;
+            if (a < 0.f || b < 0.f || g < 0.f) continue;
+            z = (uint32_t)(a * (float)v[5] + b * (float)v[11] + g * (float)v[17]);
+            if (z <= zb[py * w + px]) continue;
+            zb[py * w + px] = z;
+            rgb[(py * w + px) * 3] = (unsigned char)(c >> 16);
+            rgb[(py * w + px) * 3 + 1] = (unsigned char)(c >> 8);
+            rgb[(py * w + px) * 3 + 2] = (unsigned char)c;
+        }
+}
+
+/* The view as amiga.c's draw_gpu builds it (omv_scene), filled on the host. */
+static int paint_batch(const sl_job *job, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    int need = omv_scene_need(&job->part, &job->path), i, n, nv;
+    uint32_t *v = calloc((size_t)need * 6, 4), *st = calloc(65536, 4), *zb = calloc((size_t)w * (size_t)h, 4);
+    n = v && st && zb ? omv_scene(&job->part, &job->path, cam, upto, 0, w, h, v, need, st, 65536, 0x10000, w * 4, 0x20000) : -1;
+    nv = n > 0 ? gs_gpu_toolpath(&job->path, cam, upto, 1, w, h, v, need) : -1;
+    for (i = 0; i < w * h; i++) {
+        rgb[i * 3] = 0x14;
+        rgb[i * 3 + 1] = 0x16;
+        rgb[i * 3 + 2] = 0x1c;
+    }
+    for (i = 0; i + 2 < nv; i += 3) tri(rgb, zb, w, h, v + i * 6);
+    free(v);
+    free(st);
+    free(zb);
+    return nv > 0 ? 0 : -1;
 }
 
 int main(int argc, char **argv)
@@ -118,7 +180,8 @@ int main(int argc, char **argv)
         if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
             rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
             gs_cam_home(&cam);
-            if (rgb && !gt_paint_part(&job.path, &cam, upto, rgb, box.w, box.h)) {
+            if (rgb && !(getenv("GPU") ? paint_batch(&job, &cam, upto, rgb, box.w, box.h)
+                                       : gt_paint_part(&job.path, &cam, upto, rgb, box.w, box.h))) {
                 char ppm[256];
                 FILE *pf;
                 snprintf(ppm, sizeof ppm, "%s.ppm", argv[2]);
