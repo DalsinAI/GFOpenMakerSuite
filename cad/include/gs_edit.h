@@ -170,6 +170,24 @@ float ge_drag_mm(float sx, float sy, float dx, float dy);
  * face has), the part kept. */
 int ge_chamfer(gs_mesh *m, int face, float mm, char *line, int len);
 
+/* Arrange, as the bench's, each on ps's picked part with line saying what
+ * it did; or -1 with line saying why, ps kept. Copies keep the part's name
+ * and metal, the list's 24 at most. Duplicate: one copy 6 mm on past it in
+ * X, picked. Line: count (2 to 8) in all along axis (0 X, 1 Y, 2 Z), gap
+ * (0 to 80) mm apart, the last picked. Ring: count (3 to 12) in all round
+ * the bed's middle, each turned with its place; a part on the middle has
+ * its copies round it, clear of it and of each other. Mirror: through X
+ * about its middle. Turn: deg about axis through its middle. Stack: on the part before it in the list (the
+ * second, for the first), over its middle. Solo: the others hidden, or
+ * with them hidden already, every part shown. */
+int ge_duplicate(gs_parts *ps, char *line, int len);
+int ge_line(gs_parts *ps, int axis, int count, float gap, char *line, int len);
+int ge_ring(gs_parts *ps, int count, char *line, int len);
+int ge_mirror(gs_parts *ps, char *line, int len);
+int ge_turn(gs_parts *ps, int axis, float deg, char *line, int len);
+int ge_stack(gs_parts *ps, char *line, int len);
+int ge_solo(gs_parts *ps, char *line, int len);
+
 /* The bench's Extrude: kind GM_RECT, GM_ROUND or GM_SLOT, w by d (a round
  * w across), h tall. GM_ON_BED: out is the solid on the bed mid-plate, to
  * place and join as an added part. GM_ON_TOP and GM_FROM_TOP: out is the

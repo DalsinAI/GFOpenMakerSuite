@@ -19,7 +19,8 @@ cd "$HERE"
 python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
     core/library/openmakemesh_lib.sfd core/library/openmakegcode_lib.sfd \
     core/library/openmakeview_lib.sfd core/library/openmaketask_lib.sfd \
-    core/library/openmakevec_lib.sfd core/library/openmakeproject_lib.sfd --check
+    core/library/openmakevec_lib.sfd core/library/openmakeproject_lib.sfd \
+    core/library/openmakerexx_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -139,5 +140,11 @@ for v in fpu soft; do
         core/library/openmakeproject_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeProjectBase '-DLINK_NAME="openmakeproject.library"'
     echo "$OUT/$v/TestProjectLib: $(wc -c < "$OUT/$v/TestProjectLib") bytes"
+    lib "$v" "$flags" openmakerexx.library core/include \
+        core/library/openmakerexx_lib.c core/src/rexx.c core/src/rexx_amiga.c
+    "$CC" $prog -Icore/include -Icore/src -I"$SDK/Include" -s -o "$OUT/$v/TestRexxLib" core/tests/test_rexx.c \
+        core/library/openmakerexx_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeRexxBase '-DLINK_NAME="openmakerexx.library"'
+    echo "$OUT/$v/TestRexxLib: $(wc -c < "$OUT/$v/TestRexxLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"

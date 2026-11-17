@@ -2,7 +2,7 @@
 
 The suite's shared code is built as Amiga shared libraries, each loaded once
 and shared by every app: `openmakemachine.library` first, then
-`openmakepath`, `openmakemesh`, `openmakegcode`, `openmakeview`, `openmaketask`, `openmakevec` and `openmakeproject`.
+`openmakepath`, `openmakemesh`, `openmakegcode`, `openmakeview`, `openmaketask`, `openmakevec`, `openmakeproject` and `openmakerexx`.
 
 | file | what it is |
 |---|---|
@@ -18,6 +18,7 @@ and shared by every app: `openmakemachine.library` first, then
 | `openmaketask_lib.*` | openmaketask.library: work spread over the cores (`gs_par.h`, `core/src/par_exec.c`): n pieces of the program's own code, each run once on exec tasks, returning when all have. The pieces must not use DOS (tasks, not processes), and the program must not be built `-fbaserel`. |
 | `openmakevec_lib.*` | openmakevec.library: 2D vector drawings and an SVG reader (`core/src/vec.c`, `gs_vec.h`), written from the W3C SVG 1.1 specification. Paths, groups and the usual shapes; coordinates in millimetres, origin at the bottom-left of the view box, Y up. A colour becomes a layer (the stroke, or the fill if there is no stroke). |
 | `openmakeproject_lib.*` | openmakeproject.library: a GFOpenMakerWorkshop project (`core/src/project.c`, `gs_project.h`): a drawer and its `project.om` manifest (create, open, save, add, remove, rename, kinds, the app for an item, and recent projects). An unknown kind is kept, so a later kind can be added without breaking old projects. |
+| `openmakerexx_lib.*` | openmakerexx.library 1.0: a public ARexx port and a client (`core/src/rexx.c`, `rexx_amiga.c`, `gs_rexx.h`), written from the public Amiga ARexx and rexxsyslib documentation. An app opens a port (`GFOPENMAKE.1` and so on); Workshop, the hub, finds or starts a port, sends a command, and waits for RC and RESULT, with a timeout (timer.device, not a busy loop). The parser and the host stub are tested on the host; the Amiga port is compiled only for Amiga. |
 | `gen-library.py` | Writes a library's glue from its `.sfd`: the inline calls and proto header for programs, the library's side of each call and its jump table, and a link library with the C API through the library. `make test` checks the files are as it writes them. |
 
 Each library's `.sfd` is the list of its calls, in order. Never reorder or

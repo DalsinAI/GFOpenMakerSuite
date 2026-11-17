@@ -687,6 +687,90 @@ int main(void)
                "closed, as tall, the walls cut, about the bevels' volume taken");
         gs_mesh_free(&c);
     }
+    {
+        /* Arrange, as the bench's: Duplicate, Line, Ring, Mirror, Turn,
+         * Stack and Solo, each on the picked part of the list. */
+        gs_parts *ps = gs_parts_new();
+        gs_mesh c, b;
+        char line[120];
+        float pos[3], size[3], v0;
+        int k, n;
+        memset(&c, 0, sizeof c);
+        memset(&b, 0, sizeof b);
+        expect(gm_cube(&c, 40.f, 40.f, 0.f, 20.f, 10.f, 5.f) == 0 && gm_cube(&b, 150.f, 150.f, 0.f, 30.f, 30.f, 8.f) == 0,
+               "a block and a base");
+        expect(ps && gs_parts_add(ps, &b, "Base") == 0 && gs_parts_add(ps, &c, "Block") == 1, "two parts, Block picked");
+        gs_parts_set_colour(ps, 1, 4);
+        v0 = signed_volume(gs_parts_mesh(ps, 1));
+
+        expect(ge_duplicate(ps, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 3 && gs_parts_picked(ps) == 2 &&
+                   !strcmp(gs_parts_name(ps, 2), "Block") && gs_parts_colour(ps, 2) == 4 && strstr(line, "Block is a copy"),
+               "Duplicate: a third part, the copy, picked, its name and metal");
+        ge_where(gs_parts_mesh(ps, 2), pos, size);
+        expect(near(pos[0], 50.f + 26.f) && near(pos[1], 45.f) && near(size[0], 20.f), "beside it, 6 mm on in X");
+        gs_parts_remove(ps, 2);
+        gs_parts_pick(ps, 1);
+
+        expect(ge_line(ps, 1, 3, 4.f, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 4 && gs_parts_picked(ps) == 3 &&
+                   strstr(line, "3 of Block along Y, 4.0 mm apart"),
+               "Line Y: three in all, the last picked");
+        ge_where(gs_parts_mesh(ps, 3), pos, size);
+        expect(near(pos[0], 50.f) && near(pos[1], 45.f + 28.f), "each 10 + 4 mm on in Y");
+        gs_parts_pick(ps, 1);
+        expect(ge_line(ps, 0, 30, 500.f, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 11 &&
+                   strstr(line, "8 of Block along X, 80.0 mm apart"),
+               "at most eight in a line, at most 80 mm apart");
+        for (k = 10; k >= 2; k--) gs_parts_remove(ps, k);
+        gs_parts_pick(ps, 1);
+
+        expect(ge_ring(ps, 4, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 5 && strstr(line, "Ring of 4 around"),
+               "Ring of 4 about the bed's middle");
+        ge_where(gs_parts_mesh(ps, 3), pos, size); /* half way round: opposite the first */
+        expect(near(pos[0], 220.f - 50.f) && near(pos[1], 220.f - 45.f) && near(size[0], 20.f) && near(size[1], 10.f),
+               "the second copy opposite, turned half round");
+        ge_where(gs_parts_mesh(ps, 2), pos, size); /* a quarter round: turned on its side */
+        expect(near(size[0], 10.f) && near(size[1], 20.f), "the first copy a quarter round, turned with it");
+        for (k = 4; k >= 2; k--) gs_parts_remove(ps, k);
+        gs_parts_pick(ps, 1);
+        ge_place(gs_parts_mesh(ps, 1), 110.f, 110.f, 0.f);
+        expect(ge_ring(ps, 3, line, (int)sizeof line) == 0 && strstr(line, "on the centre") && gs_parts_count(ps) == 4,
+               "a part on the centre: the copies on a circle round it");
+        ge_where(gs_parts_mesh(ps, 2), pos, size);
+        expect(fabsf(sqrtf((pos[0] - 110.f) * (pos[0] - 110.f) + (pos[1] - 110.f) * (pos[1] - 110.f)) - 34.4f) < 0.05f,
+               "on a circle clear of it: 20 x 1.42 + 6 mm");
+        for (k = 3; k >= 2; k--) gs_parts_remove(ps, k);
+        gs_parts_pick(ps, 1);
+        ge_place(gs_parts_mesh(ps, 1), 50.f, 45.f, 0.f);
+
+        expect(ge_mirror(ps, line, (int)sizeof line) == 0 && strstr(line, "Block mirrored through X"), "Mirror");
+        ge_where(gs_parts_mesh(ps, 1), pos, size);
+        expect(near(pos[0], 50.f) && near(size[0], 20.f) && fabsf(signed_volume(gs_parts_mesh(ps, 1)) - v0) < 0.01f &&
+                   closed(gs_parts_mesh(ps, 1)),
+               "in place, as big, still outward: its volume the same sign");
+
+        expect(ge_turn(ps, 2, 90.f, line, (int)sizeof line) == 0 && strstr(line, "turned 90 degrees around Z"), "Turn");
+        ge_where(gs_parts_mesh(ps, 1), pos, size);
+        expect(near(size[0], 10.f) && near(size[1], 20.f) && near(pos[0], 50.f) && near(pos[1], 45.f),
+               "on its side, where it was");
+
+        expect(ge_stack(ps, line, (int)sizeof line) == 0 && strstr(line, "Block is stacked on Base"), "Stack");
+        ge_where(gs_parts_mesh(ps, 1), pos, size);
+        expect(near(pos[0], 165.f) && near(pos[1], 165.f) && near(pos[2], 8.f), "on the base's top, over its middle");
+
+        expect(ge_solo(ps, line, (int)sizeof line) == 0 && gs_parts_shown(ps, 0) == 0 && gs_parts_shown(ps, 1) == 1 &&
+                   strstr(line, "Only Block is showing"),
+               "Solo: the others hidden");
+        expect(ge_solo(ps, line, (int)sizeof line) == 0 && gs_parts_shown(ps, 0) == 1 && strstr(line, "Every part"),
+               "Solo again: every part shown");
+        gs_parts_remove(ps, 0);
+        expect(ge_stack(ps, line, (int)sizeof line) == -1 && strstr(line, "base"), "one part: no base to stack on");
+        expect(ge_solo(ps, line, (int)sizeof line) == -1 && strstr(line, "only part"), "nor anything to solo from");
+        for (n = 1; n < GS_PARTS_MAX; n++) ge_duplicate(ps, line, (int)sizeof line);
+        expect(gs_parts_count(ps) == GS_PARTS_MAX && ge_duplicate(ps, line, (int)sizeof line) == -1 &&
+                   strstr(line, "limit") && ge_ring(ps, 3, line, (int)sizeof line) == -1,
+               "24 parts is the limit");
+        gs_parts_free(ps);
+    }
     if (fails) { /* the checks after the first count too */
         fprintf(stderr, "%d failed\n", fails);
         return 1;
