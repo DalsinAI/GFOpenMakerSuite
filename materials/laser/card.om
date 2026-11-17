@@ -1,0 +1,8 @@
+# Starting point for a small diode laser on light card or paper.
+# Tune to the machine and the sheet. Not a measured cut, and not any
+# maker's numbers.
+name = Card
+power = 40
+speed = 40
+passes = 1
+mode = line

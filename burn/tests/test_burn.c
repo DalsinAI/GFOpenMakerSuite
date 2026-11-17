@@ -1,6 +1,7 @@
 /* OpenMakeBurn's job: an SVG to a line toolpath and Grbl laser G-code.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_material.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -472,6 +473,62 @@ int main(void)
     free(g);
     gv_doc_free(&d);
     gt_free(&p);
+
+    {
+        burn_material mat;
+        burn_materials lib;
+        burn_opts o2;
+        expect(burn_material_load(&mat, "materials/laser/card.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "Card") && mat.power == 40.f && mat.speed == 40.f && mat.passes == 1 &&
+                   mat.mode == BURN_LINE && (mat.set & BURN_SET_POWER) && (mat.set & BURN_SET_SPEED),
+               "card starting point");
+        expect(burn_material_load(&mat, "materials/laser/plywood-3mm.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "3 mm plywood") && mat.power == 80.f && mat.speed == 8.f && mat.passes == 3 &&
+                   mat.mode == BURN_LINE,
+               "3 mm plywood starting point");
+        expect(burn_material_load(&mat, "materials/laser/draft-engrave.om", err, (int)sizeof err) == 0 &&
+                   !strcmp(mat.name, "Draft engrave") && mat.mode == BURN_FILL && mat.interval == 0.2f &&
+                   mat.power == 20.f,
+               "draft engrave starting point");
+        burn_defaults(&o2);
+        burn_material_apply(&mat, &o2);
+        expect(o2.power == 20.f && o2.speed == 40.f && o2.mode == BURN_FILL && o2.interval == 0.2f,
+               "apply sets the job defaults that were in the profile");
+        err[0] = 0;
+        expect(burn_material_load(&mat, "materials/laser/no-such.om", err, (int)sizeof err) == -1 &&
+                   strstr(err, "cannot open"),
+               "a missing profile says why");
+        {
+            FILE *f = fopen("build/bad-material.om", "w");
+            expect(f != NULL, "a typo profile");
+            if (f) {
+                fputs("name = typo\nspped = 10\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_material_load(&mat, "build/bad-material.om", err, (int)sizeof err) == -1 &&
+                       strstr(err, "spped"),
+                   "an unknown key is refused");
+        }
+        {
+            FILE *f = fopen("build/noname-material.om", "w");
+            expect(f != NULL, "a nameless profile");
+            if (f) {
+                fputs("power = 50\n", f);
+                fclose(f);
+            }
+            err[0] = 0;
+            expect(burn_material_load(&mat, "build/noname-material.om", err, (int)sizeof err) == -1 &&
+                       strstr(err, "wants a name"),
+                   "a profile without a name is refused");
+        }
+        burn_materials_init(&lib);
+        expect(burn_materials_scan(&lib, "materials/laser") == 0 && lib.n == 3, "the shipped library has three profiles");
+        expect(!strcmp(lib.at[0].name, "3 mm plywood") && !strcmp(lib.at[1].name, "Card") &&
+                   !strcmp(lib.at[2].name, "Draft engrave"),
+               "the library is sorted by name");
+        burn_materials_free(&lib);
+    }
 
     if (fails) {
         printf("%d failed\\n", fails);
