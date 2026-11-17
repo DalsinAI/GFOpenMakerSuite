@@ -51,6 +51,9 @@ Each layer has:
     spend a long time travelling; not the first choice for a complex one.
 - **On or off:** a layer can be left out of the preview and the job.
 - **Interval**, for fill and offset fill, in mm.
+- **Kerf**, for a cut layer, in mm. Closed cuts move out by half the
+  kerf and holes move in, so the piece comes out the drawn size. 0
+  leaves the path. Open paths are not moved. The command has `kerf=`.
 
 ### Order
 

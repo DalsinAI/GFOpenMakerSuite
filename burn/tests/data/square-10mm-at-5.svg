@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A 10 mm square with its corner at (5, 5), so a kerf still fits on the bed. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="20mm" viewBox="0 0 20 20">
+  <rect x="5" y="5" width="10" height="10" fill="none" stroke="#000000"/>
+</svg>

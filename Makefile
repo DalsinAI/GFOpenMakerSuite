@@ -373,6 +373,11 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	    interval=1 power=100 > /dev/null
 	grep -q '^M4' $(BUILD)/burn-img.gcode && grep -q '^S1000' $(BUILD)/burn-img.gcode && \
 	    grep -q '^G0 ' $(BUILD)/burn-img.gcode && grep -q '^G1 ' $(BUILD)/burn-img.gcode
+	$(BUILD)/openmake-burn burn/tests/data/square-10mm-at-5.svg $(BUILD)/burn-kerf.gcode kerf=0.2 > /dev/null
+	grep -q 'X4.900' $(BUILD)/burn-kerf.gcode && grep -q 'X15.100' $(BUILD)/burn-kerf.gcode
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-kerf-off.gcode kerf=0.2 \
+	    2> $(BUILD)/burn-kerf-off.txt
+	grep -q 'cannot burn this' $(BUILD)/burn-kerf-off.txt && test ! -e $(BUILD)/burn-kerf-off.gcode
 	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview
