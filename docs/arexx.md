@@ -454,6 +454,25 @@ library uses the same calls against an in-process stub, so `make test`
 client's find / send / timeout path. The real port and the timer are
 compiled only for Amiga.
 
+The calls (structs start with their size; never reorder or take a call
+out, add new ones at the end):
+
+- `OMR_Open` / `OMR_Close` / `OMR_Mask` / `OMR_Name` / `OMR_Get` — the
+  port. `OMR_Mask` is the Exec signal bit to OR into `Wait()`.
+- `OMR_Text` / `OMR_Parse` / `OMR_Why` / `OMR_Arg` / `OMR_Switch` — the
+  command line and its arguments.
+- `OMR_SetResult` / `OMR_SetVar` / `OMR_SetStem` / `OMR_Reply` /
+  `OMR_Dispatch` — run a command and reply. `OMR_DoLine` does that
+  in-process for a single line (the host tests, and a useful shortcut).
+- `OMR_Attach` — serve a client in this process from a command table,
+  with no second thread.
+- `OMR_Find` / `OMR_Connect` / `OMR_Disconnect` / `OMR_Send` — the
+  client. `OMR_Connect` finds the port, or starts a program and waits
+  until it appears or the timeout. `OMR_Send` waits for the reply the
+  same way. A timeout is RC 20, with why in the caller's buffer.
+
+The C names are the same in snake case (`omr_open`, `omr_send`).
+
 ## Example scripts
 
 These will ship under `docs/rexx/` once the ports are in the apps:

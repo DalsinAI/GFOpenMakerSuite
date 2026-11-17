@@ -1,0 +1,35 @@
+==id $Id: openmakerexx_lib.sfd 1.0 (17.11.2026) $
+* "openmakerexx.library": a public ARexx port and a client, for every
+* OpenMake program (gs_rexx.h). Written from the public Amiga ARexx and
+* rexxsyslib documentation. Each call is its C function in snake case
+* (OMR_Open is omr_open). Never reorder or take a call out; add new ones
+* at the end. core/library/gen-library.py writes the rest from this.
+==base _OpenMakeRexxBase
+==basetype struct Library *
+==libname openmakerexx.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_rexx.h>
+omr_port *OMR_Open(const char *base_name, const char *version)(a0,a1)
+void OMR_Close(omr_port *port)(a0)
+unsigned long OMR_Mask(omr_port *port)(a0)
+const char *OMR_Name(omr_port *port)(a0)
+omr_cmd *OMR_Get(omr_port *port)(a0)
+const char *OMR_Text(omr_cmd *cmd)(a0)
+int OMR_Parse(omr_cmd *cmd, const char *template)(a0,a1)
+const char *OMR_Why(omr_cmd *cmd)(a0)
+const char *OMR_Arg(omr_cmd *cmd, const char *key)(a0,a1)
+int OMR_Switch(omr_cmd *cmd, const char *key)(a0,a1)
+void OMR_SetResult(omr_cmd *cmd, const char *result)(a0,a1)
+int OMR_SetVar(omr_cmd *cmd, const char *name, const char *value)(a0,a1,a2)
+int OMR_SetStem(omr_cmd *cmd, const char *stem, const char *tail, const char *value)(a0,a1,a2,a3)
+void OMR_Reply(omr_cmd *cmd, int rc, const char *result)(a0,d0,a1)
+int OMR_Dispatch(omr_cmd *cmd, const omr_verb *verbs, int n, void *app)(a0,a1,d0,a2)
+int OMR_DoLine(const char *line, const omr_verb *verbs, int n, void *app, omr_io *io)(a0,a1,d0,a2,a3)
+int OMR_Attach(omr_port *port, const omr_verb *verbs, int n, void *app)(a0,a1,d0,a2)
+int OMR_Find(const char *name, char *found, int foundlen)(a0,a1,d0)
+omr_client *OMR_Connect(const char *port_base, omr_opt *opt)(a0,a1)
+void OMR_Disconnect(omr_client *client)(a0)
+int OMR_Send(omr_client *client, const char *command, omr_io *io)(a0,a1,a2)
+==end
