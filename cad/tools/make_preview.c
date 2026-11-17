@@ -18,6 +18,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_model.h"
+#include "gs_parts.h"
 #include "gs_gcode.h"
 #include "gs_plan.h"
 #include "gs_settings.h"
@@ -138,6 +139,8 @@ int main(int argc, char **argv)
     gc_stats st;
     gt_path path;
     char err[160], status[180], ppm[256], said[96] = "";
+    int model = 0; /* the model view, as the app shows it unsliced */
+    float wpos[3], wsize[3];
     gs_v mark[2];
     int nmark = 0;
     unsigned char *rgb;
@@ -172,13 +175,25 @@ int main(int argc, char **argv)
             if (sscanf(getenv("AT"), "%f,%f,%f", &pos[0], &pos[1], &pos[2]) < 2) return 2;
             ge_place(&sc.added, pos[0], pos[1], pos[2]);
         }
-        if (!sc.added.n ||
+        if (sc.added.n && !getenv("OP")) { /* not combined: two parts, the added one picked */
+            gs_parts *ps = gs_parts_new();
+            const char *nm = ge_shape_name(atoi(getenv("SHAPE")));
+            int n = sc.added.n;
+            ge_where(&sc.added, wpos, wsize); /* Place shows the picked part */
+            if (!ps || gs_parts_add(ps, &sc.stock, "Holed cube") < 0 || gs_parts_add(ps, &sc.added, nm) < 0) return 1;
+            memset(&part, 0, sizeof part);
+            if (gs_parts_scene(ps, &part)) return 1;
+            gs_parts_free(ps);
+            snprintf(said, sizeof said, "%s, %d triangles. Orbit. Drag turns the view. A click picks a face.", nm, n);
+            model = 1;
+            printf("%s\n", said);
+        } else if (!sc.added.n ||
             ge_bool(&sc, getenv("OP") ? atoi(getenv("OP")) : 0, NULL)) {
             fprintf(stderr, "SHAPE: that did not build or did not meet the part\n");
             return 1;
         }
-        part = sc.stock;
-        printf("%s %s: %d triangles\n", ge_shape_name(atoi(getenv("SHAPE"))),
+        if (!model) part = sc.stock;
+        if (!model) printf("%s %s: %d triangles\n", ge_shape_name(atoi(getenv("SHAPE"))),
                getenv("OP") && atoi(getenv("OP")) == 1 ? "cut" : getenv("OP") && atoi(getenv("OP")) == 2 ? "met" : "joined",
                part.n);
     }
@@ -266,6 +281,7 @@ int main(int argc, char **argv)
         float pos[3], size[3];
         int k; /* as make.c's Place: the part's box and bottom middle */
         ge_where(&part, pos, size);
+        if (model) memcpy(pos, wpos, sizeof pos), memcpy(size, wsize, sizeof size);
         for (k = 0; k < 3; k++) {
             olui_set_number(ui, olui_find(ui, ids[k]), (int)(size[k] * 10.f + 0.5f));
             olui_set_number(ui, olui_find(ui, ids[3 + k]), (int)(pos[k] < 0.f ? pos[k] * 10.f - 0.5f : pos[k] * 10.f + 0.5f));
@@ -290,6 +306,10 @@ int main(int argc, char **argv)
         if (!olui_layout(ui, w, h)) return 1;
     }
     gs_cam_home(&cam);
+    if (model && !getenv("EXTRUDE")) {
+        snprintf(status, sizeof status, "%s", said);
+        omv_say(ui, status);
+    }
     if (getenv("EXTRUDE")) { /* the tab as the click left it, and what it said */
         static const char *const ids[3] = {"xw", "xd", "xh"};
         float v[5];
@@ -333,7 +353,7 @@ int main(int argc, char **argv)
     olui_draw(ui, NULL, draw, NULL);
     if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
         rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
-        if (rgb && (getenv("MEASURE") || getenv("EXTRUDE") ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
+        if (rgb && (getenv("MEASURE") || getenv("EXTRUDE") || model ? !gs_view_bed(&part, &cam, rgb, box.w, box.h) && !paint_marks(rgb, box.w, box.h, &part, &cam, mark, nmark)
                                       : !gt_paint_part(&path, &cam, upto, rgb, box.w, box.h))) {
             snprintf(ppm, sizeof ppm, "%s.ppm", argv[1]);
             pf = fopen(ppm, "wb");

@@ -1,6 +1,9 @@
 /* GFOpenMake on the Amiga. A 20 mm cube with a hole through it, on a 220 mm
- * plate, in a GFOpenLayout window. Orbit turns the view. Move, rotate and
- * scale change the solid. Drop, Centre and Lay flat put it on the bed.
+ * plate, in a GFOpenLayout window: the first of up to 24 parts, as the
+ * bench's list (gs_parts.h). A click picks a part. Orbit turns the view.
+ * Move, rotate and scale change the picked part. Drop, Centre and Lay flat
+ * put it on the bed. Join, Cut and Intersect take the picked part as the
+ * tool and the one before it as the stock (ge_combine).
  *
  * The triangles are submitted as OGPU_OP_TRIANGLES, with a depth buffer,
  * whenever gfopengpu.library can draw them. The picture is shown through
@@ -44,16 +47,16 @@
 
 static const char version[] = "$VER: GFOpenMake 0.1.0 (8.11.2026) AmiCradle Team";
 
-static gs_mesh hole;
-static gs_mesh added;
-static gs_mesh shown;
-static int has_added, on_added;
+/* The bench's parts (gs_parts.h): up to 24, one picked; shown is every
+ * shown part's triangles, for the view, picking and the slicer. */
+static gs_parts *parts;
+static gs_mesh shown, none;
 static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift, drag_moved;
 static int gpu_on, on_chip, draw_grid, presented;
 static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip;
-static ge_hist *hist;
+static ge_steps *steps;
 static char stl_path[256] = "RAM:hole.stl";
 /* The Layers group: the height, whether a layer is shown, which, and its walls. */
 static float layer_h = 0.2f;
@@ -69,51 +72,24 @@ static omv_machines printers;
 /* The view on OpenGPU (core/ui): its picture, depth, vertices and stream. */
 static omv_gpu gpu;
 
+/* The picked part, or an empty mesh with none (nothing then changes). */
 static gs_mesh *work(void)
 {
-    return (has_added && on_added) ? &added : &hole;
+    gs_mesh *m = gs_parts_mesh(parts, gs_parts_picked(parts));
+    if (m) return m;
+    gs_mesh_free(&none);
+    return &none;
 }
 
-static void mesh_bounds(gs_mesh *m)
+static const char *work_name(void)
 {
-    int i, k;
-    if (!m->n || !m->t) {
-        m->min.x = m->min.y = m->min.z = 0.f;
-        m->max = m->min;
-        return;
-    }
-    m->min = m->max = m->t[0].a;
-    for (i = 0; i < m->n; i++) {
-        gs_v p[3];
-        p[0] = m->t[i].a;
-        p[1] = m->t[i].b;
-        p[2] = m->t[i].c;
-        for (k = 0; k < 3; k++) {
-            if (p[k].x < m->min.x) m->min.x = p[k].x;
-            if (p[k].y < m->min.y) m->min.y = p[k].y;
-            if (p[k].z < m->min.z) m->min.z = p[k].z;
-            if (p[k].x > m->max.x) m->max.x = p[k].x;
-            if (p[k].y > m->max.y) m->max.y = p[k].y;
-            if (p[k].z > m->max.z) m->max.z = p[k].z;
-        }
-    }
+    const char *n = gs_parts_name(parts, gs_parts_picked(parts));
+    return n ? n : "No part";
 }
 
 static void rebuild_shown(void)
 {
-    int n = hole.n + (has_added ? added.n : 0);
-    int i, k = 0;
-    gs_tri *t = n ? (gs_tri *)malloc((size_t)n * sizeof *t) : NULL;
-    if (n && !t) return;
-    for (i = 0; i < hole.n; i++) t[k++] = hole.t[i];
-    if (has_added) {
-        for (i = 0; i < added.n; i++) t[k++] = added.t[i];
-    }
-    free(shown.t);
-    memset(&shown, 0, sizeof shown);
-    shown.t = t;
-    shown.n = shown.cap = n;
-    mesh_bounds(&shown);
+    gs_parts_scene(parts, &shown);
 }
 
 static void say(olui *ui, const char *text)
@@ -286,7 +262,7 @@ static void refresh(olui *ui)
     else if (tool == TOOL_MEASURE && marks == 1) snprintf(status, sizeof status, "First point set. Click the second.");
     else if (tool == TOOL_MEASURE) ge_facts_line(status, (int)sizeof status, work());
     else snprintf(status, sizeof status, "%s, %d triangles%s. %s",
-             (has_added && on_added) ? "added part" : "stock",
+             work_name(),
              work()->n,
              presented ? (on_chip ? ", chip" : ", OpenGPU") : "", tool_label());
     say(ui, status);
@@ -294,51 +270,33 @@ static void refresh(olui *ui)
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
-/* The two parts as one scene. The meshes move, they are not copied. */
-static ge_scene scene_out(void)
-{
-    ge_scene sc;
-    sc.stock = hole;
-    sc.added = added;
-    sc.has_added = has_added;
-    sc.on_added = on_added;
-    return sc;
-}
-
-static void scene_in(const ge_scene *sc)
-{
-    marks = 0;
-    hole = sc->stock;
-    added = sc->added;
-    has_added = sc->has_added;
-    on_added = sc->on_added;
-}
-
-/* Both parts go in the step, so Undo after Join gives both back. */
 static void drop_slice(void)
 {
     gt_free(&sliced);
     has_slice = 0;
 }
 
+/* A step for Undo, before a change: the whole list, so Undo after Join
+ * gives both parts back. */
 static void remember(void)
 {
     drop_slice();
     marks = 0;
-    ge_scene sc = scene_out();
-    if (hist && hole.n) ge_hist_push_scene(hist, &sc);
+    if (steps && gs_parts_count(parts)) ge_steps_push(steps, parts);
 }
 
 /* Takes back the step remember() just made. */
 static void forget(void)
 {
-    ge_scene sc = scene_out();
-    if (hist && ge_hist_pop_scene(hist, &sc) == 0) scene_in(&sc);
+    gs_parts *was = ge_steps_forget(steps, parts);
+    if (was) parts = was;
+    marks = 0;
 }
 
 static void verts_fit(int extra)
 {
-    int need = hole.n + (has_added ? added.n : 0);
+    int i, need = 0;
+    for (i = 0; i < gs_parts_count(parts); i++) need += gs_parts_mesh(parts, i)->n;
     omv_gpu_room(&gpu, need * 3 + extra);
 }
 
@@ -371,10 +329,14 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
         if (ge_open(&next, path, err, (int)sizeof err)) {
             say(ui, err[0] ? err : "Could not open that STL");
         } else {
+            if (gs_parts_count(parts) >= GS_PARTS_MAX) {
+                gs_mesh_free(&next);
+                say(ui, "Twenty-four parts is the limit.");
+                FreeAslRequest(fr);
+                return;
+            }
             remember();
-            gs_mesh_free(work());
-            *work() = next;
-            if (work() == &added) has_added = 1;
+            gs_parts_add(parts, &next, (const char *)fr->fr_File);
             picked = -1;
             strncpy(stl_path, path, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
@@ -415,14 +377,15 @@ static void on_save(olui *ui, const olui_event *ev, void *userdata)
 
 static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 {
+    gs_parts *was = ge_steps_undo(steps, parts);
     (void)ev;
-    ge_scene sc = scene_out();
     (void)userdata;
-    if (!hist || ge_hist_pop_scene(hist, &sc)) {
+    if (!was) {
         say(ui, "Nothing to undo");
         return;
     }
-    scene_in(&sc);
+    parts = was;
+    marks = 0;
     drop_slice();
     picked = -1;
     verts_fit(0);
@@ -559,7 +522,8 @@ static int axes(float b[3][2])
     int k;
     static const float step[3][3] = {{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
     if (vw < 4 || vh < 4) return -1;
-    if (gs_view_frame_bed(&hole, &cam, vw, vh, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    rebuild_shown();
+    if (gs_view_frame_bed(&shown, &cam, vw, vh, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
     o = f.origin;
     gs_view_map(&f, &cam, o, &ox, &oy, &oz);
     for (k = 0; k < 3; k++) {
@@ -685,34 +649,37 @@ static void on_holes(olui *ui, const olui_event *ev, void *userdata)
     say(ui, why);
 }
 
-static void take_added(olui *ui, gs_mesh box)
+/* A new part, picked: Parts' Add, Extrude's Add. */
+static void take_added(olui *ui, gs_mesh box, const char *name)
 {
+    if (gs_parts_count(parts) >= GS_PARTS_MAX) {
+        gs_mesh_free(&box);
+        say(ui, "Twenty-four parts is the limit.");
+        return;
+    }
     remember();
-    if (has_added) gs_mesh_free(&added);
-    added = box;
-    has_added = 1;
-    on_added = 1;
+    gs_parts_add(parts, &box, name);
     picked = -1;
     verts_fit(0);
     refresh(ui);
 }
 
-/* Extrude's Add, On top or Cut: Add is a new added part on the bed, to
- * place; On top and Cut change the picked part, as Holes does. */
+/* Extrude's Add, On top or Cut: Add is a new part on the bed, to place;
+ * On top and Cut change the picked part, as Holes does. */
 static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
 {
-    int op = (int)(intptr_t)userdata;
+    int op = (int)(intptr_t)userdata, kind = olui_select_index(olui_find(ui, "xkind"));
     gs_mesh out;
     char line[96];
     (void)ev;
     memset(&out, 0, sizeof out);
-    if (ge_extrude(work(), olui_select_index(olui_find(ui, "xkind")), op, omv_number(ui, "xw"), omv_number(ui, "xd"),
+    if (ge_extrude(work(), kind, op, omv_number(ui, "xw"), omv_number(ui, "xd"),
                    omv_number(ui, "xh"), &out, line, (int)sizeof line)) {
         gs_mesh_free(&out);
         say(ui, line);
         return;
     }
-    if (op == GM_ON_BED) take_added(ui, out);
+    if (op == GM_ON_BED) take_added(ui, out, kind == GM_ROUND ? "Round" : kind == GM_SLOT ? "Slot" : "Block");
     else {
         remember();
         gs_mesh_free(work());
@@ -723,8 +690,8 @@ static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
     say(ui, line);
 }
 
-/* Parts' Add: the shape picked, placed from the stock (ge_shape), as the
- * added part to join, cut or intersect with it. */
+/* Parts' Add: the shape chosen, placed from the picked part (ge_shape), as
+ * a new part, picked, to join, cut or intersect with it. */
 static void on_add(olui *ui, const olui_event *ev, void *userdata)
 {
     gs_mesh part;
@@ -733,34 +700,39 @@ static void on_add(olui *ui, const olui_event *ev, void *userdata)
     (void)ev;
     (void)userdata;
     memset(&part, 0, sizeof part);
-    if (ge_shape(&part, kind, &hole)) {
+    if (ge_shape(&part, kind, work())) {
         gs_mesh_free(&part);
         snprintf(why, sizeof why, "The %s did not build", ge_shape_name(kind) ? ge_shape_name(kind) : "shape");
         say(ui, why);
         return;
     }
-    take_added(ui, part);
+    take_added(ui, part, ge_shape_name(kind));
 }
 
+/* Join, Cut, Intersect, as the bench's: the picked part is the tool, the
+ * one before it in the list the stock (ge_combine). */
 static void on_bool(olui *ui, const olui_event *ev, void *userdata)
 {
-    ge_scene sc = scene_out();
-    int rc;
+    gs_parts *was = gs_parts_copy(parts);
+    char line[120];
     (void)ev;
-    /* Cut removes the selected part from the other one. */
-    rc = ge_bool(&sc, (int)(intptr_t)userdata, hist);
-    scene_in(&sc);
-    if (rc == -1) {
-        say(ui, "Add a second part first");
+    if (!was) {
+        say(ui, "Not enough memory to keep a step for Undo.");
         return;
     }
-    if (rc) {
-        say(ui, "Those two do not meet");
+    if (ge_combine(parts, (int)(intptr_t)userdata, line, (int)sizeof line)) {
+        gs_parts_free(was);
+        say(ui, line);
         return;
     }
+    drop_slice();
+    marks = 0;
+    if (steps) ge_steps_push(steps, was);
+    gs_parts_free(was);
     picked = -1;
     verts_fit(0);
     refresh(ui);
+    say(ui, line);
 }
 
 /* The printer picked, loaded; or -1 and why. */
@@ -883,23 +855,34 @@ int main(int argc, char **argv)
     struct Window *w;
     struct IntuiMessage *m;
     char err[160];
+    gs_mesh first;
+    const char *first_name = "Holed cube";
     (void)version;
-    memset(&hole, 0, sizeof hole);
+    memset(&first, 0, sizeof first);
     /* A file named at launch is opened, never written. Only Save writes. */
     if (argc > 1 && argv[1] && argv[1][0]) {
-        if (ge_start(&hole, argv[1], err, (int)sizeof err) == 0) {
+        if (ge_start(&first, argv[1], err, (int)sizeof err) == 0) {
+            first_name = (const char *)FilePart((STRPTR)argv[1]);
             strncpy(stl_path, argv[1], sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
         } else {
             fprintf(stderr, "GFOpenMake: %s\n", err);
         }
     }
-    if (!hole.n && ge_start(&hole, NULL, err, (int)sizeof err)) {
+    if (!first.n && ge_start(&first, NULL, err, (int)sizeof err)) {
         fprintf(stderr, "GFOpenMake: %s\n", err);
         return 20;
     }
-    hist = ge_hist_new();
-    omv_gpu_open(&gpu, hole.n * 3, 512);
+    parts = gs_parts_new();
+    steps = ge_steps_new();
+    if (!parts || gs_parts_add(parts, &first, first_name) < 0) {
+        fprintf(stderr, "GFOpenMake: not enough memory\n");
+        gs_mesh_free(&first);
+        gs_parts_free(parts);
+        ge_steps_free(steps);
+        return 20;
+    }
+    omv_gpu_open(&gpu, gs_parts_mesh(parts, 0)->n * 3, 512);
     gpu_on = gpu.on;
     on_chip = gpu.on_chip;
     draw_grid = gpu.grid;
@@ -907,9 +890,8 @@ int main(int argc, char **argv)
     if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err) ||
         omv_settings_add(ui, "settings", err, (int)sizeof err)) {
         if (ui) olui_free(ui);
-        ge_hist_free(hist);
-        gs_mesh_free(&hole);
-        gs_mesh_free(&added);
+        ge_steps_free(steps);
+        gs_parts_free(parts);
         gs_mesh_free(&shown);
         omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenMake: %s\n", ui ? err : "GFOpenLayout is not open");
@@ -966,9 +948,8 @@ int main(int argc, char **argv)
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
     w = omv_window_open("GFOpenMake 0.1.0", olui_amiga_idcmp());
     if (!w) {
-        ge_hist_free(hist);
-        gs_mesh_free(&hole);
-        gs_mesh_free(&added);
+        ge_steps_free(steps);
+        gs_parts_free(parts);
         gs_mesh_free(&shown);
         olui_free(ui);
         omv_gpu_close(&gpu);
@@ -979,9 +960,8 @@ int main(int argc, char **argv)
     a = olui_amiga_new(ui, w);
     if (!a) {
         CloseWindow(w);
-        ge_hist_free(hist);
-        gs_mesh_free(&hole);
-        gs_mesh_free(&added);
+        ge_steps_free(steps);
+        gs_parts_free(parts);
         gs_mesh_free(&shown);
         olui_free(ui);
         omv_gpu_close(&gpu);
@@ -1033,15 +1013,21 @@ int main(int argc, char **argv)
                     }
                 } else if (dragging && tool == TOOL_ORBIT && drag_moved < 4 &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
-                    int face = -1;
-                    if (has_added) face = ge_pick(&added, &cam, vw, vh, lx, ly);
-                    if (face >= 0) on_added = 1;
-                    else {
-                        face = ge_pick(&hole, &cam, vw, vh, lx, ly);
-                        on_added = 0;
+                    /* The nearest face under the pointer in the shown parts;
+                     * its part is picked, as a click on the bench. */
+                    int face, k;
+                    rebuild_shown();
+                    face = ge_pick(&shown, &cam, vw, vh, lx, ly);
+                    for (k = 0; face >= 0 && k < gs_parts_count(parts); k++) {
+                        int n = gs_parts_shown(parts, k) ? gs_parts_mesh(parts, k)->n : 0;
+                        if (face < n) {
+                            gs_parts_pick(parts, k);
+                            break;
+                        }
+                        face -= n;
                     }
                     picked = face;
-                    face_line(ui);
+                    refresh(ui);
                 }
                 dragging = 0;
                 pushed = 0;
@@ -1070,10 +1056,10 @@ int main(int argc, char **argv)
 done:
     olui_amiga_free(a);
     CloseWindow(w);
-    ge_hist_free(hist);
-    gs_mesh_free(&hole);
-    gs_mesh_free(&added);
+    ge_steps_free(steps);
+    gs_parts_free(parts);
     gs_mesh_free(&shown);
+    gs_mesh_free(&none);
     gl_walls_free(&walls);
     drop_slice();
     omv_machines_free(&printers);
