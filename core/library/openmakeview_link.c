@@ -57,3 +57,38 @@ int gs_view_on_gpu(void)
 {
     return GS_ViewOnGpu();
 }
+
+int gl_paint(const gl_walls *w, const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int width, int height)
+{
+    return GL_Paint(w, m, cam, rgb, width, height);
+}
+
+unsigned long gt_colour(int kind)
+{
+    return GT_Colour(kind);
+}
+
+unsigned long gt_shade(int kind, float z, float top)
+{
+    return GT_Shade(kind, z, top);
+}
+
+int gt_end(const gt_path *p, int upto)
+{
+    return GT_End(p, upto);
+}
+
+int gt_frame(const gt_path *p, const gs_cam *cam, int part, int w, int h, gs_frame *f)
+{
+    return GT_Frame(p, cam, part, w, h, f);
+}
+
+int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    return GT_Paint(p, cam, upto, rgb, w, h);
+}
+
+int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    return GT_PaintPart(p, cam, upto, rgb, w, h);
+}

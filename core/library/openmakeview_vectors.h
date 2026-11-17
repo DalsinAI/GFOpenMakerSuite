@@ -2,6 +2,8 @@
  * The library's side of each call: its registers to the C function. */
 #include "omlib.h"
 #include <gs_view.h>
+#include <gs_layer.h>
+#include <gs_toolpath.h>
 
 static void LIB_GS_CamHome(REG(a0, gs_cam *c), REG(a6, struct Library *base))
 {
@@ -69,7 +71,49 @@ static int LIB_GS_ViewOnGpu(REG(a6, struct Library *base))
     return gs_view_on_gpu();
 }
 
-#define OPENMAKEVIEW_LAST_BIAS 90
+static int LIB_GL_Paint(REG(a0, const gl_walls *w), REG(a1, const gs_mesh *m), REG(a2, const gs_cam *cam), REG(a3, unsigned char *rgb), REG(d0, int width), REG(d1, int height), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gl_paint(w, m, cam, rgb, width, height);
+}
+
+static unsigned long LIB_GT_Colour(REG(d0, int kind), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_colour(kind);
+}
+
+static unsigned long LIB_GT_Shade(REG(d0, int kind), REG(d1, ULONG z), REG(d2, ULONG top), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_shade(kind, om_lib_float(z), om_lib_float(top));
+}
+
+static int LIB_GT_End(REG(a0, const gt_path *p), REG(d0, int upto), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_end(p, upto);
+}
+
+static int LIB_GT_Frame(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam), REG(d0, int part), REG(d1, int w), REG(d2, int h), REG(a2, gs_frame *f), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_frame(p, cam, part, w, h, f);
+}
+
+static int LIB_GT_Paint(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam), REG(d0, int upto), REG(a2, unsigned char *rgb), REG(d1, int w), REG(d2, int h), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_paint(p, cam, upto, rgb, w, h);
+}
+
+static int LIB_GT_PaintPart(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam), REG(d0, int upto), REG(a2, unsigned char *rgb), REG(d1, int w), REG(d2, int h), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gt_paint_part(p, cam, upto, rgb, w, h);
+}
+
+#define OPENMAKEVIEW_LAST_BIAS 132
 #define OPENMAKEVIEW_VECTORS \
     (APTR)LIB_GS_CamHome, \
     (APTR)LIB_GS_CamOrbit, \
@@ -81,4 +125,11 @@ static int LIB_GS_ViewOnGpu(REG(a6, struct Library *base))
     (APTR)LIB_GS_ViewBed, \
     (APTR)LIB_GS_PenOf, \
     (APTR)LIB_GS_PenRow, \
-    (APTR)LIB_GS_ViewOnGpu
+    (APTR)LIB_GS_ViewOnGpu, \
+    (APTR)LIB_GL_Paint, \
+    (APTR)LIB_GT_Colour, \
+    (APTR)LIB_GT_Shade, \
+    (APTR)LIB_GT_End, \
+    (APTR)LIB_GT_Frame, \
+    (APTR)LIB_GT_Paint, \
+    (APTR)LIB_GT_PaintPart

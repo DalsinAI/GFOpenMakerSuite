@@ -101,6 +101,14 @@ for v in fpu soft; do
     lib "$v" "$flags" openmakegcode.library core/include -Imachines/include \
         core/library/openmakegcode_lib.c core/src/gcode.c machines/library/openmakemachine_link.c
     lib "$v" "$flags" openmakeview.library core/include \
-        core/library/openmakeview_lib.c core/src/solid.c core/src/view.c
+        core/library/openmakeview_lib.c core/src/solid.c core/src/view.c core/src/layer_paint.c \
+        core/src/toolpath_paint.c core/src/toolpath.c
+    # core/tests/test_toolpath_paint.c: the toolpath planned through
+    # openmakepath.library and drawn through openmakeview.library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestToolpathPaintLib" core/tests/test_toolpath_paint.c \
+        core/src/model.c core/src/stl.c core/library/openmakeview_link.c core/library/openmakepath_link.c \
+        core/library/link_base.c -DLINK_BASE=OpenMakeViewBase '-DLINK_NAME="openmakeview.library"' \
+        -DLINK_BASE2=OpenMakePathBase '-DLINK_NAME2="openmakepath.library"' -lm
+    echo "$OUT/$v/TestToolpathPaintLib: $(wc -c < "$OUT/$v/TestToolpathPaintLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"
