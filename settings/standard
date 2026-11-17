@@ -1,0 +1,32 @@
+# GFOpenMake print settings: standard, for PLA on a 0.4 mm nozzle.
+# The slicers' built-in defaults; copy it and change what you need:
+#   gfopenslicer part.stl part.gcode SETTINGS=settings/mine
+# One "key = value" a line; '#' starts a comment. Units: mm, mm/s, C, %.
+
+# Layers
+layer-height = 0.2
+line-width = 0.4
+walls = 2
+top-layers = 4
+bottom-layers = 3
+
+# Infill (pattern: lines or grid)
+infill = 20
+pattern = lines
+
+# Speed (outer walls go at half the print speed)
+speed = 50
+travel-speed = 150
+first-layer-speed = 20
+retract = 1
+retract-speed = 25
+
+# Heat (bed 0: none)
+hotend = 200
+bed = 60
+filament = 1.75
+
+# Around the part (around: none, skirt or brim; distance: skirt only)
+around = skirt
+loops = 2
+distance = 3

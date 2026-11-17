@@ -1,15 +1,18 @@
 /* GFOpenSlicer, from the shell: the window's job (sl_job.h, the toolpath
  * engine on one task a core) for a printer, checked against it first.
  *   gfopenslicer in.stl out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
- *       [LAYER=0.2] [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=3]
- *       [FILAMENT=1.75] [HOTEND=200] [BED=60] [TASKS=cores]
+ *       [SETTINGS=settings/standard] [key=value ...] [TASKS=cores]
+ *       [LAYER=0.2] [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=n]
+ *       [SKIRT=n] [FILAMENT=1.75] [HOTEND=200] [BED=60]
  * The printer is the generic Marlin one (machines/printer/marlin) unless
- * DRIVER or PROFILE say otherwise. SKIRT is no more: the engine makes a
- * brim. openmake-slice is the same with a picture as well.
+ * DRIVER or PROFILE say otherwise. The print settings: a profile, the
+ * older names over it, key=value over those (sl_args.h). openmake-slice
+ * is the same with a picture as well.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs.h"
 #include "gs_layer.h"
 #include "gs_par.h"
+#include "sl_args.h"
 #include "sl_job.h"
 
 #include <stdio.h>
@@ -25,12 +28,6 @@ static const char *arg(int argc, char **argv, const char *name)
     for (i = 3; i < argc; i++)
         if (strncmp(argv[i], name, n) == 0 && argv[i][n] == '=') return argv[i] + n + 1;
     return NULL;
-}
-
-static void num(int argc, char **argv, const char *name, float *out)
-{
-    const char *v = arg(argc, argv, name);
-    if (v) *out = (float)atof(v);
 }
 
 static void whole(int argc, char **argv, const char *name, int *out)
@@ -50,24 +47,19 @@ int main(int argc, char **argv)
     (void)version;
     if (argc < 3) {
         fprintf(stderr, "GFOpenSlicer %s (%s)\n", GS_VERSION, GS_DATE);
-        fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [DRIVER=driver.om] [PROFILE=profile.om] [LAYER=0.2]\n"
-                        "       [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=3] [FILAMENT=1.75] [HOTEND=200]\n"
-                        "       [BED=60] [TASKS=cores]\n");
+        fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
+                        "       [SETTINGS=settings/standard] [key=value ...] [TASKS=cores]\n"
+                        "       [LAYER=0.2] [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=n] [SKIRT=n]\n"
+                        "       [FILAMENT=1.75] [HOTEND=200] [BED=60]\n"
+                        "key: a settings profile's, as layer-height=0.16 pattern=grid around=brim\n");
         return 1;
     }
     if (!driver) driver = "machines/printer/marlin/driver.om";
     if (!profile && !arg(argc, argv, "DRIVER")) profile = "machines/printer/marlin/profiles/generic-220.om";
-    if (arg(argc, argv, "SKIRT")) fprintf(stderr, "GFOpenSlicer: SKIRT is gone: the slicer makes a brim (BRIM=3)\n");
-    gs_settings_default(&set);
-    num(argc, argv, "LAYER", &set.layer_h);
-    num(argc, argv, "INFILL", &set.infill);
-    num(argc, argv, "LINE", &set.line_w);
-    whole(argc, argv, "WALLS", &set.walls);
-    if (arg(argc, argv, "SKINS")) whole(argc, argv, "SKINS", &set.top), set.bottom = set.top;
-    if (arg(argc, argv, "BRIM")) whole(argc, argv, "BRIM", &set.loops), set.around = set.loops > 0 ? GS_BRIM : GS_NONE;
-    num(argc, argv, "FILAMENT", &set.filament);
-    num(argc, argv, "HOTEND", &set.hotend);
-    num(argc, argv, "BED", &set.bed);
+    if (sl_args(&set, argc, argv, 3, err, (int)sizeof err)) {
+        fprintf(stderr, "GFOpenSlicer: %s\n", err);
+        return 1;
+    }
     whole(argc, argv, "TASKS", &tasks);
     if (tasks < 1) tasks = 1;
     if (tasks > 64) tasks = 64;
