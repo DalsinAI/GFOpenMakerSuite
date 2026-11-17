@@ -1,0 +1,10 @@
+# A generic diode laser with a 400 mm bed: a common desktop size. Change
+# these to the machine's own numbers. Not any maker's.
+name = Generic Diode 400
+area = 400 400 40
+speed = 200 200 20 0
+accel = 2000 2000 200 0
+# Grbl uses junction deviation, not a jerk, so 0: the time estimate
+# stops at a corner.
+jerk = 0 0 0 0
+laser = 100

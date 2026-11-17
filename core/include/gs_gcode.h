@@ -1,4 +1,4 @@
-/* G-code for a printer from a toolpath (gs_toolpath.h): the machine's own
+/* G-code from a toolpath (gs_toolpath.h): for a printer, the machine's own
  * start and end code, a speed for each kind of move held to what the
  * machine can do, filament worked out from each line's width and height,
  * retraction over long travels, and how long and how much it will take.
@@ -77,5 +77,49 @@ void gc_more_defaults(gc_more *x, const gc_opts *o);
 int gc_estimate_more(const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st);
 int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st, char *err,
                   int errlen);
+
+/* Laser G-code for a Grbl machine in laser mode (public Grbl 1.1 laser
+ * documentation): M4 dynamic power by default, or M3 to hold power
+ * constant; S scaled to s100 (Grbl's $30, often 1000). A move's w is the
+ * power, 0 to 100. Travels (GT_TRAVEL, and the first move, which only
+ * places the head) are G0 with the laser off. A program sets size to
+ * sizeof (gc_laser) as it was built. */
+typedef struct {
+    int size;
+    int constant; /* 0: M4, not 0: M3 */
+    float s100;   /* S at 100% power; 0: 1000 */
+    float speed;  /* mm/s for a cut; 0: 20 */
+    float travel; /* mm/s for a travel; 0: the machine's most X, or 150 */
+    float z;      /* unused: each move has its own z */
+} gc_laser;
+
+void gc_laser_defaults(gc_laser *l);
+
+/* More than gc_laser says: l itself, and a speed for each move. A
+ * program sets size to sizeof (gc_laser_more) as it was built. */
+typedef struct {
+    int size;
+    const gc_laser *l;
+    const float *speed; /* p->n speeds, mm/s; 0 or NULL: l->speed */
+} gc_laser_more;
+
+void gc_laser_more_defaults(gc_laser_more *x, const gc_laser *l);
+
+/* How long, as gc_laser_write_to would write it (m may be NULL: the
+ * speeds are not held to a machine's). */
+int gc_laser_estimate_how(const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st);
+int gc_laser_estimate_more(const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st);
+
+/* The job p is for om_check: where every move goes, the fastest of each
+ * axis, and the most laser power the cuts ask for. */
+void gc_laser_job(const gt_path *p, const om_machine *m, const gc_laser *l, om_job *job);
+void gc_laser_job_more(const gt_path *p, const om_machine *m, const gc_laser_more *x, om_job *job);
+
+/* p's Grbl laser G-code for m to put. 0, or -1 with why in err: m is not
+ * a laser, its code does not fit, or put could not be written. */
+int gc_laser_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st,
+                      char *err, int errlen);
+int gc_laser_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser_more *x,
+                        gc_stats *st, char *err, int errlen);
 
 #endif

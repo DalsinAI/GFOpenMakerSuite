@@ -132,4 +132,114 @@ static __inline__ int GC_WriteMore(gc_put put, void *ud, const gt_path *p, const
 #endif
 }
 
+static __inline__ void GC_LaserDefaults(gc_laser *l)
+{
+#ifdef OM_LIB_HOST
+    ((void (*)(gc_laser *, struct Library *))om_host_vector(OpenMakeGcodeBase, 78))(l, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(l);
+    __asm__ volatile("jsr a6@(-78:W)" : "=r"(_d0), "+r"(_a0) : "r"(_a6) : "d1", "a1", "fp0", "fp1", "cc", "memory");
+#endif
+}
+
+static __inline__ void GC_LaserJob(const gt_path *p, const om_machine *m, const gc_laser *l, om_job *job)
+{
+#ifdef OM_LIB_HOST
+    ((void (*)(const gt_path *, const om_machine *, const gc_laser *, om_job *, struct Library *))om_host_vector(OpenMakeGcodeBase, 84))(p, m, l, job, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(l);
+    register ULONG _a3 __asm("a3") = (ULONG)(job);
+    __asm__ volatile("jsr a6@(-84:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3) : "d1", "fp0", "fp1", "cc", "memory");
+#endif
+}
+
+static __inline__ int GC_LaserEstimateHow(const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gt_path *, const om_machine *, const gc_laser *, gc_stats *, struct Library *))om_host_vector(OpenMakeGcodeBase, 90))(p, m, l, st, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(l);
+    register ULONG _a3 __asm("a3") = (ULONG)(st);
+    __asm__ volatile("jsr a6@(-90:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GC_LaserWriteTo(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gc_put, void *, const gt_path *, const om_machine *, const gc_laser *, gc_stats *, char *, int, struct Library *))om_host_vector(OpenMakeGcodeBase, 96))(put, ud, p, m, l, st, err, errlen, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(put);
+    register ULONG _a1 __asm("a1") = (ULONG)(ud);
+    register ULONG _a2 __asm("a2") = (ULONG)(p);
+    register ULONG _a3 __asm("a3") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = (ULONG)(l);
+    register ULONG _d1 __asm("d1") = (ULONG)(st);
+    register ULONG _d2 __asm("d2") = (ULONG)(err);
+    register ULONG _d3 __asm("d3") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-96:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3), "r"(_d2), "r"(_d3) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ void GC_LaserMoreDefaults(gc_laser_more *x, const gc_laser *l)
+{
+#ifdef OM_LIB_HOST
+    ((void (*)(gc_laser_more *, const gc_laser *, struct Library *))om_host_vector(OpenMakeGcodeBase, 102))(x, l, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(x);
+    register ULONG _a1 __asm("a1") = (ULONG)(l);
+    __asm__ volatile("jsr a6@(-102:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6) : "d1", "fp0", "fp1", "cc", "memory");
+#endif
+}
+
+static __inline__ int GC_LaserEstimateMore(const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gt_path *, const om_machine *, const gc_laser_more *, gc_stats *, struct Library *))om_host_vector(OpenMakeGcodeBase, 108))(p, m, x, st, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _d0 __asm("d0");
+    register ULONG _a0 __asm("a0") = (ULONG)(p);
+    register ULONG _a1 __asm("a1") = (ULONG)(m);
+    register ULONG _a2 __asm("a2") = (ULONG)(x);
+    register ULONG _a3 __asm("a3") = (ULONG)(st);
+    __asm__ volatile("jsr a6@(-108:W)" : "=r"(_d0), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3) : "d1", "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GC_LaserWriteMore(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st, char *err, int errlen)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(gc_put, void *, const gt_path *, const om_machine *, const gc_laser_more *, gc_stats *, char *, int, struct Library *))om_host_vector(OpenMakeGcodeBase, 114))(put, ud, p, m, x, st, err, errlen, OpenMakeGcodeBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeGcodeBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(put);
+    register ULONG _a1 __asm("a1") = (ULONG)(ud);
+    register ULONG _a2 __asm("a2") = (ULONG)(p);
+    register ULONG _a3 __asm("a3") = (ULONG)(m);
+    register ULONG _d0 __asm("d0") = (ULONG)(x);
+    register ULONG _d1 __asm("d1") = (ULONG)(st);
+    register ULONG _d2 __asm("d2") = (ULONG)(err);
+    register ULONG _d3 __asm("d3") = (ULONG)(errlen);
+    __asm__ volatile("jsr a6@(-114:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3), "r"(_d2), "r"(_d3) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

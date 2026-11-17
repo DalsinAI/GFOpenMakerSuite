@@ -109,8 +109,74 @@ int main(void)
     m.family = OM_LASER;
     expect(GC_WriteTo(into, &kb, &p, &m, &ob, NULL, errb, (int)sizeof errb) == -1 && strstr(errb, "printer"),
            "GC_WriteTo refuses a laser, and says why");
+    {
+        /* 1.3: Grbl laser G-code, the same answers through the table. */
+        static const char *drv =
+            "family = laser\n"
+            "dialect = grbl\n"
+            "name = Test diode\n"
+            "send = file\n"
+            "features = laser-power\n"
+            "area = 400 400 50\n"
+            "speed = 200 200 20 0\n"
+            "accel = 2000 2000 200 0\n"
+            "laser = 100\n"
+            "start = G21\n"
+            "end = M5\n";
+        om_machine laser;
+        gc_laser La, Lb;
+        gc_laser_more xa, xb;
+        gc_stats sa2, sb2;
+        om_job ja2, jb2;
+        gt_path lp;
+        int howa, howb;
+        om_clear(&laser);
+        expect(om_parse(&laser, drv, err, (int)sizeof err) == 0, "a test Grbl laser");
+        gc_laser_defaults(&La);
+        memset(&Lb, 0xff, sizeof Lb);
+        GC_LaserDefaults(&Lb);
+        expect(Lb.size == La.size && Lb.constant == La.constant && Lb.s100 == La.s100 &&
+                   Lb.speed == La.speed && Lb.travel == La.travel,
+               "GC_LaserDefaults");
+        La.s100 = Lb.s100 = 1000;
+        La.speed = Lb.speed = 20;
+        gt_init(&lp);
+        gt_add(&lp, GT_TRAVEL, 0, 0, 0, 0);
+        gt_add(&lp, GT_CUT, 10, 0, 0, 50);
+        gt_add(&lp, GT_TRAVEL, 10, 10, 0, 0);
+        gt_add(&lp, GT_CUT, 20, 10, 0, 100);
+        ka.n = kb.n = 0;
+        expect(gc_laser_write_to(into, &ka, &lp, &laser, &La, &sa2, err, (int)sizeof err) == 0 &&
+                   GC_LaserWriteTo(into, &kb, &lp, &laser, &Lb, &sb2, errb, (int)sizeof errb) == 0 &&
+                   ka.n == kb.n && !strcmp(ka.buf, kb.buf) && strstr(kb.buf, "M4") && strstr(kb.buf, "S500") &&
+                   !memcmp(&sa2, &sb2, sizeof sa2),
+               "GC_LaserWriteTo matches the C function");
+        howa = gc_laser_estimate_how(&lp, &laser, &La, &sa2);
+        howb = GC_LaserEstimateHow(&lp, &laser, &Lb, &sb2);
+        expect(howa == howb && !memcmp(&sa2, &sb2, sizeof sa2) && howb == GC_WITH_ACCEL, "GC_LaserEstimateHow");
+        gc_laser_job(&lp, &laser, &La, &ja2);
+        GC_LaserJob(&lp, &laser, &Lb, &jb2);
+        expect(!memcmp(&ja2, &jb2, sizeof ja2) && jb2.laser == 100.f && jb2.needs == OM_LASER_POWER, "GC_LaserJob");
+        gc_laser_more_defaults(&xa, &La);
+        memset(&xb, 0xff, sizeof xb);
+        GC_LaserMoreDefaults(&xb, &Lb);
+        expect(xb.size == xa.size && xb.l == &Lb && xb.speed == xa.speed, "GC_LaserMoreDefaults");
+        expect(GC_LaserEstimateMore(&lp, &laser, &xb, &sb2) == gc_laser_estimate_more(&lp, &laser, &xa, &sa2) &&
+                   !memcmp(&sa2, &sb2, sizeof sa2),
+               "GC_LaserEstimateMore");
+        ka.n = kb.n = 0;
+        expect(gc_laser_write_more(into, &ka, &lp, &laser, &xa, &sa2, err, (int)sizeof err) == 0 &&
+                   GC_LaserWriteMore(into, &kb, &lp, &laser, &xb, &sb2, errb, (int)sizeof errb) == 0 &&
+                   ka.n == kb.n && !strcmp(ka.buf, kb.buf),
+               "GC_LaserWriteMore");
+        m.family = OM_PRINTER;
+        expect(GC_LaserWriteTo(into, &kb, &lp, &m, &Lb, NULL, errb, (int)sizeof errb) == -1 &&
+                   strstr(errb, "laser"),
+               "GC_LaserWriteTo refuses a printer");
+        gt_free(&lp);
+    }
     printf("through the library: %ld bytes of G-code, %d moves\n", ka.n, sb.moves);
-    expect(calls == 10, "every GC_ call went through the table");
+    expect(calls == 18, "every GC_ call went through the table");
 
     gt_free(&p);
     if (fails) {
