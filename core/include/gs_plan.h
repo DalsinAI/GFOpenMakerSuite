@@ -32,4 +32,9 @@ void gp_place(gs_mesh *m, float bed_x, float bed_y);
 /* Every layer of m, in order, replacing p. 0, or -1 out of memory. */
 int gp_part(gt_path *p, const gs_mesh *m, const gp_opts *o);
 
+/* gp_part on tasks tasks at once (gs_par.h; plan_par.c): the same
+ * toolpath, move for move. tasks 1 or less, or no memory for the layers
+ * apart: gp_part itself. 0, or -1 out of memory. */
+int gp_part_par(gt_path *p, const gs_mesh *m, const gp_opts *o, int tasks);
+
 #endif
