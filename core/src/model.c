@@ -1018,7 +1018,10 @@ static int on_edge(const wv *pts, int nv, int a, int b)
 
 typedef struct {
     int v[3];
+    int d; /* splits since the BSP's triangle */
 } itri;
+
+#define DEEPEST 64
 
 /* A crack: a loop of open edges round a gap thinner than CRACK on
  * average. The BSP leaves one where a plane cuts a long sliver almost
@@ -1115,6 +1118,7 @@ static int fill_cracks(const wv *pts, int nv, itri **out, int *n, int *cap)
             (*out)[*n].v[0] = loop[0];
             (*out)[*n].v[1] = loop[j + 1];
             (*out)[*n].v[2] = loop[j];
+            (*out)[*n].d = 0;
             (*n)++;
         }
     }
@@ -1150,6 +1154,7 @@ static int seal(gs_mesh *m)
         t.v[0] = idx[i * 3];
         t.v[1] = idx[i * 3 + 1];
         t.v[2] = idx[i * 3 + 2];
+        t.d = 0;
         if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
         stack[top++] = t;
     }
@@ -1157,7 +1162,11 @@ static int seal(gs_mesh *m)
         itri t = stack[--top];
         int e, k = -1;
         if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
-        for (e = 0; e < 3 && k < 0; e++) k = on_edge(pts, nv, t.v[e], t.v[(e + 1) % 3]);
+        /* A corner near an edge's end can be within ONEDGE of two edges
+         * at once, so two slivers split each other back and forth for
+         * ever. A triangle split DEEPEST times over is kept as it is. */
+        if (t.d < DEEPEST)
+            for (e = 0; e < 3 && k < 0; e++) k = on_edge(pts, nv, t.v[e], t.v[(e + 1) % 3]);
         if (k < 0) {
             if (n >= cap) {
                 itri *g = (itri *)realloc(out, (size_t)cap * 2 * sizeof *g);
@@ -1188,10 +1197,12 @@ static int seal(gs_mesh *m)
             stack[top].v[0] = a;
             stack[top].v[1] = k;
             stack[top].v[2] = c;
+            stack[top].d = t.d + 1;
             top++;
             stack[top].v[0] = k;
             stack[top].v[1] = b;
             stack[top].v[2] = c;
+            stack[top].d = t.d + 1;
             top++;
         }
     }
