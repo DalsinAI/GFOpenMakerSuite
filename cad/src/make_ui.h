@@ -25,8 +25,8 @@
  * Model (File, Tool, Place), Parts (Make: Add, Join, Cut, Intersect; and
  * the bench's parts list: the list, the picked part's name, its six
  * metals, Hide and Delete; Arrange: Copy, Line X and Y, Ring, Mirror,
- * Turn, Stack and Solo), Holes (the bench's bolt circle, hole row and
- * counterbore, cut through the picked part about its middle), Shape (the
+ * Turn, Stack and Solo), Holes (the bench's bolt circle, hole row,
+ * counterbore, one drill, a 90 degree countersink and a washer), Shape (the
  * bench's Extrude: a block, round or slot added on the bed, stood on the
  * picked part's top, or cut down from it; and Face: the picked face
  * pulled by a distance, or chamfered by it, or dragged to pull it) and Print (Layers, and Slice
@@ -110,7 +110,8 @@ static const char gm_markup_b[] =
     "<fieldset><legend>Counterbore</legend>"
     "<row><label for=\"hcb\">Bore</label><spinner id=\"hcb\" min=\"1.0\" max=\"80.0\" step=\"0.1\" value=\"16.0\"><span class=\"unit\">mm</span></row>"
     "<row><label for=\"hdeep\">Deep</label><spinner id=\"hdeep\" min=\"0.4\" max=\"40.0\" step=\"0.1\" value=\"4.0\"><span class=\"unit\">mm</span></row>"
-    "<row><button id=\"cbore\">Counterbore</button></row>"
+    "<row><button id=\"drill\">Drill through</button><button id=\"cbore\">Counterbore</button></row>"
+    "<row><button id=\"csink\">Countersink</button><button id=\"washer\">32 mm washer</button></row>"
     "</fieldset>"
     "</tab><tab title=\"Shape\">"
     "<fieldset><legend>Sketch</legend>"

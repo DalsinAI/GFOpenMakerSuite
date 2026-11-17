@@ -676,8 +676,10 @@ static int cmd_hole(void *c, void *g0)
     if (eqi(kind_s, "circle")) kind = GE_BOLT_CIRCLE;
     else if (eqi(kind_s, "row")) kind = GE_HOLE_ROW;
     else if (eqi(kind_s, "counterbore")) kind = GE_COUNTERBORE;
+    else if (eqi(kind_s, "drill")) kind = GE_DRILL;
+    else if (eqi(kind_s, "countersink")) kind = GE_COUNTERSINK;
     else {
-        omr_set_result(c, "KIND is circle, row or counterbore");
+        omr_set_result(c, "KIND is circle, row, counterbore, drill or countersink");
         return OMR_ERROR;
     }
     if (arg_f(c, "D", &h.d) < 0 || arg_i(c, "N", &h.n) < 0 || arg_f(c, "PCD", &h.pcd) < 0 ||
@@ -685,6 +687,7 @@ static int cmd_hole(void *c, void *g0)
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
+    h.mouth = h.cb;
     memset(&copy, 0, sizeof copy);
     if (ge_copy(&copy, m) || ge_drill(&copy, kind, &h, why, (int)sizeof why)) {
         gs_mesh_free(&copy);
@@ -697,6 +700,27 @@ static int cmd_hole(void *c, void *g0)
     g->face = -1;
     changed(g);
     omr_set_result(c, why);
+    return OMR_OK;
+}
+
+/* The bench's washer, a new part on the bed past the parts shown. */
+static int cmd_washer(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[120];
+    if (!list(g)) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    remember(g);
+    if (ge_washer(list(g), line, (int)sizeof line) < 0) {
+        forget(g);
+        omr_set_result(c, line[0] ? line : "the washer did not build");
+        return OMR_ERROR;
+    }
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, line);
     return OMR_OK;
 }
 
@@ -922,6 +946,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PLACE", "X/K Y/K Z/K", "place the picked part", cmd_place},
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
     {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
+    {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},
     {sizeof(omr_verb), "PULL", "MM/A FACE/N/K", "pull a face by a distance", cmd_pull},
     {sizeof(omr_verb), "CHAMFER", "MM/A FACE/N/K", "chamfer a face's edges", cmd_chamfer},
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},

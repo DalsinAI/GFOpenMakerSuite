@@ -12,8 +12,9 @@
  * TAB: the panel's tab. SHAPE: Parts' shape (0 Box ... 6 Slot) added and
  * OP'd into the part first (0 join, 1 cut, 2 intersect; join to start);
  * FIT=axis:mm and AT=x,y[,z]: Place's Size and At on the added shape first.
- * HOLES: 0 bolt circle, 1 hole row, 2 counterbore cut first, with HD, HN,
- * HPCD, HPITCH, HCB and HDEEP for the Holes fields (as shown).
+ * HOLES: 0 bolt circle, 1 hole row, 2 counterbore, 3 one drill, 4 countersink,
+ * cut first, with HD, HN, HPCD, HPITCH, HCB and HDEEP for the Holes fields
+ * (as shown). The countersink's mouth is HCB.
  * OPEN: a select's id, shown open (with SIDE=1, Parts, for "shape").
  * PARTS=n: a list of n parts (2 to 24), the holed cube and the shapes in
  * turn on a grid on the bed, each a metal in turn, the 6th and 18th
@@ -284,12 +285,14 @@ int main(int argc, char **argv)
     if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
         ge_holes hs;
         char why[96];
+        memset(&hs, 0, sizeof hs);
         hs.d = getenv("HD") ? (float)atof(getenv("HD")) : 3.f;
         hs.n = getenv("HN") ? atoi(getenv("HN")) : 4;
         hs.pcd = getenv("HPCD") ? (float)atof(getenv("HPCD")) : 16.f;
         hs.pitch = getenv("HPITCH") ? (float)atof(getenv("HPITCH")) : 8.f;
         hs.cb = getenv("HCB") ? (float)atof(getenv("HCB")) : 16.f;
         hs.deep = getenv("HDEEP") ? (float)atof(getenv("HDEEP")) : 4.f;
+        hs.mouth = hs.cb;
         if (ge_drill(&part, atoi(getenv("HOLES")), &hs, why, (int)sizeof why)) {
             fprintf(stderr, "HOLES: %s\n", why);
             return 1;
