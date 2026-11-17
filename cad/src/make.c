@@ -261,6 +261,8 @@ static void refresh(olui *ui)
 {
     char status[180];
     sync_parts(ui);
+    olui_set_disabled(ui, olui_find(ui, "undo"), !ge_steps_back(steps));
+    olui_set_disabled(ui, olui_find(ui, "redo"), !ge_steps_ahead(steps));
     recut();
     if (has_slice) {
         omv_slice_status(status, (int)sizeof status, sliced.nlayers, slice_st.moves, slice_st.seconds,
@@ -396,13 +398,14 @@ static void on_save(olui *ui, const olui_event *ev, void *userdata)
 
 enum { PART_SHOW = 6, PART_DELETE };
 
+/* Undo (userdata 0) and Redo (1): the list as it was, or as it was again. */
 static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 {
-    gs_parts *was = ge_steps_undo(steps, parts);
+    int redo = (int)(intptr_t)userdata;
+    gs_parts *was = redo ? ge_steps_redo(steps, parts) : ge_steps_undo(steps, parts);
     (void)ev;
-    (void)userdata;
     if (!was) {
-        say(ui, "Nothing to undo");
+        say(ui, redo ? "Nothing to redo" : "Nothing to undo");
         return;
     }
     parts = was;
@@ -970,7 +973,8 @@ int main(int argc, char **argv)
     }
     olui_on(ui, "open", OLUI_CLICK, on_open, NULL);
     olui_on(ui, "save", OLUI_CLICK, on_save, NULL);
-    olui_on(ui, "undo", OLUI_CLICK, on_undo, NULL);
+    olui_on(ui, "undo", OLUI_CLICK, on_undo, (void *)(intptr_t)0);
+    olui_on(ui, "redo", OLUI_CLICK, on_undo, (void *)(intptr_t)1);
     olui_on(ui, "orbit", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_ORBIT);
     olui_on(ui, "move", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_MOVE);
     olui_on(ui, "rot", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_ROT);
@@ -1064,6 +1068,12 @@ int main(int argc, char **argv)
             r = olui_amiga_event(a, m);
             ReplyMsg((struct Message *)m);
             if (r == OLUI_AMIGA_CLOSE) goto done;
+            if (cls == IDCMP_VANILLAKEY && r != OLUI_AMIGA_USED) {
+                /* Amiga-Z, Amiga-Shift-Z and Amiga-Y, when no field took them */
+                int k = gm_command_key(code, (qual & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND)) != 0,
+                                       (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0);
+                if (k) on_undo(ui, NULL, (void *)(intptr_t)(k == GM_KEY_REDO));
+            }
             if (cls == IDCMP_MOUSEBUTTONS && code == SELECTDOWN) {
                 if (in_view(ui, w, mx, my, NULL, NULL)) {
                     dragging = 1;
