@@ -24,7 +24,8 @@
  * tabs, titles of five letters so the strip fits the side in Topaz 8:
  * Model (File, Tool, Place), Parts (Make: Add, Join, Cut, Intersect; and
  * the bench's parts list: the list, the picked part's name, its six
- * metals, Hide and Delete), Holes (the bench's bolt circle, hole row and
+ * metals, Hide and Delete; Arrange: Copy, Line X and Y, Ring, Mirror,
+ * Turn, Stack and Solo), Holes (the bench's bolt circle, hole row and
  * counterbore, cut through the picked part about its middle), Shape (the
  * bench's Extrude: a block, round or slot added on the bed, stood on the
  * picked part's top, or cut down from it; and Face: the picked face
@@ -81,6 +82,18 @@ static const char gm_markup_a[] =
     "<button id=\"c2\" class=\"sw\" title=\"Copper\"></button><button id=\"c3\" class=\"sw\" title=\"Steel\"></button>"
     "<button id=\"c4\" class=\"sw\" title=\"Teal\"></button><button id=\"c5\" class=\"sw\" title=\"Sage\"></button></row>"
     "<row><button id=\"pshow\">Hide</button><button id=\"pdel\">Delete</button></row>"
+    "</fieldset>"
+    "<fieldset><legend>Arrange</legend>"
+    "<row><label for=\"acount\">Copies</label><spinner id=\"acount\" min=\"2\" max=\"12\" step=\"1\" value=\"3\">"
+    "<label for=\"agap\">Gap</label><spinner id=\"agap\" min=\"0.0\" max=\"80.0\" step=\"0.1\" value=\"6.0\"></row>"
+    "<row><button id=\"dup\" class=\"ar\" title=\"A copy beside the picked part\">Copy</button>"
+    "<button id=\"linex\" class=\"ar\" title=\"Copies in all, along X, gap apart\">Line X</button>"
+    "<button id=\"liney\" class=\"ar\" title=\"Copies in all, along Y, gap apart\">Line Y</button>"
+    "<button id=\"ring\" class=\"ar\" title=\"Copies in all, round the bed's middle\">Ring</button></row>"
+    "<row><button id=\"mirror\" class=\"ar\" title=\"Mirrored through X\">Mirror</button>"
+    "<button id=\"turn\" class=\"ar\" title=\"Turned 90 degrees around Z\">Turn</button>"
+    "<button id=\"stack\" class=\"ar\" title=\"On the part before it in the list\">Stack</button>"
+    "<button id=\"solo\" class=\"ar\" title=\"Only this part shown, or every part again\">Solo</button></row>"
     "</fieldset>"
     ;
 static const char gm_markup_b[] =
@@ -206,7 +219,8 @@ static const char gm_css[] =
     "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
     "#side-tabs tabbutton{flex:1;padding:3px 1px}"
-    "#plist{height:112px;overflow:auto;border:1px solid #d0d0d0;background:#ffffff}"
+    "#plist{height:98px;overflow:auto;border:1px solid #d0d0d0;background:#ffffff}"
+    "#acount{width:52px}#agap{width:64px}button.ar{flex:1;padding:3px 2px}"
     "#pname{flex:1;border:1px solid #d0d0d0;padding:3px 4px;background:#ffffff}"
     "button.sw{flex:1;height:20px;padding:0;border-radius:4px}"
     "#c0{background:#c4a15a}#c1{background:#d7c4a2}#c2{background:#c47a5a}"

@@ -21,6 +21,9 @@
  * PULL=mm: then the top face pulled by mm (Face's distance; less than 0
  * pushes it in), as make.c's Pull on a face clicked at the top.
  * CHAMFER=mm: then the top face chamfered by mm, as make.c's Chamfer.
+ * ARRANGE=ops: then Arrange's buttons in turn on the picked part (c Copy,
+ * x Line X, y Line Y, r Ring, m Mirror, t Turn, s Stack, o Solo), with
+ * COPIES and GAP in its fields.
  * DRAG=dx,dy: then the top face dragged to pull it, the pointer moved that
  * many pixels in the view, as make.c's Drag.
  * KEYS: then, in turn, d (Delete the picked part), z (Amiga-Z, Undo), and
@@ -250,6 +253,34 @@ int main(int argc, char **argv)
                  gs_parts_name(listed, gs_parts_picked(listed)), gs_parts_mesh(listed, gs_parts_picked(listed))->n);
         printf("%s\n", said);
     }
+    if (getenv("ARRANGE")) { /* as make.c's Arrange buttons, in turn: c Copy, x and y Line, r Ring, m Mirror,
+                              * t Turn, s Stack, o Solo; with COPIES and GAP */
+        int n = getenv("COPIES") ? atoi(getenv("COPIES")) : 3;
+        float gap = getenv("GAP") ? (float)atof(getenv("GAP")) : 6.f;
+        const char *k;
+        if (!listed) {
+            gs_mesh m;
+            memset(&m, 0, sizeof m);
+            if (!(listed = gs_parts_new()) || ge_copy(&m, &part) || gs_parts_add(listed, &m, "Holed cube") < 0) return 1;
+        }
+        for (k = getenv("ARRANGE"); *k; k++) {
+            int r = *k == 'c'   ? ge_duplicate(listed, said, (int)sizeof said)
+                    : *k == 'x' ? ge_line(listed, 0, n, gap, said, (int)sizeof said)
+                    : *k == 'y' ? ge_line(listed, 1, n, gap, said, (int)sizeof said)
+                    : *k == 'r' ? ge_ring(listed, n, said, (int)sizeof said)
+                    : *k == 'm' ? ge_mirror(listed, said, (int)sizeof said)
+                    : *k == 't' ? ge_turn(listed, 2, 90.f, said, (int)sizeof said)
+                    : *k == 's' ? ge_stack(listed, said, (int)sizeof said)
+                    : *k == 'o' ? ge_solo(listed, said, (int)sizeof said)
+                                : -2;
+            if (r == -2) return 2;
+            printf("%s\n", said);
+        }
+        gs_mesh_free(&part);
+        if (gs_parts_scene(listed, &part)) return 1;
+        ge_where(gs_parts_mesh(listed, gs_parts_picked(listed)), wpos, wsize);
+        model = 1;
+    }
     if (getenv("HOLES")) { /* as make.c's Holes tab, its fields' values or these */
         ge_holes hs;
         char why[96];
@@ -366,6 +397,8 @@ int main(int argc, char **argv)
                 olui_set_number(ui, olui_find(ui, ids[k][0]),
                                 (int)(atof(getenv(ids[k][1])) * (k == 1 ? 1.0 : 10.0) + 0.5));
     }
+    if (getenv("COPIES")) olui_set_number(ui, olui_find(ui, "acount"), atoi(getenv("COPIES")));
+    if (getenv("GAP")) olui_set_number(ui, olui_find(ui, "agap"), (int)floorf((float)atof(getenv("GAP")) * 10.f + 0.5f));
     if (getenv("PULL") || getenv("CHAMFER"))
         olui_set_number(ui, olui_find(ui, "fmm"),
                         (int)floorf((float)atof(getenv("PULL") ? getenv("PULL") : getenv("CHAMFER")) * 10.f + 0.5f));

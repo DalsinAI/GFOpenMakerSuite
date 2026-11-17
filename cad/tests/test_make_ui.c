@@ -37,10 +37,11 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
 static const char *const buttons[] = {
     "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
     "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
+    "dup", "linex", "liney", "ring", "mirror", "turn", "stack", "solo",
     "prev", "next", "slice", "gcode"
 };
 #define PARTS_BUTTONS 12
-#define PRINT_BUTTONS 24
+#define PRINT_BUTTONS 32
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -343,10 +344,10 @@ int main(void)
     {
         /* The Parts tab: Make's select and buttons, the list (24 parts, the
          * bench's limit, scrolled), the name field, six swatches, Hide and
-         * Delete, in the side, clear, above the status line, at 640 by 480
+         * Delete, and Arrange's copies, gap and eight buttons, in the side, clear, above the status line, at 640 by 480
          * and full HD. And the tab strip: five tabs, each in the side, clear
          * of the next, wide enough for its five letters in Topaz 8. */
-        static const char *const ids[] = {"plist", "pname", "shape"};
+        static const char *const ids[] = {"plist", "pname", "shape", "acount", "agap"};
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         olui_el *list = olui_find(ui, "plist");
         int s, k;
@@ -372,13 +373,13 @@ int main(void)
                    !olui_is_selected(olui_find(ui, "c0")),
                "the list: the picked part selected, its name, Show for a hidden part, its metal lit");
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[3], b[NBUTTONS];
+            olui_rect side, st, r[5], b[NBUTTONS];
             int a, c;
             olui_tabs_select(ui, side_tabs, GM_TAB_PARTS);
             expect(olui_layout(ui, at[s][0], at[s][1]), "the Parts tab lays out");
             olui_box(ui, olui_find(ui, "side"), &side);
             olui_box(ui, olui_find(ui, "status"), &st);
-            for (a = 0; a < 3; a++) {
+            for (a = 0; a < 5; a++) {
                 snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", ids[a], at[s][0], at[s][1]);
                 expect(olui_box(ui, olui_find(ui, ids[a]), &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
                            r[a].y + r[a].h <= st.y,
@@ -388,8 +389,9 @@ int main(void)
             for (a = PARTS_BUTTONS; a < PRINT_BUTTONS; a++) {
                 snprintf(what, sizeof what, "%s in the side at %d by %d, clear", buttons[a], at[s][0], at[s][1]);
                 expect(olui_box(ui, olui_find(ui, buttons[a]), &b[a]) && b[a].x >= side.x &&
-                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 18 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
-                           !overlap(&b[a], &r[0]) && !overlap(&b[a], &r[1]) && !overlap(&b[a], &r[2]),
+                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 18 && a < 24 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
+                           !overlap(&b[a], &r[0]) && !overlap(&b[a], &r[1]) && !overlap(&b[a], &r[2]) &&
+                           !overlap(&b[a], &r[3]) && !overlap(&b[a], &r[4]),
                        what);
                 for (c = PARTS_BUTTONS; c < a; c++) {
                     snprintf(what, sizeof what, "%s is clear of %s", buttons[a], buttons[c]);
@@ -397,6 +399,16 @@ int main(void)
                 }
             }
             expect(!overlap(&r[0], &r[1]) && !overlap(&r[0], &r[2]), "the list clear of the field and the select");
+            snprintf(what, sizeof what, "the Parts tab ends above the status line, in the window, at %d by %d", at[s][0], at[s][1]);
+            expect(side.y + side.h <= st.y && st.y + st.h <= at[s][1] && st.h <= 24, what);
+            for (a = PARTS_BUTTONS + 12; a < PRINT_BUTTONS; a++) {
+                snprintf(what, sizeof what, "%s on one line at %d by %d", buttons[a], at[s][0], at[s][1]);
+                expect(b[a].h <= 24, what);
+            }
+            snprintf(what, sizeof what, "Arrange's copies and gap at %d by %d: clear, wide enough for 80.0", at[s][0], at[s][1]);
+            expect(!overlap(&r[3], &r[4]) && !overlap(&r[3], &r[0]) && !overlap(&r[4], &r[1]) && r[3].w >= 52 && r[4].w >= 52 &&
+                       !strcmp(olui_tag(olui_find(ui, "acount")), "spinner"),
+                   what);
             memset(&seen, 0, sizeof seen);
             first_box = 0;
             olui_draw(ui, NULL, collect, NULL);
