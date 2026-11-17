@@ -179,7 +179,13 @@ static int LIB_GT_FillGrid(REG(a0, gt_path *p), REG(a1, const gl_loops *region),
     return gt_fill_grid(p, region, solid, nsolid, om_lib_float(z), om_lib_float(w), every, cross);
 }
 
-#define OPENMAKEPATH_LAST_BIAS 198
+static int LIB_GL_Tabs(REG(a0, const gl_loop *in), REG(d0, int count), REG(d1, ULONG width), REG(a1, gl_loops *out), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gl_tabs(in, count, om_lib_float(width), out);
+}
+
+#define OPENMAKEPATH_LAST_BIAS 204
 #define OPENMAKEPATH_VECTORS \
     (APTR)LIB_GL_Height, \
     (APTR)LIB_GL_Layers, \
@@ -209,4 +215,5 @@ static int LIB_GT_FillGrid(REG(a0, gt_path *p), REG(a1, const gl_loops *region),
     (APTR)LIB_GP_MoreDefaults, \
     (APTR)LIB_GP_LayerMore, \
     (APTR)LIB_GP_PartMore, \
-    (APTR)LIB_GT_FillGrid
+    (APTR)LIB_GT_FillGrid, \
+    (APTR)LIB_GL_Tabs

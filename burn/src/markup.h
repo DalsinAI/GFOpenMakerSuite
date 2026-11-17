@@ -56,13 +56,13 @@ static const char burn_css[] =
     "select{flex:1}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
     "hr{background:#d0d0d0}"
-    "#layers{gap:6px;width:100%;min-width:0}"
-    "#layers column{width:100%;min-width:0;gap:2px}"
+    "#layers{gap:4px;width:100%;min-width:0}"
+    "#layers column{width:100%;min-width:0;gap:1px}"
     "#layers row{padding:0;gap:4px;width:100%;min-width:0}"
     "#layers .swatch{width:12px;border:1px solid #d0d0d0}"
     "#layers label{width:48px;color:#616161}"
     "#layers label.name{width:auto;flex:1}"
-    "#layers spinner{flex:1;min-width:0}"
+    "#layers spinner{flex:1;min-width:0;width:0}""#layers label.pair{width:auto}"
     "#layers span{width:16px;color:#616161}"
     "#layers checkbox{width:16px}""#layers .shift{width:28px;min-width:28px;padding:0 2px}";
 
