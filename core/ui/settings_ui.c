@@ -18,9 +18,9 @@ static const char *const tabs[][7] = {
 
 static const char css[] = "#set-tabs{gap:4px}"
                           "#set-tabs row{padding:0;gap:4px}"
-                          "#set-tabs label{width:92px;color:#616161}"
+                          "#set-tabs label{width:84px;color:#616161}"
                           "#set-tabs spinner,#set-tabs select{flex:1}"
-                          "#set-tabs span{width:30px;color:#616161}";
+                          "#set-tabs span{width:34px;color:#616161}" /* "mm/s" in Topaz 8 */;
 
 int omv_settings_tabs(void) { return TABS; }
 

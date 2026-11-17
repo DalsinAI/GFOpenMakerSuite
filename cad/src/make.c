@@ -14,9 +14,11 @@
 #include "gs_model.h"
 #include "gs_par.h"
 #include "gs_plan.h"
+#include "gs_settings.h"
 #include "make_ui.h"
 #include "omview_gpu.h"
 #include "omview_machines.h"
+#include "omview_settings.h"
 #include "omview_ui.h"
 #include "omview_window.h"
 
@@ -61,6 +63,7 @@ static gl_walls walls;
 static gt_path sliced;
 static int has_slice;
 static gc_stats slice_st;
+static int slice_how; /* gc_estimate_more's: GC_FELL_BACK, the time short */
 /* The printers under PROGDIR:machines/printer, for Save G-code. */
 static omv_machines printers;
 /* The view on OpenGPU (core/ui): its picture, depth, vertices and stream. */
@@ -222,7 +225,7 @@ static void refresh(olui *ui)
     recut();
     if (has_slice) {
         omv_slice_status(status, (int)sizeof status, sliced.nlayers, slice_st.moves, slice_st.seconds,
-                         slice_st.filament, show_layer ? layer_no : 0, 0);
+                         slice_st.filament, show_layer ? layer_no : 0, (slice_how & GC_FELL_BACK) != 0);
         say(ui, status);
         face_line(ui);
         olui_repaint(ui, olui_find(ui, "view"), NULL);
@@ -451,12 +454,21 @@ static void slider_to_layer(olui *ui)
     olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(layer_no, n));
 }
 
+/* The print settings panel's, over the defaults. */
+static void settings(olui *ui, gs_settings *s)
+{
+    gs_settings_default(s);
+    omv_settings_read(ui, s);
+}
+
+/* The settings panel's layer height: the layers shown are cut at it. */
 static void on_height(olui *ui, const olui_event *ev, void *userdata)
 {
-    olui_el *lh = olui_find(ui, "lh");
+    gs_settings s;
     (void)ev;
     (void)userdata;
-    layer_h = (float)olui_number_value(lh) / 100.f;
+    settings(ui, &s);
+    layer_h = s.layer_h;
     if (layer_h < GL_MIN_H) layer_h = GL_MIN_H;
     if (layer_h > GL_MAX_H) layer_h = GL_MAX_H;
     drop_slice();
@@ -628,27 +640,67 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* The printer picked, loaded; or -1 and why. */
+static int printer(olui *ui, om_machine *m, char *err, int errlen)
+{
+    int i = omv_machines_chosen(ui, "machine", &printers);
+    if (i < 0) {
+        snprintf(err, (size_t)errlen, "No printer: put one in PROGDIR:machines/printer");
+        return -1;
+    }
+    return omv_machines_load(&printers, i, m, err, errlen) ? -1 : 0;
+}
+
+/* Another printer picked: the settings held to it, and why said. */
+static void on_machine(olui *ui, const olui_event *ev, void *userdata)
+{
+    om_machine m;
+    gs_settings s;
+    char why[160];
+    (void)ev;
+    (void)userdata;
+    if (printer(ui, &m, why, (int)sizeof why)) {
+        say(ui, why);
+        return;
+    }
+    omv_settings_fit(ui, &m, &s, why, (int)sizeof why);
+    if (why[0]) say(ui, why);
+}
+
+static long to_file(const char *t, long n, void *ud)
+{
+    return (long)fwrite(t, 1, (size_t)n, (FILE *)ud);
+}
+
 /* The part as a printer's toolpath, at the Layers height, on as many
  * tasks as there are cores (gs_par: exec tasks here). */
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
 {
     gp_opts o;
     gc_opts go;
+    gp_more x;
+    gc_more gx;
+    gs_settings s;
+    om_machine m;
+    char why[160];
+    int have;
     (void)ev;
     (void)userdata;
     rebuild_shown();
-    gp_defaults(&o);
-    o.layer_h = layer_h;
+    have = printer(ui, &m, why, (int)sizeof why) == 0;
+    if (have) omv_settings_fit(ui, &m, &s, why, (int)sizeof why); /* held to the printer */
+    settings(ui, &s);
+    gs_settings_opts(&s, &o, &go);
+    gs_settings_more(&s, &x);
     drop_slice();
     say(ui, "Slicing...");
-    if (gp_part_par(&sliced, &shown, &o, gs_par_cores()) || !sliced.n) {
+    if (gp_part_par_more(&sliced, &shown, &o, &x, gs_par_cores()) || !sliced.n) {
         drop_slice();
         say(ui, "That did not slice: out of memory, or nothing to slice");
         return;
     }
-    gc_defaults(&go);
-    go.layer_h = layer_h;
-    gc_estimate(&sliced, NULL, &go, &slice_st);
+    gs_settings_gc_more(&s, &go, &gx);
+    slice_how = gc_estimate_more(&sliced, have ? &m : NULL, &gx, &slice_st);
     has_slice = 1;
     refresh(ui);
 }
@@ -660,7 +712,10 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
     struct FileRequester *fr;
     om_machine m;
     om_job job;
+    gp_opts o;
     gc_opts go;
+    gc_more gx;
+    gs_settings s;
     char path[256], err[160];
     FILE *f;
     (void)ev;
@@ -669,16 +724,13 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
         say(ui, "Slice first");
         return;
     }
-    if (omv_machines_chosen(ui, "machine", &printers) < 0) {
-        say(ui, "No printer: put one in PROGDIR:machines/printer");
-        return;
-    }
-    if (omv_machines_load(&printers, omv_machines_chosen(ui, "machine", &printers), &m, err, (int)sizeof err)) {
+    if (printer(ui, &m, err, (int)sizeof err)) {
         say(ui, err);
         return;
     }
-    gc_defaults(&go);
-    go.layer_h = layer_h;
+    settings(ui, &s);
+    gs_settings_opts(&s, &o, &go);
+    gs_settings_gc_more(&s, &go, &gx);
     gc_job(&sliced, &m, &go, &job);
     if (om_check(&m, &job, err, (int)sizeof err) & ~OM_TOO_FAST) {
         say(ui, err);
@@ -694,7 +746,7 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
     if (AslRequest(fr, NULL) && fr->fr_Drawer && fr->fr_File) {
         path_join(path, (int)sizeof path, (const char *)fr->fr_Drawer, (const char *)fr->fr_File);
         f = fopen(path, "w");
-        if (!f || gc_write(f, &sliced, &m, &go, NULL, err, (int)sizeof err)) say(ui, f ? err : "Could not write there");
+        if (!f || gc_write_more(to_file, f, &sliced, &m, &gx, NULL, err, (int)sizeof err)) say(ui, f ? err : "Could not write there");
         else say(ui, path);
         if (f) fclose(f);
     }
@@ -729,7 +781,8 @@ int main(int argc, char **argv)
     on_chip = gpu.on_chip;
     draw_grid = gpu.grid;
     ui = olui_new();
-    if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err)) {
+    if (!ui || !olui_load(ui, gm_markup, gm_css, err, sizeof err) ||
+        omv_settings_add(ui, "settings", err, (int)sizeof err)) {
         if (ui) olui_free(ui);
         ge_hist_free(hist);
         gs_mesh_free(&hole);
@@ -738,6 +791,11 @@ int main(int argc, char **argv)
         omv_gpu_close(&gpu);
         fprintf(stderr, "GFOpenMake: %s\n", ui ? err : "GFOpenLayout is not open");
         return 20;
+    }
+    {
+        gs_settings s;
+        gs_settings_default(&s);
+        omv_settings_show(ui, &s);
     }
     olui_on(ui, "open", OLUI_CLICK, on_open, NULL);
     olui_on(ui, "save", OLUI_CLICK, on_save, NULL);
@@ -754,7 +812,8 @@ int main(int argc, char **argv)
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);
-    olui_on(ui, "lh", OLUI_CHANGE, on_height, NULL);
+    olui_on(ui, "set-layer-height", OLUI_CHANGE, on_height, NULL);
+    olui_on(ui, "machine", OLUI_CHANGE, on_machine, NULL);
     olui_on(ui, "show", OLUI_CHANGE, on_show, NULL);
     olui_on(ui, "prev", OLUI_CLICK, on_step, (void *)(intptr_t)-1);
     olui_on(ui, "next", OLUI_CLICK, on_step, (void *)(intptr_t)1);
@@ -796,6 +855,7 @@ int main(int argc, char **argv)
     olui_amiga_layout(a);
     refresh(ui);
     if (printers.skipped) say(ui, printers.why);
+    else if (printers.n) on_machine(ui, NULL, NULL); /* the settings held to the first printer */
     for (;;) {
         int r, lx, ly;
         WaitPort(w->UserPort);

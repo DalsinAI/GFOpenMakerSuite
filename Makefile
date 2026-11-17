@@ -45,8 +45,9 @@ $(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_pai
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # GFOpenMake's window, laid out by GFOpenLayout (LAYOUT, built with make there).
-$(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icad/src -I$(LAYOUT)/include -o $@ cad/tests/test_make_ui.c \
+$(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h core/ui/settings_ui.c core/src/settings.c | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icad/src -Icore/include -Icore/ui -Imachines/include -I$(LAYOUT)/include -o $@ cad/tests/test_make_ui.c \
+	    core/ui/settings_ui.c core/ui/view_ui.c core/src/settings.c $(PLAN) core/src/gcode.c machines/src/machine.c core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
@@ -223,9 +224,9 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit
 preview: $(BUILD)/preview $(BUILD)/make_preview
 
 # GFOpenMake's window after Slice, on the host (cad/tools/make_preview.c).
-$(BUILD)/make_preview: cad/tools/make_preview.c cad/src/make_ui.h cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c $(PLAN) core/src/gcode.c | $(BUILD)
+$(BUILD)/make_preview: cad/tools/make_preview.c cad/src/make_ui.h cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/gcode.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Icad/include -Icad/src -Imachines/include -I$(LAYOUT)/include -o $@ \
-	    cad/tools/make_preview.c cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c $(PLAN) core/src/toolpath_paint.c core/src/gcode.c \
+	    cad/tools/make_preview.c cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c $(PLAN) core/src/toolpath_paint.c core/src/gcode.c \
 	    machines/src/machine.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm

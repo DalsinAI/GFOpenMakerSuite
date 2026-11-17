@@ -7,12 +7,17 @@
  * upto: the Layers slider's layer, Show layer ticked (0: all layers);
  * machines: where the printer picker looks (machines/ to start); open:
  * the picker's list shown open; SIZE: the window's inside, 640x480 to start.
+ * SETTINGS: a profile's lines put in the settings panel and sliced with,
+ * held to the first printer; SIDE: the side's tab (1, Print, to start);
+ * TAB: the panel's tab.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_gcode.h"
 #include "gs_plan.h"
+#include "gs_settings.h"
 #include "make_ui.h"
 #include "omview_machines.h"
+#include "omview_settings.h"
 #include "omview_ui.h"
 
 #include <stdio.h>
@@ -60,6 +65,11 @@ int main(int argc, char **argv)
     gs_cam cam;
     gp_opts o;
     gc_opts go;
+    gp_more x;
+    gc_more gx;
+    gs_settings set;
+    om_machine m;
+    int have, how;
     gc_stats st;
     gt_path path;
     char err[160], status[180], ppm[256];
@@ -79,25 +89,40 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return 1;
     }
-    /* As make.c's Slice: the part at the Layers height, then its estimate. */
-    gp_defaults(&o);
-    o.layer_h = 0.2f;
-    gt_init(&path);
-    if (gp_part(&path, &part, &o)) return 1;
-    gc_defaults(&go);
-    go.layer_h = o.layer_h;
-    gc_estimate(&path, NULL, &go, &st);
-    if (upto > path.nlayers) upto = path.nlayers;
-
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
-    if (!olui_load(ui, gm_markup, gm_css, err, sizeof err)) {
+    if (!olui_load(ui, gm_markup, gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
         fprintf(stderr, "%s\n", err);
         return 1;
     }
+    gs_settings_default(&set);
+    if (getenv("SETTINGS") && gs_settings_parse(&set, getenv("SETTINGS"), err, (int)sizeof err)) {
+        fprintf(stderr, "SETTINGS: %s\n", err);
+        return 1;
+    }
+    omv_settings_show(ui, &set);
+    olui_tabs_select(ui, olui_find(ui, "side-tabs"), getenv("SIDE") ? atoi(getenv("SIDE")) : 1);
+    if (getenv("TAB")) omv_settings_tab(ui, atoi(getenv("TAB")));
     omv_machines_scan(&printers, argc > 3 ? argv[3] : "machines", "printer");
     omv_machines_fill(ui, "machine", &printers, "No printers");
-    omv_slice_status(status, (int)sizeof status, path.nlayers, st.moves, st.seconds, st.filament, upto, 0);
+    /* As make.c's Slice: the settings held to the printer, the part sliced
+     * with them, then its estimate. */
+    have = printers.n > 0 && omv_machines_load(&printers, 0, &m, err, (int)sizeof err) == 0;
+    if (have) {
+        omv_settings_fit(ui, &m, &set, err, (int)sizeof err);
+        if (err[0]) printf("%s\n", err);
+    }
+    gs_settings_default(&set);
+    omv_settings_read(ui, &set);
+    gs_settings_opts(&set, &o, &go);
+    gs_settings_more(&set, &x);
+    gt_init(&path);
+    if (gp_part_more(&path, &part, &o, &x)) return 1;
+    gs_settings_gc_more(&set, &go, &gx);
+    how = gc_estimate_more(&path, have ? &m : NULL, &gx, &st);
+    if (upto > path.nlayers) upto = path.nlayers;
+    omv_slice_status(status, (int)sizeof status, path.nlayers, st.moves, st.seconds, st.filament, upto,
+                     (how & GC_FELL_BACK) != 0);
     omv_say(ui, status);
     if (upto) {
         olui_set_checked(ui, olui_find(ui, "show"), 1);
