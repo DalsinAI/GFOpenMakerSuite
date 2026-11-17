@@ -1,0 +1,480 @@
+# ARexx in the GFOpenMake suite
+
+Every windowed app in the suite hosts a public ARexx port, so a script or
+another OpenMake program can drive it. The ports and the command parser
+live in a shared library, `openmakerexx.library`, written from the public
+Amiga ARexx and rexxsyslib documentation (the ARexx User's Reference and
+the rexxsyslib autodocs). It is not written from any other application's
+source. MIT.
+
+This note is the command set and the shape of that library. The library,
+the hooks in each app, and the example scripts come in the PRs after this
+one.
+
+## The hub
+
+**GFOpenMakerWorkshop** (`workshop/`) is the hub. Its port,
+`OPENMAKEWORKSHOP.1`, is the master port: it adds project items and starts
+and controls the other apps. A script that is running a project talks to
+Workshop; Workshop talks to GFOpenMake, OpenMakeSlicer and OpenMakeBurn
+through the same library's client side.
+
+Workshop hosts the shared commands below. Its own project commands are
+Workshop's to list, in this file, when that app is in.
+
+## Ports
+
+Each app opens a public message port with a unique name. The first copy
+takes `.1`; if that name is already out there, the next copy takes `.2`,
+and so on.
+
+| App | First port | Program |
+| --- | --- | --- |
+| GFOpenMakerWorkshop | `OPENMAKEWORKSHOP.1` | the Workshop window (the hub) |
+| GFOpenMake | `GFOPENMAKE.1` | the solid editor |
+| OpenMakeSlicer | `OPENMAKESLICER.1` | the slicer window |
+| OpenMakeBurn | `OPENMAKEBURN.1` | the laser window |
+
+A script addresses one copy:
+
+```
+ADDRESS 'GFOPENMAKE.1'
+'STATUS'
+SAY RESULT
+```
+
+The command-line tools (`gfopenslicer`, `openmake-burn`) run and exit, so
+they do not open a port. A script can still run them with
+`ADDRESS COMMAND`. The windows are the ones a port talks to.
+
+If `rexxsyslib.library` is not available, the app still opens and is used
+from the window; it just has no port.
+
+## Return codes and results
+
+Return codes follow the usual ARexx convention:
+
+| RC | Meaning |
+| --- | --- |
+| 0 | The command ran. |
+| 5 | A warning: the command ran, but something was off. |
+| 10 | An error: a bad argument, or the command could not be done. |
+| 20 | A failure: the port or the program could not go on. |
+
+A successful command that has something to say puts it in `RESULT` (the
+ARexx special variable), as a string.
+
+Commands that return several values also take:
+
+- `VAR/K` — the same string is written to that ARexx variable.
+- `STEM/K` — the values are written to that stem (`stem.0` is how many,
+  then `stem.1`, `stem.2`, …, and named tails such as `stem.LAYERS` where
+  the command lists them).
+
+`VAR` and `STEM` are applied with rexxsyslib's `SetRexxVar` on the message
+that carried the command, so they land in the program that sent it.
+
+## How a command is written
+
+Commands are case-insensitive. Arguments follow a ReadArgs-style template,
+as dos.library documents it:
+
+- `/A` — required
+- `/K` — a keyword, `NAME value` or `NAME/value`
+- `/S` — a switch, present or not
+- `/N` — a decimal integer
+- `/F` — the rest of the line
+- `/M` — more than one string
+
+A keyword that is a number in the template (`MM/K`, `X/K`) is still taken
+as text by the library; the app parses it. The library itself does not use
+floating point.
+
+An unknown command, or a template that does not match, is RC 10, with why
+in `RESULT`.
+
+## Shared commands
+
+Every windowed app hosts these, including Workshop.
+
+### HELP
+
+Template: `HELP COMMAND/K`
+
+With no `COMMAND`, `RESULT` is the app's commands, one name per word. With
+`COMMAND`, `RESULT` is that command's template and a short line of what it
+does. An unknown name is RC 10.
+
+### VERSION
+
+Template: `VERSION`
+
+`RESULT` is the program name and version, as the window's `$VER` string
+(for example `GFOpenMake 0.1.0`).
+
+### QUIT
+
+Template: `QUIT FORCE/S`
+
+Closes the window at once and ends the program. There is no "save first?"
+requester. A document that has not been saved is discarded. With no
+`FORCE`, a dirty document is refused (RC 10, `RESULT` saying so). `FORCE`
+quits anyway.
+
+### OPEN
+
+Template: `OPEN FILE/A`
+
+Opens that file as the app's document (an STL in GFOpenMake and the
+slicer, a drawing or picture in OpenMakeBurn, a project in Workshop). RC
+10 if it cannot be read, with why in `RESULT`.
+
+### SAVE
+
+Template: `SAVE FILE/K`
+
+Writes the app's primary document. GFOpenMake writes an STL; the slicer
+and OpenMakeBurn write G-code; Workshop writes the project. If `FILE` is
+omitted, the last path is used; RC 10 if there is not one yet.
+
+### ACTIVATE
+
+Template: `ACTIVATE`
+
+Brings the window to the front and activates it.
+
+### HIDE
+
+Template: `HIDE`
+
+Sends the window to the back. It does not iconify; the apps have no
+AppIcon yet.
+
+### GET
+
+Template: `GET KEY/K STEM/K VAR/K`
+
+Reads a setting by its key. In GFOpenMake and the slicer the keys are the
+print settings (`layer-height`, `line-width`, `walls`, `infill`,
+`pattern`, `top-layers`, `bottom-layers`, `speed`, `travel-speed`,
+`first-layer-speed`, `hotend`, `bed`, `filament`, `around`, `loops`,
+`distance`, `retract`, `retract-speed`). In OpenMakeBurn they are the
+job's keys (`power`, `speed`, `travel`, `passes`, `constant`, `s100`,
+`mode`, `interval`, `cuts_last`). Workshop's keys are Workshop's to list.
+
+With no `KEY`, `STEM` receives every key: `stem.0` is how many, `stem.1`
+the first key, `stem.1.VALUE` its value, and so on. With `KEY`, `RESULT`
+(and `VAR`, if given) is that value. An unknown key is RC 10.
+
+### SET
+
+Template: `SET KEY/A VALUE/A`
+
+Sets that key. The value is held to the setting's range, as the window
+already does. An unknown key, or a value the setting will not take, is RC
+10, with why in `RESULT`.
+
+### STATUS
+
+Template: `STATUS STEM/K VAR/K`
+
+`RESULT` is a short line (the port name, the file open, whether it is
+dirty). `STEM`, when given, also has:
+
+- `stem.PORT` — the public port name
+- `stem.FILE` — the file open, or empty
+- `stem.DIRTY` — `1` or `0`
+- and the app's own tails, listed with that app below
+
+## GFOpenMake (port `GFOPENMAKE.1`)
+
+The solid editor. `OPEN` and `SAVE` are STLs. `STATUS` also has
+`stem.PARTS`, `stem.PICKED` (1-based, or 0), and `stem.FACE` (the picked
+face, or -1).
+
+### ADD
+
+Template: `ADD SHAPE/A X/K Y/K Z/K W/K D/K H/K`
+
+Adds a part. `SHAPE` is `box`, `cylinder`, `sphere`, `cone`, `torus`,
+`wedge` or `slot` (as Parts' Make). With no place or size, the part is
+placed and sized from the stock, as the window. `X`, `Y`, `Z` place it
+(the middle of its box in X and Y, its bottom in Z); `W`, `D`, `H` size
+its box. `RESULT` is the new part's 1-based index and its name.
+
+### SELECT
+
+Template: `SELECT PART/N NAME/K`
+
+Picks a part by 1-based index (`PART`) or by its name (`NAME`). RC 10 if
+there is no such part.
+
+### DELETE
+
+Template: `DELETE`
+
+Deletes the picked part. Refused (RC 10) if it is the last one, as the
+window.
+
+### UNDO / REDO
+
+Templates: `UNDO` and `REDO`
+
+One step back or forward, as the window. RC 10 if there is no step that
+way.
+
+### JOIN / CUT / INTERSECT
+
+Templates: `JOIN`, `CUT`, `INTERSECT`
+
+The picked part is the tool, the one beside it the stock, as the window.
+`RESULT` says what was done. RC 10 with no second part, or when they do
+not meet, with why in `RESULT`.
+
+### MOVE
+
+Template: `MOVE X/K Y/K Z/K`
+
+Moves the picked part by that many millimetres (any of `X`, `Y`, `Z` may
+be omitted, and then that axis is left).
+
+### PLACE
+
+Template: `PLACE X/K Y/K Z/K`
+
+Puts the picked part so the middle of its box in X and Y, and its bottom
+in Z, is at that point. At least one of `X`, `Y`, `Z` is required.
+
+### SIZE
+
+Template: `SIZE X/K Y/K Z/K AXIS/K MM/K`
+
+Sizes the picked part's box. `X`, `Y`, `Z` are the box in millimetres on
+those axes; or `AXIS` (`x`, `y` or `z`) and `MM` scale evenly to that
+length, as the window's Size.
+
+### HOLE
+
+Template: `HOLE KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K`
+
+Cuts holes in the picked part, as the Holes tab. `KIND` is `circle` (a
+bolt circle: `D`, `N`, `PCD`), `row` (`D`, `N`, `PITCH`) or `counterbore`
+(`D`, `CB`, `DEEP`). `RESULT` says what was done. RC 10 if the values are
+out of range or the cut cannot be made, with why in `RESULT`.
+
+### PULL
+
+Template: `PULL MM/A FACE/N/K`
+
+Pulls a face of the picked part along its normal by `MM` millimetres
+(less than 0: pushed in), as the window's Pull by a distance. `FACE`
+defaults to the face picked in the view. RC 10 if there is no face, with
+why in `RESULT`.
+
+### CHAMFER
+
+Template: `CHAMFER MM/A FACE/N/K`
+
+Chamfers that face's edges by `MM` millimetres (0.2 to 20), as the
+window's Chamfer. `FACE` defaults to the face picked in the view. RC 10 if
+it cannot be done, with why in `RESULT`.
+
+### EXPORT
+
+Template: `EXPORT FILE/A`
+
+Writes the parts as an STL to `FILE`, as the window's Save STL. The same
+as `SAVE FILE`.
+
+### GCODE
+
+Template: `GCODE FILE/A`
+
+Slices the shown parts with the current print settings and printer, and
+writes G-code to `FILE`, as the window's Save G-code.
+
+### MEASURE
+
+Template: `MEASURE X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K`
+
+The distance between two points, and the distance along each axis. With
+`X1`…`Z2`, those points (in millimetres). With none, the last two points
+clicked in Measure; RC 10 if there are not two yet. `RESULT` is the same
+line the window shows. `STEM` has `stem.DISTANCE`, `stem.X`, `stem.Y`,
+`stem.Z`.
+
+### FACTS
+
+Template: `FACTS PART/N/K STEM/K VAR/K`
+
+A part's volume, surface, size and triangles, as the window's Facts. The
+picked part, or `PART` (1-based). `RESULT` is the same line the window
+shows. `STEM` has `stem.VOLUME`, `stem.SURFACE`, `stem.X`, `stem.Y`,
+`stem.Z`, `stem.TRIANGLES`.
+
+## OpenMakeSlicer (port `OPENMAKESLICER.1`)
+
+The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes
+G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
+`stem.TIME` and `stem.FILAMENT`.
+
+### LOAD
+
+Template: `LOAD FILE/A`
+
+Opens an STL, as `OPEN`. The part is repaired and set on the bed, as the
+window.
+
+### PROFILE
+
+Template: `PROFILE FILE/A`
+
+Loads a print-settings profile (`settings/standard` and the rest). Keys
+can still be changed with `SET` after it.
+
+### PRINTER
+
+Template: `PRINTER DRIVER/K PROFILE/K`
+
+Picks the machine. `DRIVER` is a driver file (`machines/printer/marlin/driver.om`
+and the rest); `PROFILE` is a machine profile. At least one is required.
+RC 10 if the file cannot be read, or if it is not a printer.
+
+### SLICE
+
+Template: `SLICE STEM/K VAR/K`
+
+Slices the loaded part with the current settings and printer. `RESULT` is
+a short line (layers, time, filament). `STEM` has `stem.LAYERS`,
+`stem.TIME` (seconds) and `stem.FILAMENT` (millimetres). RC 10 if there is
+no part, or if the printer cannot print it, with why in `RESULT`.
+
+### STATS
+
+Template: `STATS STEM/K VAR/K`
+
+The last slice's figures, in the same form as `SLICE`. RC 10 if it has not
+been sliced yet.
+
+## OpenMakeBurn (port `OPENMAKEBURN.1`)
+
+The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture. `SAVE`
+writes Grbl laser G-code. `STATUS` also has `stem.KIND` (`SVG`, `DXF` or
+`Picture`), `stem.LAYERS` and `stem.MODE`.
+
+### LAYER
+
+Template: `LAYER INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K`
+
+Sets one layer. Identify it with `INDEX` (1-based in the document's layer
+list) or `COLOUR` (`#rrggbb`). The other keywords are that layer's
+overrides, as the window and `layer=` on the command. `MODE` is `line`,
+`fill` or `offset`. `ON` is `1` or `0`. RC 10 if there is no such layer,
+or if a value is bad, with why in `RESULT`.
+
+### MATERIAL
+
+Template: `MATERIAL FILE/A`
+
+Loads a starting-point materials profile (`materials/laser/card.om` and
+the rest). Power, speed and the other keys after it can still be changed
+with `LASER` or `SET`.
+
+### LASER
+
+Template: `LASER POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K`
+
+The job's default power (0 to 100), speed and travel (mm/s), passes, and
+whether the laser is constant (`CONSTANT` 1: M3, 0: M4). `S100` is S at
+100% power. Any keyword may be omitted; those are left as they are.
+
+### MODE
+
+Template: `MODE NAME/A`
+
+The job's default mode: `line`, `fill` or `offset`.
+
+### PREVIEW
+
+Template: `PREVIEW FILE/K`
+
+Refreshes the window's preview of the job. With `FILE`, also writes a PPM
+of that preview to the file.
+
+### FRAME
+
+Template: `FRAME FILE/A`
+
+Writes G-code that travels around the job's box with the laser off, as
+the window's Frame, to `FILE`. RC 10 if there is no job yet.
+
+## The library
+
+`openmakerexx.library` (in `core/`) is generated from an `.sfd` like the
+other core libraries: an append-only ABI, an FPU build and a soft build.
+The soft build holds no FPU instructions; both builds are clean under
+`nm -u` and hold no 68040-trapped instructions, checked with
+`fpu-count.sh`. The library does not use floating point.
+
+It has two sides.
+
+### The port (what each app hosts)
+
+The app opens a port at start, and closes it when it quits. The main loop
+waits on the window and the port together, with Exec `Wait()` on both
+signals. There is no busy waiting.
+
+On a signal from the port, the app takes each pending message, looks the
+verb up in its command table, parses the arguments against the template,
+runs the command, and replies with an RC and a `RESULT` string.
+
+If the library cannot open (no `rexxsyslib.library`, or no memory for the
+port), the app goes on without a port.
+
+### The client (what Workshop, and a test, uses)
+
+The same library finds or starts another app's port, sends a command, and
+waits for the reply, with a timeout.
+
+- **Find.** Look up a public port by its base name (`GFOPENMAKE`) or a
+  full name (`GFOPENMAKE.1`). The name that was found is returned.
+- **Start.** If no port is there, run the program (a path under `PROGDIR:`
+  or an explicit path) and wait until its port appears, or until the
+  timeout.
+- **Send.** Put a command on that port and wait for the reply, or until
+  the timeout. The RC and the `RESULT` string are returned to the caller.
+  A timeout is RC 20, with why in the caller's result buffer. The wait is
+  a timer.device request plus `Wait()` on the reply and the timer, not a
+  busy loop.
+
+Workshop uses this to start GFOpenMake, the slicer and OpenMakeBurn, and
+to drive them as project items are added and run. A host test of the
+library uses the same calls against an in-process stub, so `make test`
+(plain and under ASan/UBSan) covers the parser, the dispatch, and the
+client's find / send / timeout path. The real port and the timer are
+compiled only for Amiga.
+
+## Example scripts
+
+These will ship under `docs/rexx/` once the ports are in the apps:
+
+- `batch-slice.rexx` — ask the slicer (starting it if needed) to load each
+  STL in a list, slice it, and write G-code beside it.
+- `make-and-slice.rexx` — ask GFOpenMake to add a part, export an STL, then
+  ask the slicer to load it and slice it. Workshop will be the usual way
+  to run that as a project; this script talks to the two apps directly.
+- `burn-card.rexx` — open a drawing in OpenMakeBurn, apply the card
+  material, and write G-code.
+
+They are ordinary ARexx, and they also show the library's client side
+being used from C (Workshop's path) in comments.
+
+## Building and tests
+
+The parser, the dispatch table, `HELP`, and the client's find / send /
+timeout path are built and tested on the host. The Amiga port, the
+rexxsyslib messages, and timer.device are compiled only into the Amiga
+library and the apps.
+
+`make test` must cover them, plain and under ASan/UBSan. Nothing here has
+been run on an Amiga until a lab run says so.
