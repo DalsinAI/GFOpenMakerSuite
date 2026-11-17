@@ -1,0 +1,4 @@
+# A test machine with no name: its file names it.
+area = 180 180 180
+speed = 150 150 5 25
+hotend = 250
