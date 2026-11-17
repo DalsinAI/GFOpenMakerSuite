@@ -25,6 +25,7 @@ int burn_mode_parse(const char *s)
     if (!s || !s[0]) return -1;
     if (!strcmp(s, "line") || !strcmp(s, "LINE")) return BURN_LINE;
     if (!strcmp(s, "fill") || !strcmp(s, "FILL")) return BURN_FILL;
+    if (!strcmp(s, "offset") || !strcmp(s, "OFFSET")) return BURN_OFFSET;
     return -1;
 }
 
@@ -173,7 +174,7 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen)
         } else if (parse_key(buf, "mode", &rest) || parse_key(buf, "MODE", &rest)) {
             int m = burn_mode_parse(rest);
             if (m < 0) {
-                snprintf(err, (size_t)errlen, "layer=: mode=%s: line or fill", rest);
+                snprintf(err, (size_t)errlen, "layer=: mode=%s: line, fill or offset", rest);
                 return -1;
             }
             L->mode = m;
@@ -343,6 +344,89 @@ static int add_fill(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *
     return 0;
 }
 
+
+/* SVG paths can come out clockwise after the Y flip. gl_union keeps material
+ * that winds at least once to the left, so a lone clockwise loop would drop
+ * out. Reverse every loop when the largest one is clockwise; holes stay
+ * opposite the outside. */
+static void reverse_loop(gl_loop *l)
+{
+    int i, j;
+    for (i = 0, j = l->n - 1; i < j; i++, j--) {
+        float x = l->xy[i * 2], y = l->xy[i * 2 + 1];
+        l->xy[i * 2] = l->xy[j * 2];
+        l->xy[i * 2 + 1] = l->xy[j * 2 + 1];
+        l->xy[j * 2] = x;
+        l->xy[j * 2 + 1] = y;
+    }
+}
+
+static void face_out(gl_loops *ls)
+{
+    int i, k = 0;
+    float best = 0.f, a;
+    if (!ls->n) return;
+    for (i = 0; i < ls->n; i++) {
+        a = gl_loop_area(&ls->l[i]);
+        if (a < 0.f) a = -a;
+        if (a > best) {
+            best = a;
+            k = i;
+        }
+    }
+    if (gl_loop_area(&ls->l[k]) < 0.f)
+        for (i = 0; i < ls->n; i++) reverse_loop(&ls->l[i]);
+}
+
+/* Offset fill: the outline, then gl_inset by the interval, until nothing
+ * is left. Open paths of the same colour are still followed. */
+static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
+{
+    gl_loops region, cur, next;
+    int ring, i, start;
+    if (loops_of(d, ly->colour, &region)) return -1;
+    face_out(&region);
+    memset(&cur, 0, sizeof cur);
+    memset(&next, 0, sizeof next);
+    if (region.n) {
+        if (gl_union(&region, &cur)) {
+            gl_loops_free(&region);
+            return -1;
+        }
+        gl_loops_free(&region);
+        for (ring = 0; cur.n > 0 && ring < 10000; ring++) {
+            start = p->n;
+            for (i = 0; i < cur.n; i++) {
+                if (!cur.l[i].closed || cur.l[i].n < 3) continue;
+                if (gt_loop(p, GT_CUT, &cur.l[i], 0.f, ly->power)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (spd && *spd) {
+                if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
+                    gl_loops_free(&cur);
+                    return -1;
+                }
+            }
+            if (gl_inset(&cur, ly->interval, &next)) {
+                gl_loops_free(&cur);
+                return -1;
+            }
+            gl_loops_free(&cur);
+            cur = next;
+            memset(&next, 0, sizeof next);
+        }
+        gl_loops_free(&cur);
+    } else
+        gl_loops_free(&region);
+    for (i = 0; i < d->n; i++) {
+        if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
+        if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
+    }
+    return 0;
+}
+
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
@@ -361,8 +445,11 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
         burn_layer_of(o, d, L, &ly);
         if (!ly.on || ly.colour == GV_NONE) continue;
         for (pass = 0; pass < ly.passes; pass++) {
-            if (ly.mode == BURN_FILL) {
-                if (add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)) {
+            if (ly.mode == BURN_FILL || ly.mode == BURN_OFFSET) {
+                int rc = (ly.mode == BURN_FILL)
+                             ? add_fill(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)
+                             : add_offset(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
+                if (rc) {
                     free(spd);
                     if (speed) *speed = NULL;
                     gt_free(p);

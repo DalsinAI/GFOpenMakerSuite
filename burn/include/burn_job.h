@@ -1,6 +1,7 @@
 /* OpenMakeBurn's job: an SVG to Grbl laser G-code, through openmakevec
  * and openmakegcode. Line mode follows each path; fill mode scans back
- * and forth inside closed shapes (openmakepath's gt_fill). A layer can
+ * and forth inside closed shapes (openmakepath's gt_fill); offset
+ * fill follows them inwards (gl_inset). A layer can
  * take its own power, speed, passes and mode; the job's values are the
  * default. MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef BURN_JOB_H
@@ -19,7 +20,7 @@ enum {
     BURN_SET_INTERVAL = 32
 };
 
-/* How a layer is burned. Offset fill is next. */
+/* How a layer is burned. */
 enum { BURN_LINE = 0, BURN_FILL = 1, BURN_OFFSET = 2 };
 
 /* One layer's settings, matching a colour or a 1-based place in the
@@ -32,7 +33,7 @@ typedef struct {
     float speed;     /* mm/s for a cut */
     int passes;
     int on;          /* 0: leave the layer out; not 0: include it */
-    int mode;        /* BURN_LINE or BURN_FILL */
+    int mode;        /* BURN_LINE, BURN_FILL or BURN_OFFSET */
     float interval;  /* mm between fill lines; 0: 0.2 */
     unsigned set;
 } burn_layer;
@@ -45,7 +46,7 @@ typedef struct {
     int passes;     /* 0 or 1: once; more than 1: that many */
     int constant;   /* 0: M4, not 0: M3 */
     float s100;     /* S at 100%; 0: 1000 */
-    int mode;       /* BURN_LINE or BURN_FILL; 0: line */
+    int mode;       /* BURN_LINE, BURN_FILL or BURN_OFFSET; 0: line */
     float interval; /* mm between fill lines; 0: 0.2 */
     const burn_layer *layer; /* overrides, or NULL */
     int nlayer;
@@ -53,7 +54,7 @@ typedef struct {
 
 void burn_defaults(burn_opts *o);
 
-/* line, fill, or -1 if s is not a known mode (offset is not in this cut). */
+/* line, fill, offset, or -1 if s is not a known mode. */
 int burn_mode_parse(const char *s);
 const char *burn_mode_name(int mode);
 

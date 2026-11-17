@@ -161,7 +161,9 @@ int main(int argc, char **argv)
         if (getenv("MODE") || getenv("INTERVAL")) {
             int i, n = burn_ui_count(ui);
             char id[32];
-            int mode = getenv("MODE") && !strcmp(getenv("MODE"), "fill") ? 1 : 0;
+            int mode = getenv("MODE") && !strcmp(getenv("MODE"), "offset") ? 2
+                       : getenv("MODE") && !strcmp(getenv("MODE"), "fill")  ? 1
+                                                                            : 0;
             float gap = getenv("INTERVAL") ? (float)atof(getenv("INTERVAL")) : 0.2f;
             int dec;
             for (i = 0; i < n; i++) {

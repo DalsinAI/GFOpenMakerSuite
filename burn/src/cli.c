@@ -5,7 +5,7 @@
  * The machine is the generic 400 mm diode (machines/laser/grbl) unless
  * DRIVER or PROFILE say otherwise. Power is a percentage, speed is mm/s.
  * A layer= sets power, speed, passes or on for one colour (or a 1-based
- * index). mode=fill scans inside closed shapes, interval the gap in mm. MIT, Copyright (c) 2026 AmiCradle Team. */
+ * index). mode=fill scans inside closed shapes, mode=offset follows them inwards, interval the gap in mm. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 
 #include <stdio.h>
@@ -49,7 +49,7 @@ static void usage(void)
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
                     "       [mode=line] [interval=0.2]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
-                    "mode=fill scans inside closed shapes; interval is the gap in mm.\n"
+                    "mode=fill scans inside closed shapes, mode=offset follows them inwards; interval is the gap in mm.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
                     "The machine is Generic Diode 400 unless DRIVER or PROFILE say otherwise.\n");
 }
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     if (v) {
         int m = burn_mode_parse(v);
         if (m < 0) {
-            fprintf(stderr, "openmake-burn: mode=%s: line or fill\n", v);
+            fprintf(stderr, "openmake-burn: mode=%s: line, fill or offset\n", v);
             return 1;
         }
         /* stored after burn_defaults */
