@@ -247,7 +247,7 @@ static const char *tool_label(void)
     if (tool == TOOL_MOVE) return "Move. Drag slides. Shift-drag lifts.";
     if (tool == TOOL_ROT) return "Rotate. Drag turns the part.";
     if (tool == TOOL_SCALE) return "Scale. Drag up grows it.";
-    if (tool == TOOL_MEASURE) return "Measure. Click two points on the part.";
+    if (tool == TOOL_MEASURE) return "Measure. Click two points on the part or bed.";
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
@@ -990,7 +990,9 @@ int main(int argc, char **argv)
                     in_view(ui, w, mx, my, &lx, &ly)) {
                     gs_v p;
                     rebuild_shown();
-                    if (ge_pick_at(&shown, &cam, vw, vh, lx, ly, &p) < 0) say(ui, "No part under the pointer.");
+                    /* Off the part, the bed under the pointer, as the bench. */
+                    if (ge_pick_at(&shown, &cam, vw, vh, lx, ly, &p) < 0 && ge_pick_bed(&shown, &cam, vw, vh, lx, ly, &p))
+                        say(ui, "Neither the part nor the bed is under the pointer.");
                     else {
                         if (marks == 2) marks = 0;
                         mark[marks++] = p;

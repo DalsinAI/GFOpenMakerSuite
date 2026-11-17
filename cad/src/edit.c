@@ -285,6 +285,34 @@ int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y)
     return ge_pick_at(m, cam, w, h, x, y, NULL);
 }
 
+int ge_pick_bed(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y, gs_v *at)
+{
+    static const gs_mesh none;
+    static const gs_v o = {0.f, 0.f, 0.f}, ex = {GS_BED, 0.f, 0.f}, ey = {0.f, GS_BED, 0.f};
+    gs_frame f;
+    float ox, oy, ax, ay, bx, by, z, det, u, v, px, py;
+    if (!cam || gs_view_frame_bed(m ? m : &none, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    /* The view is a parallel one: the bed's corners give its two edges on
+     * the screen, and the pointer is u of one and v of the other. */
+    gs_view_map(&f, cam, o, &ox, &oy, &z);
+    gs_view_map(&f, cam, ex, &ax, &ay, &z);
+    gs_view_map(&f, cam, ey, &bx, &by, &z);
+    ax -= ox, ay -= oy, bx -= ox, by -= oy;
+    det = ax * by - ay * bx;
+    if (det > -1.f && det < 1.f) return -1; /* the bed seen edge on */
+    px = (float)x + 0.5f - ox;
+    py = (float)y + 0.5f - oy;
+    u = (px * by - py * bx) / det;
+    v = (ax * py - ay * px) / det;
+    if (u < 0.f || u > 1.f || v < 0.f || v > 1.f) return -1;
+    if (at) {
+        at->x = u * GS_BED;
+        at->y = v * GS_BED;
+        at->z = 0.f;
+    }
+    return 0;
+}
+
 int ge_project(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_v p, float *x, float *y)
 {
     gs_frame f;

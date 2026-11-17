@@ -248,13 +248,15 @@ int main(int argc, char **argv)
         olui_set_selected(ui, olui_find(ui, "orbit"), 0);
         olui_set_selected(ui, olui_find(ui, "measure"), 1);
         ge_facts_line(status, (int)sizeof status, &part);
-        /* Each world point to its pixel, then picked there as a click is. */
+        /* Each world point to its pixel, then picked there as a click is:
+         * the part, or else the bed. */
         while (olui_box(ui, olui_find(ui, "view"), &box) && nmark < 2 &&
                sscanf(q, "%f,%f,%f", &mark[nmark].x, &mark[nmark].y, &mark[nmark].z) == 3) {
             float fx, fy;
             if (ge_project(&part, &cam, box.w, box.h, mark[nmark], &fx, &fy) ||
-                ge_pick_at(&part, &cam, box.w, box.h, (int)fx, (int)fy, &mark[nmark]) < 0) {
-                fprintf(stderr, "MEASURE: no part under point %d\n", nmark + 1);
+                (ge_pick_at(&part, &cam, box.w, box.h, (int)fx, (int)fy, &mark[nmark]) < 0 &&
+                 ge_pick_bed(&part, &cam, box.w, box.h, (int)fx, (int)fy, &mark[nmark]))) {
+                fprintf(stderr, "MEASURE: neither part nor bed under point %d\n", nmark + 1);
                 return 2;
             }
             nmark++;
