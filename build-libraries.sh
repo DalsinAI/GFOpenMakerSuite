@@ -18,7 +18,7 @@ OUT=${OUT:-"$HERE/build-amiga/libs"}
 cd "$HERE"
 python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
     core/library/openmakemesh_lib.sfd core/library/openmakegcode_lib.sfd \
-    core/library/openmakeview_lib.sfd --check
+    core/library/openmakeview_lib.sfd core/library/openmaketask_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -110,5 +110,15 @@ for v in fpu soft; do
         core/library/link_base.c -DLINK_BASE=OpenMakeViewBase '-DLINK_NAME="openmakeview.library"' \
         -DLINK_BASE2=OpenMakePathBase '-DLINK_NAME2="openmakepath.library"' -lm
     echo "$OUT/$v/TestToolpathPaintLib: $(wc -c < "$OUT/$v/TestToolpathPaintLib") bytes"
+    # Work on several exec tasks; the pieces are the program's own code
+    lib "$v" "$flags" openmaketask.library core/include \
+        core/library/openmaketask_lib.c core/src/par_exec.c
+    # core/tests/test_plan_par.c, the wrench's layers on tasks the library makes
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestPlanParLib" core/tests/test_plan_par.c \
+        core/src/plan_par.c core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c \
+        core/src/layer.c core/src/loops.c core/src/model.c core/src/stl.c \
+        core/library/openmaketask_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeTaskBase '-DLINK_NAME="openmaketask.library"' -lm
+    echo "$OUT/$v/TestPlanParLib: $(wc -c < "$OUT/$v/TestPlanParLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"
