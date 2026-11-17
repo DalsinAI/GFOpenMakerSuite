@@ -6,6 +6,8 @@
 #ifndef GS_MAKE_UI_H
 #define GS_MAKE_UI_H
 
+#include "omview_settings.h"
+
 /* OpenLayout Clear (docs/HANDOVER.md): one light window, the tools in
  * grouped boxes down the left, a label beside its field, one status line
  * along the bottom, Save STL the accent primary button. The chosen tool
@@ -14,10 +16,14 @@
  * Save G-code writes it for the printer picked (core/ui's machine picker).
  * 640 by 480 inside, to fit a 640 by 512 PAL screen with the window's
  * borders: the name and version are in the title bar, not a heading row,
- * and the groups are a row shorter where they can be. */
+ * and the groups are a row shorter where they can be. The side is two
+ * tabs, Model (File to Place) and Print (Layers, and Slice with core/ui's
+ * print settings panel, omview_settings.h, put in "settings" by make.c),
+ * as wide as that panel. */
 static const char gm_markup[] =
     "<row id=\"body\">"
     "<column id=\"side\">"
+    "<tabs id=\"side-tabs\"><tab title=\"Model\">"
     "<fieldset><legend>File</legend>"
     "<row><button id=\"open\">Open</button><button id=\"undo\">Undo</button>"
     "<button id=\"save\" class=\"primary\">Save STL</button></row>"
@@ -34,15 +40,17 @@ static const char gm_markup[] =
     "<row><button id=\"drop\">Drop</button><button id=\"centre\">Centre</button><button id=\"lay\">Lay flat</button></row>"
     "<row><label for=\"face\">Face</label><span id=\"face\">no face</span></row>"
     "</fieldset>"
+    "</tab><tab title=\"Print\">"
     "<fieldset><legend>Layers</legend>"
-    "<row><label for=\"lh\">Height</label><spinner id=\"lh\" value=\"0.20\" min=\"0.08\" max=\"0.80\" step=\"0.01\">"
-    "<checkbox id=\"show\">Show</checkbox></row>"
+    "<row><checkbox id=\"show\">Show a layer</checkbox></row>"
     "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
     "</fieldset>"
     "<fieldset><legend>Slice</legend>"
     "<row><label for=\"machine\">Printer</label><select id=\"machine\"></select></row>"
+    "<div id=\"settings\"></div>"
     "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
     "</fieldset>"
+    "</tab></tabs>"
     "</column>"
     "<div id=\"view\"></div>"
     "</row>"
@@ -52,7 +60,9 @@ static const char gm_markup[] =
 static const char gm_css[] =
     "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:6px}"
     "#body{flex:1;padding:0;gap:8px}"
-    "#side{width:224px;gap:4px}"
+    "#side{width:" OMV_SETTINGS_W_CSS ";gap:4px}"
+    "#side-tabs{flex:1;gap:4px}"
+    "#side-tabs fieldset{padding:0 2px 6px}"
     "fieldset{border:1px solid #d0d0d0;border-radius:8px;padding:0 8px 6px}"
     "fieldset row{padding:0;gap:6px}"
     "button{flex:1;border:1px solid #d0d0d0;border-radius:4px;color:#1b1b1b;"
