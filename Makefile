@@ -158,9 +158,9 @@ $(BUILD)/openmake-slice: slicer/src/openmake_slice.c slicer/include/sl_job.h $(S
 
 # openmakemesh.library's calls, the same way.
 MESH_LIB = core/library/openmakemesh_lib.sfd
-$(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/stl.c $(MESH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+$(BUILD)/test_mesh_lib: core/tests/test_mesh_lib.c core/src/model.c core/src/parts.c core/src/stl.c $(MESH_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
 	python3 core/library/gen-library.py $(MESH_LIB) --check
-	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_mesh_lib.c core/src/model.c core/src/stl.c -lm
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_mesh_lib.c core/src/model.c core/src/parts.c core/src/stl.c -lm
 
 # openmakeview.library's calls, the same way.
 VIEW_LIB = core/library/openmakeview_lib.sfd
