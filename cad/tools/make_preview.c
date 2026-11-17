@@ -18,6 +18,8 @@
  * PARTS=n: a list of n parts (2 to 24), the holed cube and the shapes in
  * turn on a grid on the bed, each a metal in turn, the 6th and 18th
  * hidden, the last picked and named "Bracket", as the Parts tab shows it.
+ * PULL=mm: then the top face pulled by mm (Face's distance; less than 0
+ * pushes it in), as make.c's Pull on a face clicked at the top.
  * KEYS: then, in turn, d (Delete the picked part), z (Amiga-Z, Undo), and
  * Z or y (Amiga-Shift-Z or Amiga-Y, Redo), as make.c's steps.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -277,6 +279,19 @@ int main(int argc, char **argv)
         }
         printf("%s\n", said);
     }
+    if (getenv("PULL")) { /* as make.c's Pull on the part's top face */
+        int k, top = -1;
+        for (k = 0; k < part.n && top < 0; k++)
+            if (part.t[k].a.z > part.max.z - 1e-3f && part.t[k].b.z > part.max.z - 1e-3f && part.t[k].c.z > part.max.z - 1e-3f)
+                top = k;
+        if (ge_pull(&part, top, (float)atof(getenv("PULL")), said, (int)sizeof said) < 0) {
+            fprintf(stderr, "PULL: %s\n", said);
+            return 1;
+        }
+        ge_where(&part, wpos, wsize);
+        model = 1;
+        printf("%s\n", said);
+    }
     ui = olui_new();
     olui_set_measure(ui, measure, NULL);
     if (!olui_load(ui, gm_markup(), gm_css, err, sizeof err) || omv_settings_add(ui, "settings", err, (int)sizeof err)) {
@@ -347,6 +362,7 @@ int main(int argc, char **argv)
                 olui_set_number(ui, olui_find(ui, ids[k][0]),
                                 (int)(atof(getenv(ids[k][1])) * (k == 1 ? 1.0 : 10.0) + 0.5));
     }
+    if (getenv("PULL")) olui_set_number(ui, olui_find(ui, "fmm"), (int)floorf((float)atof(getenv("PULL")) * 10.f + 0.5f));
     if (!olui_layout(ui, w, h)) return 1;
     if (getenv("OPEN")) {
         olui_select_open(ui, olui_find(ui, getenv("OPEN")), 1);
