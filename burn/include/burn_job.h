@@ -65,6 +65,8 @@ typedef struct {
     float kerf;   /* mm of kerf on cut layers; 0: none */
     int tabs;     /* holding tabs per closed cut; 0: none */
     float tabw;   /* mm width of each tab; 0: 1 */
+    float x, y;   /* mm to move the drawing on the bed; 0: leave it */
+    float rot;    /* degrees CCW around the drawing's box centre; 0: none */
 } burn_opts;
 
 void burn_defaults(burn_opts *o);
@@ -98,6 +100,11 @@ float burn_heaviness(const burn_layer *ly);
  * array of p->n mm/s values the caller frees (0 on a travel). 0, or -1
  * out of memory. */
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o);
+
+/* Move every point by (x, y) mm after a CCW rotation of rot degrees
+ * around the box centre of the cuts (or of every point if there are no
+ * cuts). 0, or -1 if p is NULL. rot 0 and x,y 0 leave the path. */
+int burn_place_path(gt_path *p, float x, float y, float rot);
 
 /* Load svg, build the path, check it against m, write gcode. 0, or -1
  * with why in err. st (may be NULL) is filled as the writer left it. */

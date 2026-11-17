@@ -6,6 +6,7 @@
 #include "gs_layer.h"
 #include "gs_toolpath.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -702,6 +703,69 @@ int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap)
 
 static char path_why[160];
 
+
+static void deg_sincos(float deg, float *s, float *c)
+{
+    float a = deg;
+    while (a >= 360.f) a -= 360.f;
+    while (a < 0.f) a += 360.f;
+    if (a < 0.0001f || a > 359.9999f) {
+        *s = 0.f;
+        *c = 1.f;
+    } else if (a > 89.9999f && a < 90.0001f) {
+        *s = 1.f;
+        *c = 0.f;
+    } else if (a > 179.9999f && a < 180.0001f) {
+        *s = 0.f;
+        *c = -1.f;
+    } else if (a > 269.9999f && a < 270.0001f) {
+        *s = -1.f;
+        *c = 0.f;
+    } else {
+        float rad = a * 0.01745329252f; /* pi/180 */
+        *s = sinf(rad);
+        *c = cosf(rad);
+    }
+}
+
+int burn_place_path(gt_path *p, float x, float y, float rot)
+{
+    float s = 0.f, c = 1.f, cx = 0.f, cy = 0.f, mn[3], mx[3];
+    int i, spin;
+    if (!p) return -1;
+    if (x == 0.f && y == 0.f && rot == 0.f) return 0;
+    spin = (rot != 0.f);
+    if (spin) {
+        if (gt_bounds(p, mn, mx) == 0) {
+            cx = 0.5f * (mn[0] + mx[0]);
+            cy = 0.5f * (mn[1] + mx[1]);
+        } else if (p->n >= 1) {
+            mn[0] = mx[0] = p->m[0].x;
+            mn[1] = mx[1] = p->m[0].y;
+            for (i = 1; i < p->n; i++) {
+                if (p->m[i].x < mn[0]) mn[0] = p->m[i].x;
+                if (p->m[i].x > mx[0]) mx[0] = p->m[i].x;
+                if (p->m[i].y < mn[1]) mn[1] = p->m[i].y;
+                if (p->m[i].y > mx[1]) mx[1] = p->m[i].y;
+            }
+            cx = 0.5f * (mn[0] + mx[0]);
+            cy = 0.5f * (mn[1] + mx[1]);
+        }
+        deg_sincos(rot, &s, &c);
+    }
+    for (i = 0; i < p->n; i++) {
+        float px = p->m[i].x, py = p->m[i].y;
+        if (spin) {
+            float dx = px - cx, dy = py - cy;
+            px = cx + dx * c - dy * s;
+            py = cy + dx * s + dy * c;
+        }
+        p->m[i].x = px + x;
+        p->m[i].y = py + y;
+    }
+    return 0;
+}
+
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
@@ -766,6 +830,12 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
             free(spd);
             *speed = NULL;
         }
+    }
+    if (o && burn_place_path(p, o->x, o->y, o->rot)) {
+        free(spd);
+        if (speed) *speed = NULL;
+        gt_free(p);
+        return -1;
     }
     return 0;
 }

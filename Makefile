@@ -429,6 +429,13 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	    frame=1 kerf=0.2 constant=1 > /dev/null
 	grep -q 'X4.900' $(BUILD)/burn-frame-kerf.gcode && ! grep -q 'G1 ' $(BUILD)/burn-frame-kerf.gcode && \
 	    ! grep -q '^M3' $(BUILD)/burn-frame-kerf.gcode && ! grep -q '^M4' $(BUILD)/burn-frame-kerf.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-place.gcode x=5 y=5 > /dev/null
+	grep -q 'X5' $(BUILD)/burn-place.gcode && grep -q 'X15' $(BUILD)/burn-place.gcode && \
+	    grep -q 'Y5' $(BUILD)/burn-place.gcode && grep -q 'Y15' $(BUILD)/burn-place.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-place-rot.gcode rot=90 x=20 > /dev/null
+	grep -q 'X20' $(BUILD)/burn-place-rot.gcode && grep -q 'X30' $(BUILD)/burn-place-rot.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-place-kerf.gcode kerf=0.2 x=5 y=5 > /dev/null
+	grep -q 'X4.900' $(BUILD)/burn-place-kerf.gcode && grep -q 'X15.100' $(BUILD)/burn-place-kerf.gcode
 	@echo "openmake-burn command ok"
 	# openmake-workshop: new, list, add (including an unknown kind).
 	! $(BUILD)/openmake-workshop 2> $(BUILD)/ws-usage.txt && grep -q 'usage: openmake-workshop' $(BUILD)/ws-usage.txt
