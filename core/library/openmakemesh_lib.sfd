@@ -1,4 +1,4 @@
-==id $Id: openmakemesh_lib.sfd 1.3 (17.11.2026) $
+==id $Id: openmakemesh_lib.sfd 1.4 (17.11.2026) $
 * "openmakemesh.library": OpenMakeCore's meshes (gs.h, gs_model.h): STL
 * in and out, repair, and the solids and booleans of a small CAD. Each
 * call is its C function in snake case (GM_OpenEdges is gm_open_edges);

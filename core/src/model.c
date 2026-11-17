@@ -229,16 +229,46 @@ static void node_free(node *n)
     free(n);
 }
 
+/* The plane to split on: of a few polygons spread through the bag, the
+ * one whose plane crosses the fewest others. Taking the first, as before,
+ * let a holed part's hole walls cut its big faces into thousands of
+ * slivers, and the cut after it then left cracks. */
+#define PICKS 12
+static int pick_plane(const bag *src)
+{
+    int c, best = 0, least = -1, step = src->n / PICKS;
+    if (step < 1) step = 1;
+    for (c = 0; c < src->n && c / step < PICKS; c += step) {
+        node t;
+        int i, vi, cross = 0;
+        t.nrm = src->p[c].nrm;
+        t.w = src->p[c].w;
+        for (i = 0; i < src->n && (least < 0 || cross < least); i++) {
+            int out = 0, inn = 0;
+            for (vi = 0; vi < src->p[i].n; vi++) {
+                float d = side(&t, src->p[i].v[vi]);
+                if (d > EPS) out = 1;
+                else if (d < -EPS) inn = 1;
+            }
+            cross += out && inn;
+        }
+        if (least < 0 || cross < least) least = cross, best = c;
+        if (!least) break;
+    }
+    return best;
+}
+
 static int node_build(node *n, const bag *src)
 {
     bag front, back;
-    int i, made = 0;
+    int i, made = 0, pick = 0;
     memset(&front, 0, sizeof front);
     memset(&back, 0, sizeof back);
     if (!src->n) return 0;
     if (!n->has) {
-        n->nrm = src->p[0].nrm;
-        n->w = src->p[0].w;
+        pick = pick_plane(src);
+        n->nrm = src->p[pick].nrm;
+        n->w = src->p[pick].w;
         n->has = 1;
         made = 1;
     }
@@ -247,7 +277,7 @@ static int node_build(node *n, const bag *src)
         int vi, on = 1, out = 0, inn = 0;
         /* The polygon that gave this plane lies on it. Splitting it again
          * would hand the same polygon down for ever. */
-        if (made && i == 0) {
+        if (made && i == pick) {
             if (bag_add(&n->co, p)) goto fail;
             continue;
         }
@@ -988,7 +1018,10 @@ static int on_edge(const wv *pts, int nv, int a, int b)
 
 typedef struct {
     int v[3];
+    int d; /* splits since the BSP's triangle */
 } itri;
+
+#define DEEPEST 64
 
 /* A crack: a loop of open edges round a gap thinner than CRACK on
  * average. The BSP leaves one where a plane cuts a long sliver almost
@@ -1085,6 +1118,7 @@ static int fill_cracks(const wv *pts, int nv, itri **out, int *n, int *cap)
             (*out)[*n].v[0] = loop[0];
             (*out)[*n].v[1] = loop[j + 1];
             (*out)[*n].v[2] = loop[j];
+            (*out)[*n].d = 0;
             (*n)++;
         }
     }
@@ -1120,6 +1154,7 @@ static int seal(gs_mesh *m)
         t.v[0] = idx[i * 3];
         t.v[1] = idx[i * 3 + 1];
         t.v[2] = idx[i * 3 + 2];
+        t.d = 0;
         if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
         stack[top++] = t;
     }
@@ -1127,7 +1162,11 @@ static int seal(gs_mesh *m)
         itri t = stack[--top];
         int e, k = -1;
         if (t.v[0] == t.v[1] || t.v[1] == t.v[2] || t.v[2] == t.v[0]) continue;
-        for (e = 0; e < 3 && k < 0; e++) k = on_edge(pts, nv, t.v[e], t.v[(e + 1) % 3]);
+        /* A corner near an edge's end can be within ONEDGE of two edges
+         * at once, so two slivers split each other back and forth for
+         * ever. A triangle split DEEPEST times over is kept as it is. */
+        if (t.d < DEEPEST)
+            for (e = 0; e < 3 && k < 0; e++) k = on_edge(pts, nv, t.v[e], t.v[(e + 1) % 3]);
         if (k < 0) {
             if (n >= cap) {
                 itri *g = (itri *)realloc(out, (size_t)cap * 2 * sizeof *g);
@@ -1158,10 +1197,12 @@ static int seal(gs_mesh *m)
             stack[top].v[0] = a;
             stack[top].v[1] = k;
             stack[top].v[2] = c;
+            stack[top].d = t.d + 1;
             top++;
             stack[top].v[0] = k;
             stack[top].v[1] = b;
             stack[top].v[2] = c;
+            stack[top].d = t.d + 1;
             top++;
         }
     }
