@@ -73,6 +73,24 @@ int gs_view_frame_bed(const gs_mesh *m, const gs_cam *cam, int w, int h,
 /* The plate and the mesh. 0, or -1. */
 int gs_view_bed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h);
 
+/* A run of a scene's faces in one colour, 0xRRGGBB: the next n faces
+ * (a scene of parts, as gs_parts_scene makes it: each part's in turn, its
+ * metal). Faces past the runs keep the colours by their way. */
+typedef struct {
+    int n;
+    unsigned long rgb;
+} gs_tint;
+
+/* gs_view_colour for a face in a colour: lit as gs_view_colour lights it,
+ * the sides a little darker than the tops, so the faces stay apart. */
+int gs_view_colour_tint(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, unsigned long rgb, int *r, int *g,
+                        int *blue);
+
+/* gs_view_bed with the scene's faces in the tints' colours (none: the
+ * same picture). 0, or -1. */
+int gs_view_bed_tint(const gs_mesh *m, const gs_cam *cam, const gs_tint *tints, int ntints, unsigned char *rgb, int w,
+                     int h);
+
 /* The pen drawer (no OpenGPU): a picture's colours as four pens, 0 the
  * background, 1 grey, 2 light, 3 the walls' blue, and a row of it as runs
  * of one pen, so a run is one blit (RectFill), not a pixel each. */

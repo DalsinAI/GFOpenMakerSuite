@@ -142,3 +142,13 @@ int gs_view_paint(const char *gcode, int len, unsigned char *rgb, int w, int h)
 {
     return GS_ViewPaint(gcode, len, rgb, w, h);
 }
+
+int gs_view_bed_tint(const gs_mesh *m, const gs_cam *cam, const gs_tint *tints, int ntints, unsigned char *rgb, int w, int h)
+{
+    return GS_ViewBedTint(m, cam, tints, ntints, rgb, w, h);
+}
+
+int gs_gpu_vertices_plate_tint(const gs_mesh *m, const gs_cam *cam, int w, int h, const gs_tint *tints, int ntints, uint32_t *verts, int cap)
+{
+    return GS_GpuVerticesPlateTint(m, cam, w, h, tints, ntints, verts, cap);
+}

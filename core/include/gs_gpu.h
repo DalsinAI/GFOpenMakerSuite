@@ -17,6 +17,11 @@
 int gs_gpu_vertices(const gs_mesh *m, const gs_cam *cam, int w, int h,
                     uint32_t *verts, int cap);
 
+/* gs_gpu_vertices_plate with the faces in the tints' colours (gs_view.h's
+ * gs_tint; none: the same words). */
+int gs_gpu_vertices_plate_tint(const gs_mesh *m, const gs_cam *cam, int w, int h, const gs_tint *tints, int ntints,
+                               uint32_t *verts, int cap);
+
 /* The same vertices, fitted to the plate instead of the part. */
 int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h,
                           uint32_t *verts, int cap);

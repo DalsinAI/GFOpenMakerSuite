@@ -276,7 +276,9 @@ void gs_view_map(const gs_frame *f, const gs_cam *cam, gs_v p, float *x, float *
     *z = -r.z; /* xform's depth grows away from the eye; nearer is larger here */
 }
 
-int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *r, int *g, int *bl)
+/* A face's light (0.45 to 1, by its way to the light) and which way it
+ * faces most: 0 up or down, 1 along X, 2 along Y. 0, or -1 for no area. */
+static int light(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, float *lit, int *way)
 {
     v3 pa = xform(a, cam, origin);
     v3 pb = xform(b, cam, origin);
@@ -286,9 +288,7 @@ int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *
     float nx = uy * vz - uz * vy;
     float ny = uz * vx - ux * vz;
     float nz = ux * vy - uy * vx;
-    float len, nd, lit;
-    float ax, ay, az;
-    int cr, cg, cb;
+    float len, nd, ax, ay, az;
     len = sqrtf(nx * nx + ny * ny + nz * nz);
     if (len < 1e-8f) return -1;
     nx /= len;
@@ -296,27 +296,50 @@ int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *
     nz /= len;
     nd = nx * -0.35f + ny * 0.82f + nz * 0.45f;
     if (nd < 0.f) nd = -nd;
-    lit = 0.45f + 0.55f * nd;
+    *lit = 0.45f + 0.55f * nd;
     ax = fabsf(nx);
     ay = fabsf(ny);
     az = fabsf(nz);
-    if (az >= ax && az >= ay) {
-        cr = 230;
-        cg = 190;
-        cb = 80;
-    } else if (ax >= ay) {
-        cr = 196;
-        cg = 84;
-        cb = 62;
-    } else {
-        cr = 64;
-        cg = 150;
-        cb = 168;
-    }
-    *r = (int)(cr * lit);
-    *g = (int)(cg * lit);
-    *bl = (int)(cb * lit);
+    *way = az >= ax && az >= ay ? 0 : ax >= ay ? 1 : 2;
     return 0;
+}
+
+int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *r, int *g, int *bl)
+{
+    static const int way_rgb[3][3] = {{230, 190, 80}, {196, 84, 62}, {64, 150, 168}};
+    float lit;
+    int way;
+    if (light(cam, origin, a, b, c, &lit, &way)) return -1;
+    *r = (int)(way_rgb[way][0] * lit);
+    *g = (int)(way_rgb[way][1] * lit);
+    *bl = (int)(way_rgb[way][2] * lit);
+    return 0;
+}
+
+int gs_view_colour_tint(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, unsigned long rgb, int *r, int *g,
+                        int *bl)
+{
+    static const float side[3] = {1.f, 0.8f, 0.66f};
+    float lit, k;
+    int way;
+    if (light(cam, origin, a, b, c, &lit, &way)) return -1;
+    k = lit * side[way];
+    *r = (int)((float)(rgb >> 16 & 255) * k);
+    *g = (int)((float)(rgb >> 8 & 255) * k);
+    *bl = (int)((float)(rgb & 255) * k);
+    return 0;
+}
+
+/* The colour of face i of the scene by the tints, or by its way. */
+static int face_colour(const gs_cam *c, gs_v origin, const gs_tri *t, int i, const gs_tint *tints, int ntints, int *r,
+                       int *g, int *b)
+{
+    int k, upto = 0;
+    for (k = 0; tints && k < ntints; k++) {
+        upto += tints[k].n;
+        if (i < upto) return gs_view_colour_tint(c, origin, t->a, t->b, t->c, tints[k].rgb, r, g, b);
+    }
+    return gs_view_colour(c, origin, t->a, t->b, t->c, r, g, b);
 }
 
 int gs_view_solid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h)
@@ -390,6 +413,12 @@ int gs_view_solid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w
 
 int gs_view_bed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, int h)
 {
+    return gs_view_bed_tint(m, cam, NULL, 0, rgb, w, h);
+}
+
+int gs_view_bed_tint(const gs_mesh *m, const gs_cam *cam, const gs_tint *tints, int ntints, unsigned char *rgb, int w,
+                     int h)
+{
     gs_cam home;
     const gs_cam *c = cam;
     gs_frame f;
@@ -433,7 +462,7 @@ int gs_view_bed(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w, 
             float ax, ay, az, bx, by, bz, cx, cy, cz;
             int cr, cg, cb;
             v3 a, b, d;
-            if (gs_view_colour(c, f.origin, m->t[i].a, m->t[i].b, m->t[i].c, &cr, &cg, &cb)) continue;
+            if (face_colour(c, f.origin, &m->t[i], i, tints, ntints, &cr, &cg, &cb)) continue;
             gs_view_map(&f, c, m->t[i].a, &ax, &ay, &az);
             gs_view_map(&f, c, m->t[i].b, &bx, &by, &bz);
             gs_view_map(&f, c, m->t[i].c, &cx, &cy, &cz);

@@ -454,4 +454,41 @@ static __inline__ int GS_ViewPaint(const char *gcode, int len, unsigned char *rg
 #endif
 }
 
+static __inline__ int GS_ViewBedTint(const gs_mesh *m, const gs_cam *cam, const gs_tint *tints, int ntints, unsigned char *rgb, int w, int h)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, const gs_cam *, const gs_tint *, int, unsigned char *, int, int, struct Library *))om_host_vector(OpenMakeViewBase, 198))(m, cam, tints, ntints, rgb, w, h, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(cam);
+    register ULONG _a2 __asm("a2") = (ULONG)(tints);
+    register ULONG _d0 __asm("d0") = (ULONG)(ntints);
+    register ULONG _a3 __asm("a3") = (ULONG)(rgb);
+    register ULONG _d1 __asm("d1") = (ULONG)(w);
+    register ULONG _d2 __asm("d2") = (ULONG)(h);
+    __asm__ volatile("jsr a6@(-198:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_a3), "r"(_d2) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
+static __inline__ int GS_GpuVerticesPlateTint(const gs_mesh *m, const gs_cam *cam, int w, int h, const gs_tint *tints, int ntints, uint32_t *verts, int cap)
+{
+#ifdef OM_LIB_HOST
+    return ((int (*)(const gs_mesh *, const gs_cam *, int, int, const gs_tint *, int, uint32_t *, int, struct Library *))om_host_vector(OpenMakeViewBase, 204))(m, cam, w, h, tints, ntints, verts, cap, OpenMakeViewBase);
+#else
+    register struct Library *_a6 __asm("a6") = OpenMakeViewBase;
+    register ULONG _a0 __asm("a0") = (ULONG)(m);
+    register ULONG _a1 __asm("a1") = (ULONG)(cam);
+    register ULONG _d0 __asm("d0") = (ULONG)(w);
+    register ULONG _d1 __asm("d1") = (ULONG)(h);
+    register ULONG _a2 __asm("a2") = (ULONG)(tints);
+    register ULONG _d2 __asm("d2") = (ULONG)(ntints);
+    register ULONG _a3 __asm("a3") = (ULONG)(verts);
+    register ULONG _d3 __asm("d3") = (ULONG)(cap);
+    __asm__ volatile("jsr a6@(-204:W)" : "+r"(_d0), "+r"(_d1), "+r"(_a0), "+r"(_a1) : "r"(_a6), "r"(_a2), "r"(_d2), "r"(_a3), "r"(_d3) : "fp0", "fp1", "cc", "memory");
+    return (int)_d0;
+#endif
+}
+
 #endif

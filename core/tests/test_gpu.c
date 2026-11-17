@@ -139,6 +139,24 @@ static void toolpath_case(void)
     gs_mesh_free(&box);
 }
 
+/* b's faces after a's, as gs_parts_scene puts parts one after another. */
+static int join_two(gs_mesh *a, const gs_mesh *b)
+{
+    gs_tri *t = (gs_tri *)realloc(a->t, sizeof(gs_tri) * (size_t)(a->n + b->n));
+    if (!t) return -1;
+    memcpy(t + a->n, b->t, sizeof(gs_tri) * (size_t)b->n);
+    a->t = t;
+    a->n += b->n;
+    a->cap = a->n;
+    if (b->min.x < a->min.x) a->min.x = b->min.x;
+    if (b->min.y < a->min.y) a->min.y = b->min.y;
+    if (b->min.z < a->min.z) a->min.z = b->min.z;
+    if (b->max.x > a->max.x) a->max.x = b->max.x;
+    if (b->max.y > a->max.y) a->max.y = b->max.y;
+    if (b->max.z > a->max.z) a->max.z = b->max.z;
+    return 0;
+}
+
 int main(void)
 {
     gs_mesh box, peg, hole;
@@ -325,6 +343,64 @@ int main(void)
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);
         return 1;
+    }
+    {
+        /* Each part in its metal (gs_tint): two cubes side by side as one
+         * scene, the first 12 faces copper, the next 12 teal. On the CPU
+         * drawer and in the OpenGPU vertices alike, each face lit as before
+         * (its way to the light), in its part's colour; with no tints, the
+         * pictures and words as gs_view_bed's and gs_gpu_vertices_plate's. */
+        enum { TW = 160, TH = 120 };
+        static unsigned char pa[TW * TH * 3], pb[TW * TH * 3];
+        static uint32_t va[96 * 6], vb[96 * 6];
+        gs_mesh two, b2;
+        gs_cam cam;
+        gs_frame f;
+        gs_tint tints[2] = {{12, 0xc47a5aUL}, {12, 0x3e8f96UL}}, one[1] = {{12, 0xc47a5aUL}};
+        float x, y, z;
+        int na, nb, k, same = 1, ok = 1;
+        memset(&two, 0, sizeof two);
+        memset(&b2, 0, sizeof b2);
+        gs_cam_home(&cam);
+        expect(gm_cube(&two, 60.f, 90.f, 0.f, 30.f, 30.f, 30.f) == 0 && gm_cube(&b2, 130.f, 90.f, 0.f, 30.f, 30.f, 30.f) == 0 &&
+                   join_two(&two, &b2) == 0 && two.n == 24,
+               "two cubes, one scene");
+        expect(gs_view_bed(&two, &cam, pa, TW, TH) == 0 && gs_view_bed_tint(&two, &cam, NULL, 0, pb, TW, TH) == 0 &&
+                   !memcmp(pa, pb, sizeof pa),
+               "no tints: gs_view_bed's picture");
+        expect(gs_view_bed_tint(&two, &cam, tints, 2, pb, TW, TH) == 0 && gs_view_frame_bed(&two, &cam, TW, TH, 0.f, 0.f, GS_BED, GS_BED, &f) == 0,
+               "the tinted picture");
+        {
+            gs_v top1 = {75.f, 105.f, 30.f}, top2 = {145.f, 105.f, 30.f};
+            const unsigned char *p1, *p2;
+            gs_view_map(&f, &cam, top1, &x, &y, &z);
+            p1 = pb + ((int)y * TW + (int)x) * 3;
+            gs_view_map(&f, &cam, top2, &x, &y, &z);
+            p2 = pb + ((int)y * TW + (int)x) * 3;
+            expect(p1[0] > p1[1] && p1[1] > p1[2] && p1[0] > 60, "the first cube's top copper");
+            expect(p2[2] > p2[0] && p2[1] > p2[0] && p2[1] > 40, "the second's teal");
+        }
+        expect(gs_view_bed_tint(&two, &cam, one, 1, pb, TW, TH) == 0, "a tint for the first part only");
+        {
+            gs_v top2 = {145.f, 105.f, 30.f};
+            int at;
+            gs_view_map(&f, &cam, top2, &x, &y, &z);
+            at = ((int)y * TW + (int)x) * 3;
+            expect(!memcmp(pa + at, pb + at, 3), "faces past the tints in the old colours");
+        }
+        na = gs_gpu_vertices_plate(&two, &cam, TW, TH, va, 96);
+        nb = gs_gpu_vertices_plate_tint(&two, &cam, TW, TH, NULL, 0, vb, 96);
+        expect(na == 72 && nb == na && !memcmp(va, vb, sizeof(uint32_t) * 6 * (size_t)na), "no tints: the same words");
+        nb = gs_gpu_vertices_plate_tint(&two, &cam, TW, TH, tints, 2, vb, 96);
+        for (k = 0; k < nb; k++) {
+            uint32_t c = vb[k * 6 + 2];
+            int r = (int)(c >> 16 & 255), g = (int)(c >> 8 & 255), bl = (int)(c & 255);
+            same &= vb[k * 6] == va[k * 6] && vb[k * 6 + 1] == va[k * 6 + 1] && vb[k * 6 + 5] == va[k * 6 + 5];
+            ok &= k < 36 ? r > g && g > bl : bl > r && g > r;
+        }
+        expect(nb == na && same && ok, "OpenGPU: the same places and depths, each cube's faces in its metal");
+        gs_mesh_free(&two);
+        gs_mesh_free(&b2);
     }
     printf("gpu ok\n");
     return 0;
