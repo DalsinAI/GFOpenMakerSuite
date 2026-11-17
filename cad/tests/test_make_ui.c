@@ -280,7 +280,7 @@ int main(void)
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[10];
+            olui_rect side, st, r[9];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_HOLES);
@@ -315,7 +315,7 @@ int main(void)
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[9];
+            olui_rect side, st, r[sizeof ids / sizeof ids[0]];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_SHAPE);
