@@ -11,7 +11,7 @@ as the fallback.
 | `core/` | Meshes and booleans, STL, the layer cut, the plate, the view and the OpenGPU batch | OpenMakeCore |
 | `cad/` | The solid editor, and its browser bench in `cad/bench/` | OpenMakeCad |
 | `slicer/` | STL to G-code for printers | OpenMakeSlicer |
-| `burn/` | A laser app, not started | OpenMakeBurn |
+| `burn/` | A laser app; the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
 | `cnc/` | A CNC app, not started | OpenMakeCNC |
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
 
