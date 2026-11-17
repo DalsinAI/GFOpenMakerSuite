@@ -64,15 +64,9 @@ void omv_slice_status(char *buf, int len, int layers, int moves, float seconds, 
              (double)(filament / 1000.f));
 }
 
-/* Four fifths of what the screen has room for, held to 640..1024 by 480..768. */
-static int fifths(int room, int least, int most)
+void omv_window_fit(int sw, int sh, int top, int bw, int bh, int *w, int *h)
 {
-    int v = room * 4 / 5;
-    return v < least ? least : v > most ? most : v;
-}
-
-void omv_window_fit(int sw, int sh, int bw, int bh, int *w, int *h)
-{
-    *w = fifths(sw - bw, OMV_MIN_W, 1024);
-    *h = fifths(sh - bh, OMV_MIN_H, 768);
+    int iw = sw - bw, ih = sh - top - bh;
+    *w = iw < OMV_MIN_W ? OMV_MIN_W : iw;
+    *h = ih < OMV_MIN_H ? OMV_MIN_H : ih;
 }

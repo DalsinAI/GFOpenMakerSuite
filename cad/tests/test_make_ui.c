@@ -196,21 +196,31 @@ int main(void)
     olui_draw(ui, NULL, collect, NULL);
     expect(seen.move_bg == ACCENT, "the chosen tool is lit in the accent");
 
-    /* Sized up, as on an RTG screen: the same controls, the side as wide,
+    /* Sized up, as the window opens on an RTG screen (the screen below its
+     * title bar, less the borders): the same controls, the side as wide,
      * the view taking the rest, the status line still along the bottom. */
     {
+        static const int sizes[][2] = {{1016, 736}, {1912, 1048}, {2552, 1408}};
         olui_rect side0, view1, side1, st1, r;
-        int big_w = 1024, big_h = 768, ok = 1;
+        int s;
         olui_box(ui, olui_find(ui, "side"), &side0);
-        expect(olui_layout(ui, big_w, big_h), "the window lays out at 1024 by 768");
-        for (i = 0; i < NBUTTONS; i++) ok &= olui_box(ui, olui_find(ui, buttons[i]), &r) && inside(&r, big_w, big_h);
-        for (i = 0; i < NCONTROLS; i++) ok &= olui_box(ui, olui_find(ui, controls[i][0]), &r) && inside(&r, big_w, big_h);
-        expect(ok, "at 1024 by 768 every control is in the window");
-        expect(olui_box(ui, olui_find(ui, "view"), &view1) && olui_box(ui, olui_find(ui, "side"), &side1) &&
-                   side1.w == side0.w && view1.w >= view.w + 384 - 8 && view1.h >= view.h + 288 - 8,
-               "the side keeps its width; the view grows with the window");
-        expect(olui_box(ui, olui_find(ui, "status"), &st1) && st1.y + st1.h >= big_h - 16 && st1.w >= big_w - 16,
-               "the status line along the bottom, the window's width");
+        for (s = 0; s < 3; s++) {
+            int big_w = sizes[s][0], big_h = sizes[s][1], ok = 1;
+            char what[96];
+            snprintf(what, sizeof what, "the window lays out at %d by %d", big_w, big_h);
+            expect(olui_layout(ui, big_w, big_h), what);
+            for (i = 0; i < NBUTTONS; i++) ok &= olui_box(ui, olui_find(ui, buttons[i]), &r) && inside(&r, big_w, big_h);
+            for (i = 0; i < NCONTROLS; i++) ok &= olui_box(ui, olui_find(ui, controls[i][0]), &r) && inside(&r, big_w, big_h);
+            snprintf(what, sizeof what, "at %d by %d every control is in the window", big_w, big_h);
+            expect(ok, what);
+            snprintf(what, sizeof what, "at %d by %d the side keeps its width; the view takes the rest", big_w, big_h);
+            expect(olui_box(ui, olui_find(ui, "view"), &view1) && olui_box(ui, olui_find(ui, "side"), &side1) &&
+                       side1.w == side0.w && view1.w >= view.w + (big_w - w) - 8 && view1.h >= view.h + (big_h - h) - 8,
+                   what);
+            snprintf(what, sizeof what, "at %d by %d the status line along the bottom, the window's width", big_w, big_h);
+            expect(olui_box(ui, olui_find(ui, "status"), &st1) && st1.y + st1.h >= big_h - 16 && st1.w >= big_w - 16,
+                   what);
+        }
     }
     olui_free(ui);
     if (failed) {

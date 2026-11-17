@@ -1,7 +1,7 @@
 /* An OpenMake window on the Amiga, as every app opens it: on the default
- * public screen, sized by omv_window_fit (640 by 480 inside on a PAL
- * screen, more on an RTG one), resizable from OMV_MIN_W by OMV_MIN_H inside
- * to the screen's size. GFOpenLayout lays the window out again at each
+ * public screen, filling it below its title bar (omv_window_fit: 640 by
+ * 480 inside on a PAL screen, the whole of a bigger RTG one), resizable
+ * from OMV_MIN_W by OMV_MIN_H inside to the screen's size. GFOpenLayout lays the window out again at each
  * IDCMP_NEWSIZE (olui_amiga_event), and the app's view, drawn at the size
  * it is given, grows with it. window_amiga.c.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
