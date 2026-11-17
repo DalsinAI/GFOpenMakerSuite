@@ -1,0 +1,4 @@
+family = laser
+dialect = grbl
+send = serial
+features = laser-power homing

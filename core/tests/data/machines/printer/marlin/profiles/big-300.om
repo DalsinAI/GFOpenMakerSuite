@@ -1,0 +1,7 @@
+# A test machine: a bigger Marlin printer.
+name = Big Marlin 300
+area = 300 300 400
+speed = 200 200 5 25
+accel = 2000 2000 100 5000
+hotend = 280
+bed = 110

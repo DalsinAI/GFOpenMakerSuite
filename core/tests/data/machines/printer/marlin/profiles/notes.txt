@@ -1,0 +1,2 @@
+# Not a machine: not .om
+name = Notes

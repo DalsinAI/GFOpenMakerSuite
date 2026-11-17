@@ -1,0 +1,5 @@
+family = printer
+dialect = klipper
+send = file network
+features = heated-bed homing
+extruders = 1
