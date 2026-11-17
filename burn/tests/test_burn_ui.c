@@ -110,8 +110,9 @@ int main(void)
                    "the pass spinner stays inside the settings box");
         }
         expect(omv_number(ui, "layer-0-power") == 50.f && omv_number(ui, "layer-0-speed") == 20.f &&
-                   omv_number(ui, "layer-0-passes") == 1.f && olui_get_checked(olui_find(ui, "layer-0-on")),
-               "defaults in the list: 50%, 20 mm/s, one pass, on");
+                   omv_number(ui, "layer-0-passes") == 1.f && olui_get_checked(olui_find(ui, "layer-0-on")) &&
+                   olui_select_index(olui_find(ui, "layer-0-mode")) == 0 && omv_number(ui, "layer-0-interval") == 0.2f,
+               "defaults in the list: 50%, 20 mm/s, one pass, on, line, 0.2 mm gap");
         expect(!strcmp(olui_get_text(olui_find(ui, "layer-0-name")), "#ff0000") &&
                    !strcmp(olui_get_text(olui_find(ui, "layer-1-name")), "#0000ff"),
                "red then blue");
@@ -119,10 +120,13 @@ int main(void)
     olui_set_number(ui, olui_find(ui, "layer-0-power"), 80);
     olui_set_number(ui, olui_find(ui, "layer-1-speed"), 150); /* 15.0 with one decimal */
     olui_set_checked(ui, olui_find(ui, "constant"), 1);
+    olui_select_set(ui, olui_find(ui, "layer-0-mode"), 1);
+    olui_set_number(ui, olui_find(ui, "layer-0-interval"), 10); /* 0.10 with two decimals */
     burn_ui_read(ui, &o, store, 8);
     expect(o.nlayer == 2 && o.constant == 1 && store[0].power == 80.f && store[1].speed == 15.f &&
-               store[0].colour == 0xff0000u && store[1].index == 2,
-           "the list is read back, including M3");
+               store[0].colour == 0xff0000u && store[1].index == 2 && store[0].mode == BURN_FILL &&
+               store[0].interval == 0.1f && store[1].mode == BURN_LINE,
+           "the list is read back, including M3 and fill");
 
     /* Sized up, as on an RTG screen: the view takes the room. */
     {

@@ -1,11 +1,11 @@
 /* OpenMakeBurn, from the shell: an SVG to Grbl laser G-code.
  *   openmake-burn in.svg out.gcode [DRIVER=driver.om] [PROFILE=profile.om]
  *       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]
- *       [layer=#rrggbb,power=80,speed=10,passes=2]
+ *       [layer=#rrggbb,power=80,speed=10,passes=2] [mode=line] [interval=0.2]
  * The machine is the generic 400 mm diode (machines/laser/grbl) unless
  * DRIVER or PROFILE say otherwise. Power is a percentage, speed is mm/s.
  * A layer= sets power, speed, passes or on for one colour (or a 1-based
- * index). Line mode only in this cut. MIT, Copyright (c) 2026 AmiCradle Team. */
+ * index). mode=fill scans inside closed shapes, interval the gap in mm. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
 
 #include <stdio.h>
@@ -31,7 +31,7 @@ static int known_key(const char *s)
 {
     static const char *const keys[] = {"DRIVER", "PROFILE", "power", "POWER", "speed", "SPEED",
                                        "passes", "PASSES", "constant", "CONSTANT", "s100", "S100",
-                                       "mode", "MODE", "layer", "LAYER", NULL};
+                                       "mode", "MODE", "interval", "INTERVAL", "layer", "LAYER", NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -47,7 +47,9 @@ static void usage(void)
     fprintf(stderr, "usage: openmake-burn in.svg out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [power=50] [speed=20] [passes=1] [constant=0] [s100=1000]\n"
                     "       [layer=#rrggbb,power=80,speed=10,passes=2]\n"
+                    "       [mode=line] [interval=0.2]\n"
                     "power is a percentage, speed is mm/s, constant=1 uses M3 instead of M4.\n"
+                    "mode=fill scans inside closed shapes; interval is the gap in mm.\n"
                     "layer= sets one colour (or a 1-based index). on=0 leaves that layer out.\n"
                     "The machine is Generic Diode 400 unless DRIVER or PROFILE say otherwise.\n");
 }
@@ -78,9 +80,13 @@ int main(int argc, char **argv)
         }
     }
     v = arg2(argc, argv, "mode", "MODE");
-    if (v && strcmp(v, "line") != 0) {
-        fprintf(stderr, "openmake-burn: mode=%s: only line in this cut\n", v);
-        return 1;
+    if (v) {
+        int m = burn_mode_parse(v);
+        if (m < 0) {
+            fprintf(stderr, "openmake-burn: mode=%s: line or fill\n", v);
+            return 1;
+        }
+        /* stored after burn_defaults */
     }
     if (!driver) driver = "machines/laser/grbl/driver.om";
     if (!profile && !arg(argc, argv, "DRIVER"))
@@ -91,6 +97,8 @@ int main(int argc, char **argv)
     if ((v = arg2(argc, argv, "passes", "PASSES")) != NULL) o.passes = atoi(v);
     if ((v = arg2(argc, argv, "constant", "CONSTANT")) != NULL) o.constant = atoi(v);
     if ((v = arg2(argc, argv, "s100", "S100")) != NULL) o.s100 = (float)atof(v);
+    if ((v = arg2(argc, argv, "mode", "MODE")) != NULL) o.mode = burn_mode_parse(v);
+    if ((v = arg2(argc, argv, "interval", "INTERVAL")) != NULL) o.interval = (float)atof(v);
     if (o.passes < 1) o.passes = 1;
     for (i = 3; i < argc; i++) {
         const char *eq = strchr(argv[i], '=');
