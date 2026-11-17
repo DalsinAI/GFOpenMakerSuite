@@ -1116,3 +1116,167 @@ fail:
     free(on), free(at), free(wa), free(wb), free(go), free(cnt);
     return -1;
 }
+
+/* Arrange ------------------------------------------------------------- */
+
+/* The picked part's index, or -1 with line saying so. */
+static int arrange_part(gs_parts *ps, char *line, int len)
+{
+    int at = ps ? gs_parts_picked(ps) : -1;
+    gs_mesh *m = at >= 0 ? gs_parts_mesh(ps, at) : NULL;
+    if (!m || !m->n) {
+        snprintf(line, (size_t)len, "Pick a part first.");
+        return -1;
+    }
+    return at;
+}
+
+/* Room for more parts in the list, or line saying not. */
+static int room_for(gs_parts *ps, int more, const char *what, char *line, int len)
+{
+    if (gs_parts_count(ps) + more <= GS_PARTS_MAX) return 1;
+    if (gs_parts_count(ps) >= GS_PARTS_MAX) snprintf(line, (size_t)len, "Twenty-four parts is the limit.");
+    else snprintf(line, (size_t)len, "Not enough room in the list for that %s.", what);
+    return 0;
+}
+
+/* A copy of part at, moved dx, dy, dz and turned rz about its middle, added
+ * with its name and metal (and picked). Its index, or -1. */
+static int clone_part(gs_parts *ps, int at, float dx, float dy, float dz, float rz)
+{
+    char name[64];
+    gs_mesh m;
+    int k;
+    memset(&m, 0, sizeof m);
+    snprintf(name, sizeof name, "%s", gs_parts_name(ps, at));
+    if (ge_copy(&m, gs_parts_mesh(ps, at))) return -1;
+    bound(&m);
+    if (rz != 0.f) ge_rotate(&m, 0.f, 0.f, rz);
+    ge_move(&m, dx, dy, dz);
+    k = gs_parts_add(ps, &m, name);
+    if (k < 0) {
+        gs_mesh_free(&m);
+        return -1;
+    }
+    gs_parts_set_colour(ps, k, gs_parts_colour(ps, at));
+    return k;
+}
+
+int ge_duplicate(gs_parts *ps, char *line, int len)
+{
+    float pos[3], size[3];
+    int at = arrange_part(ps, line, len), k;
+    if (at < 0 || !room_for(ps, 1, "copy", line, len)) return -1;
+    ge_where(gs_parts_mesh(ps, at), pos, size);
+    if ((k = clone_part(ps, at, size[0] + 6.f, 0.f, 0.f, 0.f)) < 0) return -1;
+    snprintf(line, (size_t)len, "%s is a copy.", gs_parts_name(ps, k));
+    return 0;
+}
+
+int ge_line(gs_parts *ps, int axis, int count, float gap, char *line, int len)
+{
+    float pos[3], size[3], step;
+    int at = arrange_part(ps, line, len), n = count < 2 ? 2 : count > 8 ? 8 : count, i;
+    if (axis < 0 || axis > 2) axis = 0;
+    if (!(gap >= 0.f)) gap = gap < 0.f ? 0.f : 6.f;
+    if (gap > 80.f) gap = 80.f;
+    if (at < 0 || !room_for(ps, n - 1, "line", line, len)) return -1;
+    ge_where(gs_parts_mesh(ps, at), pos, size);
+    step = (size[axis] > 0.f ? size[axis] : 1.f) + gap;
+    for (i = 1; i < n; i++)
+        if (clone_part(ps, at, axis == 0 ? step * (float)i : 0.f, axis == 1 ? step * (float)i : 0.f,
+                       axis == 2 ? step * (float)i : 0.f, 0.f) < 0)
+            return -1;
+    snprintf(line, (size_t)len, "%d of %s along %c, %.1f mm apart.", n, gs_parts_name(ps, at), "XYZ"[axis], (double)gap);
+    return 0;
+}
+
+int ge_ring(gs_parts *ps, int count, char *line, int len)
+{
+    const float pi2 = 6.2831853f, c = GS_BED * 0.5f;
+    float pos[3], size[3], x, y, r, a0, big;
+    int at = arrange_part(ps, line, len), n = count < 3 ? 3 : count > 12 ? 12 : count, i, lifted;
+    if (at < 0 || !room_for(ps, n - 1, "ring", line, len)) return -1;
+    ge_where(gs_parts_mesh(ps, at), pos, size);
+    x = pos[0] - c;
+    y = pos[1] - c;
+    r = sqrtf(x * x + y * y);
+    big = size[0] > size[1] ? size[0] : size[1];
+    lifted = r < (big > 8.f ? big : 8.f) * 0.55f;
+    if (lifted) r = big * 0.65f + 10.f;
+    a0 = lifted ? 0.f : atan2f(y, x);
+    for (i = 1; i < n; i++) {
+        float t = (float)i * pi2 / (float)n, a = a0 + t;
+        if (clone_part(ps, at, c + cosf(a) * r - pos[0], c + sinf(a) * r - pos[1], 0.f, t) < 0) return -1;
+    }
+    if (lifted)
+        snprintf(line, (size_t)len, "Ring of %d on a %.1f mm circle round the part on the centre.", n, (double)r);
+    else snprintf(line, (size_t)len, "Ring of %d around the bed centre.", n);
+    return 0;
+}
+
+int ge_mirror(gs_parts *ps, char *line, int len)
+{
+    gs_mesh *m;
+    float cx;
+    int at = arrange_part(ps, line, len), i;
+    if (at < 0) return -1;
+    m = gs_parts_mesh(ps, at);
+    bound(m);
+    cx = m->min.x + m->max.x;
+    for (i = 0; i < m->n; i++) { /* through X, and b and c swapped to keep it outward */
+        gs_v b = m->t[i].b;
+        m->t[i].a.x = cx - m->t[i].a.x;
+        m->t[i].b = m->t[i].c;
+        m->t[i].b.x = cx - m->t[i].b.x;
+        m->t[i].c = b;
+        m->t[i].c.x = cx - m->t[i].c.x;
+    }
+    bound(m);
+    snprintf(line, (size_t)len, "%s mirrored through X.", gs_parts_name(ps, at));
+    return 0;
+}
+
+int ge_turn(gs_parts *ps, int axis, float deg, char *line, int len)
+{
+    float rad = deg * 0.017453293f;
+    int at = arrange_part(ps, line, len);
+    if (at < 0) return -1;
+    if (axis < 0 || axis > 2) axis = 2;
+    ge_rotate(gs_parts_mesh(ps, at), axis == 0 ? rad : 0.f, axis == 1 ? rad : 0.f, axis == 2 ? rad : 0.f);
+    snprintf(line, (size_t)len, "%s turned %.0f degrees around %c.", gs_parts_name(ps, at), (double)deg, "XYZ"[axis]);
+    return 0;
+}
+
+int ge_stack(gs_parts *ps, char *line, int len)
+{
+    float pos[3], size[3], bp[3], bs[3];
+    int at = arrange_part(ps, line, len), base;
+    if (at < 0) return -1;
+    base = at > 0 ? at - 1 : 1;
+    if (base >= gs_parts_count(ps)) {
+        snprintf(line, (size_t)len, "Stack needs another part as a base.");
+        return -1;
+    }
+    ge_where(gs_parts_mesh(ps, at), pos, size);
+    ge_where(gs_parts_mesh(ps, base), bp, bs);
+    ge_move(gs_parts_mesh(ps, at), bp[0] - pos[0], bp[1] - pos[1], bp[2] + bs[2] - pos[2]);
+    snprintf(line, (size_t)len, "%s is stacked on %s.", gs_parts_name(ps, at), gs_parts_name(ps, base));
+    return 0;
+}
+
+int ge_solo(gs_parts *ps, char *line, int len)
+{
+    int at = arrange_part(ps, line, len), i, hiding = 0;
+    if (at < 0) return -1;
+    if (gs_parts_count(ps) < 2) {
+        snprintf(line, (size_t)len, "%s is the only part.", gs_parts_name(ps, at));
+        return -1;
+    }
+    for (i = 0; i < gs_parts_count(ps); i++)
+        if (i != at && gs_parts_shown(ps, i) == 1) hiding = 1;
+    for (i = 0; i < gs_parts_count(ps); i++) gs_parts_show(ps, i, i == at || !hiding);
+    if (hiding) snprintf(line, (size_t)len, "Only %s is showing.", gs_parts_name(ps, at));
+    else snprintf(line, (size_t)len, "Every part is showing.");
+    return 0;
+}
