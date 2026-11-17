@@ -306,11 +306,11 @@ int main(void)
     }
     {
         /* The Shape tab (the bench's Extrude, and its face tools): the sketch's shape, width, depth and height,
-         * Add, On top and Cut; Face's distance, Pull and Chamfer; and
+         * Add, On top and Cut; Face's distance, Pull, Chamfer and Drag (drag to pull); and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
-        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer"};
-        static const char tags[] = "snnnbbbnbb"; /* select, number, button */
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull", "chamfer", "fdrag"};
+        static const char tags[] = "snnnbbbnbbb"; /* select, number, button */
         const int nx = (int)(sizeof ids / sizeof ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
@@ -459,6 +459,9 @@ int main(void)
                gm_command_key('y', 1, 0) == GM_KEY_REDO && gm_command_key('Y', 1, 0) == GM_KEY_REDO &&
                gm_command_key('z', 0, 0) == 0 && gm_command_key('x', 1, 0) == 0,
            "Amiga-Z undoes; Amiga-Shift-Z and Amiga-Y redo");
+    expect(gm_command_key('p', 0, 0) == GM_KEY_PULL && gm_command_key('P', 0, 1) == GM_KEY_PULL &&
+               gm_command_key(27, 0, 0) == GM_KEY_LEAVE && gm_command_key('p', 1, 0) == 0,
+           "P drags to pull, as the bench's; Escape leaves it");
     expect(seen.save_bg == ACCENT && seen.save_text == 0xffffffffu, "Save STL is the accent primary button");
     expect(seen.open_bg == 0xfffefefeu && seen.open_border == 0xffd0d0d0u && seen.open_radius == 4,
            "the other buttons are Clear's, with radius 4");
