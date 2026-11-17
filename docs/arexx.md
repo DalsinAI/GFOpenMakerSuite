@@ -475,18 +475,22 @@ The C names are the same in snake case (`omr_open`, `omr_send`).
 
 ## Example scripts
 
-These will ship under `docs/rexx/` once the ports are in the apps:
+These live under `docs/rexx/`. They are ordinary ARexx: each one looks
+for the app's public port, starts the program with AmigaDOS `Run` if it
+is not there yet, and `ADDRESS`es it. Workshop's C path starts and talks
+to the same ports through `OMR_Connect` / `OMR_Send`.
 
-- `batch-slice.rexx` — ask the slicer (starting it if needed) to load each
-  STL in a list, slice it, and write G-code beside it.
-- `make-and-slice.rexx` — ask GFOpenMake to add a part, export an STL, then
-  ask the slicer to load it and slice it. Workshop will be the usual way
-  to run that as a project; this script talks to the two apps directly.
+- `batch-slice.rexx` — ask the slicer to load each STL named on the
+  command, slice it, and write G-code beside it.
+- `make-and-slice.rexx` — ask GFOpenMake to add a box, export an STL, then
+  ask the slicer to load it and slice it. Workshop is the usual way to
+  run that as a project; this script talks to the two apps directly.
 - `burn-card.rexx` — open a drawing in OpenMakeBurn, apply the card
   material, and write G-code.
 
-They are ordinary ARexx, and they also show the library's client side
-being used from C (Workshop's path) in comments.
+The programs (`GFOpenMake`, `GFOpenSlicer`, `GFOpenBurn`) need to be on
+the command path, or the scripts run from the suite drawer. Nothing here
+has been run on an Amiga until a lab run says so.
 
 ## Building and tests
 
