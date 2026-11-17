@@ -114,6 +114,12 @@ Layers draw the walls of the selected part at one height. The segments are not j
 
 The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. The Amiga window does not have these tools yet.
 
+## Examples
+
+Each instance's media volume gets a small set of free examples: STL, SVG,
+DXF, a KiCad project and Gerbers. The list, the licences, and what is
+not copied, are in [docs/media-examples.md](docs/media-examples.md).
+
 ## Not in this release
 
 One wall, not several. The skirt is a rectangle, not the outline. There is no
