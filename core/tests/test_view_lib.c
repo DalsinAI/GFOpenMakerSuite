@@ -6,6 +6,7 @@
 
 #include "../library/openmakeview_vectors.h"
 #include "gs_model.h"
+#include "gs_gpu.h"
 #include "gs_plan.h"
 
 #include <stdio.h>
@@ -74,6 +75,52 @@ static int paint_case(const gs_mesh *box, const gs_cam *cam)
     return 1 + 2 * GT_KINDS + 2 + 2 + 1 + 1;
 }
 
+/* The OpenGPU batches: the GS_Gpu calls against the C functions. The
+ * calls it makes. */
+static int gpu_case(const gs_mesh *box, const gs_cam *cam)
+{
+    enum { CAP = 60000 };
+    static uint32_t va[CAP], vb[CAP];
+    gl_walls wl;
+    gp_opts o;
+    gt_path p;
+    int na, nb, plate, ok = 1;
+    memset(&wl, 0, sizeof wl);
+    na = gs_gpu_vertices(box, cam, W, H, va, CAP);
+    nb = GS_GpuVertices(box, cam, W, H, vb, CAP);
+    expect(na > 0 && na == nb && !memcmp(va, vb, (size_t)na * 6 * 4), "GS_GpuVertices");
+    na = gs_gpu_vertices_plate(box, cam, W, H, va, CAP);
+    nb = GS_GpuVerticesPlate(box, cam, W, H, vb, CAP);
+    expect(na > 0 && na == nb && !memcmp(va, vb, (size_t)na * 6 * 4), "GS_GpuVerticesPlate");
+    expect(gl_cut(box, 0.5f, 10, &wl) == 0, "the walls");
+    na = gs_gpu_walls_plate(&wl, box, cam, W, H, va, CAP);
+    nb = GS_GpuWallsPlate(&wl, box, cam, W, H, vb, CAP);
+    expect(na > 0 && na == nb && !memcmp(va, vb, (size_t)na * 6 * 4), "GS_GpuWallsPlate");
+    gp_defaults(&o);
+    o.layer_h = 2.f;
+    gt_init(&p);
+    expect(gp_part(&p, box, &o) == 0, "a coarse toolpath");
+    na = gs_gpu_toolpath(&p, cam, 0, 1, W, H, va, CAP);
+    nb = GS_GpuToolpath(&p, cam, 0, 1, W, H, vb, CAP);
+    expect(na > 0 && na == nb && !memcmp(va, vb, (size_t)na * 6 * 4), "GS_GpuToolpath, eight arguments");
+    expect(GS_GpuToolpath(&p, cam, 0, 1, W, H, vb, 6) == -1, "GS_GpuToolpath: too little room");
+    na = gs_gpu_stream(va, CAP, 0x100000u, 36, 0x200000u, W * 4, 0x300000u, W, H, box, cam, 1);
+    nb = GS_GpuStream(vb, CAP, 0x100000u, 36, 0x200000u, W * 4, 0x300000u, W, H, box, cam, 1);
+    expect(na > 0 && na == nb && !memcmp(va, vb, (size_t)na * 4), "GS_GpuStream, twelve arguments");
+    for (plate = 0; plate < 2; plate++) {
+        na = gs_gpu_stream_plate(va, CAP, 0x100000u, 36, 0x200000u, W * 4, 0x300000u, W, H, box, cam, 1, plate);
+        nb = GS_GpuStreamPlate(vb, CAP, 0x100000u, 36, 0x200000u, W * 4, 0x300000u, W, H, box, cam, 1, plate);
+        if (na <= 0 || na != nb || memcmp(va, vb, (size_t)na * 4)) ok = 0;
+    }
+    expect(ok, "GS_GpuStreamPlate, thirteen arguments, part and plate");
+    printf("through the library: a stream of %d words\n", nb);
+    gt_free(&p);
+    gl_walls_free(&wl);
+    /* GS_GpuVertices, its plate's, the walls', two GS_GpuToolpath, a stream
+     * and two plate streams */
+    return 8;
+}
+
 int main(void)
 {
     static unsigned char a[W * H * 3], b[W * H * 3];
@@ -125,6 +172,9 @@ int main(void)
     calls = 0;
     k = paint_case(&box, &cb);
     expect(calls == k, "every GL_ and GT_ call went through the table");
+    calls = 0;
+    k = gpu_case(&box, &cb);
+    expect(calls == k, "every GS_Gpu call went through the table");
 
     gs_mesh_free(&box);
     if (fails) {

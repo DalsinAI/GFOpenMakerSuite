@@ -4,6 +4,7 @@
 #include <gs_view.h>
 #include <gs_layer.h>
 #include <gs_toolpath.h>
+#include <gs_gpu.h>
 
 static void LIB_GS_CamHome(REG(a0, gs_cam *c), REG(a6, struct Library *base))
 {
@@ -113,7 +114,43 @@ static int LIB_GT_PaintPart(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam
     return gt_paint_part(p, cam, upto, rgb, w, h);
 }
 
-#define OPENMAKEVIEW_LAST_BIAS 132
+static int LIB_GS_GpuVertices(REG(a0, const gs_mesh *m), REG(a1, const gs_cam *cam), REG(d0, int w), REG(d1, int h), REG(a2, uint32_t *verts), REG(d2, int cap), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_vertices(m, cam, w, h, verts, cap);
+}
+
+static int LIB_GS_GpuVerticesPlate(REG(a0, const gs_mesh *m), REG(a1, const gs_cam *cam), REG(d0, int w), REG(d1, int h), REG(a2, uint32_t *verts), REG(d2, int cap), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_vertices_plate(m, cam, w, h, verts, cap);
+}
+
+static int LIB_GS_GpuWallsPlate(REG(a0, const gl_walls *wl), REG(a1, const gs_mesh *m), REG(a2, const gs_cam *cam), REG(d0, int w), REG(d1, int h), REG(a3, uint32_t *verts), REG(d2, int cap), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_walls_plate(wl, m, cam, w, h, verts, cap);
+}
+
+static int LIB_GS_GpuToolpath(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam), REG(d0, int upto), REG(d1, int part), REG(d2, int w), REG(d3, int h), REG(a2, uint32_t *verts), REG(d4, int cap), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_toolpath(p, cam, upto, part, w, h, verts, cap);
+}
+
+static int LIB_GS_GpuStream(REG(a0, uint32_t *stream), REG(d0, int cap), REG(d1, uint32_t vert_addr), REG(d2, int nverts), REG(d3, uint32_t picture), REG(d4, int picture_bpr), REG(d5, uint32_t depth), REG(d6, int w), REG(d7, int h), REG(a1, const gs_mesh *m), REG(a2, const gs_cam *cam), REG(a3, int grid), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_stream(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid);
+}
+
+static int LIB_GS_GpuStreamPlate(REG(a0, uint32_t *stream), REG(d0, int cap), REG(d1, uint32_t vert_addr), REG(d2, int nverts), REG(d3, uint32_t picture), REG(d4, int picture_bpr), REG(d5, uint32_t depth), REG(d6, int w), REG(d7, int h), REG(a1, const gs_mesh *m), REG(a2, const gs_cam *cam), REG(a3, int grid), REG(a4, int plate), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_stream_plate(stream, cap, vert_addr, nverts, picture, picture_bpr, depth, w, h, m, cam, grid, plate);
+}
+
+#define OPENMAKEVIEW_LAST_BIAS 168
 #define OPENMAKEVIEW_VECTORS \
     (APTR)LIB_GS_CamHome, \
     (APTR)LIB_GS_CamOrbit, \
@@ -132,4 +169,10 @@ static int LIB_GT_PaintPart(REG(a0, const gt_path *p), REG(a1, const gs_cam *cam
     (APTR)LIB_GT_End, \
     (APTR)LIB_GT_Frame, \
     (APTR)LIB_GT_Paint, \
-    (APTR)LIB_GT_PaintPart
+    (APTR)LIB_GT_PaintPart, \
+    (APTR)LIB_GS_GpuVertices, \
+    (APTR)LIB_GS_GpuVerticesPlate, \
+    (APTR)LIB_GS_GpuWallsPlate, \
+    (APTR)LIB_GS_GpuToolpath, \
+    (APTR)LIB_GS_GpuStream, \
+    (APTR)LIB_GS_GpuStreamPlate
