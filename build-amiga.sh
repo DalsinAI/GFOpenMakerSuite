@@ -40,6 +40,9 @@ build() {
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
+    # The layers on exec tasks (par_exec.c): the same toolpath as one task's
+    "$CC" $cf -s -o "$dir/TestPlanPar" core/tests/test_plan_par.c core/src/plan_par.c core/src/par_exec.c \
+        core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
     for f in "$dir"/*; do
