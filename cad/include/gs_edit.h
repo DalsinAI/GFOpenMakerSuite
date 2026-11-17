@@ -146,6 +146,13 @@ int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part
 /* Those holes cut from part, replacing it. 0, or -1 with why, part kept. */
 int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
 
+/* The bench's Pull by a distance: face and every face in its plane (its
+ * normal within 7 degrees, its points within 0.4 mm of the plane) moved
+ * mm along its normal (less than 0: pushed in), with the points of other
+ * faces on them, so the part stays closed. How many points of the face
+ * moved, line saying so; or -1 with line saying why, the part kept. */
+int ge_pull(gs_mesh *m, int face, float mm, char *line, int len);
+
 /* The bench's Extrude: kind GM_RECT, GM_ROUND or GM_SLOT, w by d (a round
  * w across), h tall. GM_ON_BED: out is the solid on the bed mid-plate, to
  * place and join as an added part. GM_ON_TOP and GM_FROM_TOP: out is the

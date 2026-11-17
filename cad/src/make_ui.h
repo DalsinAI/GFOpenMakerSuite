@@ -26,11 +26,22 @@
  * metals, Hide and Delete), Holes (the bench's bolt circle, hole row and
  * counterbore, cut through the picked part about its middle), Shape (the
  * bench's Extrude: a block, round or slot added on the bed, stood on the
- * picked part's top, or cut down from it) and Print (Layers, and Slice
+ * picked part's top, or cut down from it; and Face: the picked face
+ * pulled by a distance) and Print (Layers, and Slice
  * with core/ui's print settings panel, omview_settings.h, put in
  * "settings" by make.c), as wide as that panel. Place's Size and At, a row
  * for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
+/* A key with Amiga held (command): Amiga-Z undoes, Amiga-Shift-Z and
+ * Amiga-Y redo, as the Amiga's programs; 0 for any other. */
+enum { GM_KEY_UNDO = 1, GM_KEY_REDO };
+static int gm_command_key(unsigned code, int command, int shift)
+{
+    if (!command) return 0;
+    if (code == 'y' || code == 'Y' || ((code == 'z' || code == 'Z') && shift)) return GM_KEY_REDO;
+    return code == 'z' || code == 'Z' ? GM_KEY_UNDO : 0;
+}
+
 /* The side's tabs, in order. */
 enum { GM_TAB_MODEL, GM_TAB_PARTS, GM_TAB_HOLES, GM_TAB_SHAPE, GM_TAB_PRINT };
 
@@ -40,8 +51,8 @@ static const char gm_markup_a[] =
     "<column id=\"side\">"
     "<tabs id=\"side-tabs\"><tab title=\"Model\">"
     "<fieldset><legend>File</legend>"
-    "<row><button id=\"open\">Open</button><button id=\"undo\">Undo</button>"
-    "<button id=\"save\" class=\"primary\">Save STL</button></row>"
+    "<row><button id=\"open\">Open</button><button id=\"save\" class=\"primary\">Save STL</button></row>"
+    "<row><button id=\"undo\">Undo</button><button id=\"redo\">Redo</button></row>"
     "</fieldset>"
     "<fieldset><legend>Tool</legend>"
     "<row><button id=\"orbit\">Orbit</button><button id=\"move\">Move</button></row>"
@@ -94,6 +105,10 @@ static const char gm_markup_b[] =
     "</fieldset>"
     "<fieldset><legend>Extrude</legend>"
     "<row><button id=\"xadd\">Add</button><button id=\"xon\">On top</button><button id=\"xcut\">Cut</button></row>"
+    "</fieldset>"
+    "<fieldset><legend>Face</legend>"
+    "<row><label for=\"fmm\">By</label><spinner id=\"fmm\" min=\"-99.9\" max=\"99.9\" step=\"0.1\" value=\"5.0\"><span class=\"unit\">mm</span></row>"
+    "<row><button id=\"pull\" title=\"The picked face along its normal\">Pull</button></row>"
     "</fieldset>"
     "</tab><tab title=\"Print\">"
     "<fieldset><legend>Layers</legend>"

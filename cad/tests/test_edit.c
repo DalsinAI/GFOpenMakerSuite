@@ -501,6 +501,82 @@ int main(void)
         fprintf(stderr, "%d failed\n", fails);
         return 1;
     }
+    {
+        /* Pull, as the bench's Pull by a distance: the picked face and every
+         * face in its plane along its normal, the points the walls share with
+         * it too, so the part stays closed. */
+        gs_mesh c;
+        char line[120];
+        float pos[3], size[3], v0;
+        int top = -1, k;
+        memset(&c, 0, sizeof c);
+        expect(gm_cube(&c, 100.f, 100.f, 0.f, 20.f, 20.f, 20.f) == 0, "a cube to pull");
+        for (k = 0; k < c.n && top < 0; k++)
+            if (near(c.t[k].a.z, 20.f) && near(c.t[k].b.z, 20.f) && near(c.t[k].c.z, 20.f)) top = k;
+        v0 = signed_volume(&c);
+        expect(ge_pull(&c, top, 5.f, line, (int)sizeof line) == 4 && strstr(line, "Pulled 5.0 mm") != NULL,
+               "the top pulled 5 mm: its four corners moved");
+        ge_where(&c, pos, size);
+        expect(near(size[2], 25.f) && near(size[0], 20.f) && fabsf(signed_volume(&c) - v0 * 1.25f) < 1.f,
+               "25 mm tall, as wide, a quarter more in it: closed");
+        expect(ge_pull(&c, top, -10.f, line, (int)sizeof line) == 4, "pushed 10 mm back");
+        ge_where(&c, pos, size);
+        expect(near(size[2], 15.f) && fabsf(signed_volume(&c) - v0 * 0.75f) < 1.f, "15 mm tall");
+        expect(ge_pull(&c, top, 0.01f, line, (int)sizeof line) == -1 && strstr(line, "at least 0.1 mm"),
+               "too little a pull is refused");
+        expect(ge_pull(&c, -1, 5.f, line, (int)sizeof line) == -1 && strstr(line, "Click a face"),
+               "no face, no pull");
+        expect(ge_pull(&c, c.n, 5.f, line, (int)sizeof line) == -1, "nor past the last face");
+        ge_where(&c, pos, size);
+        expect(near(size[2], 15.f), "refused pulls leave the part");
+        gs_mesh_free(&c);
+    }
+    {
+        /* A joined part's top, cut up by the join, with the walls' points on
+         * its edges (not at its corners): pushed in, still closed. */
+        ge_scene sc;
+        char line[120];
+        float pos[3], size[3];
+        int top = -1, k;
+        memset(&sc, 0, sizeof sc);
+        expect(gm_cube(&sc.stock, 0.f, 0.f, 0.f, 20.f, 20.f, 20.f) == 0 &&
+                   gm_cube(&sc.added, 5.f, 5.f, 10.f, 10.f, 10.f, 10.f) == 0, "a cube and one inside it, flush on top");
+        sc.has_added = sc.on_added = 1;
+        expect(ge_bool(&sc, 0, NULL) == 0, "joined");
+        for (k = 0; k < sc.stock.n && top < 0; k++)
+            if (near(sc.stock.t[k].a.z, 20.f) && near(sc.stock.t[k].b.z, 20.f) && near(sc.stock.t[k].c.z, 20.f)) top = k;
+        expect(ge_pull(&sc.stock, top, -5.f, line, (int)sizeof line) > 0, "its top pushed in 5 mm");
+        ge_where(&sc.stock, pos, size);
+        expect(near(size[2], 15.f) && fabsf(signed_volume(&sc.stock) - 6000.f) < 1.f, "15 mm tall, 6000 cubic mm: closed");
+        expect(sc.stock.max.z < 15.01f, "no point left at the old top");
+        ge_scene_free(&sc);
+    }
+    {
+        /* An 80 mm box joined over the holed cube, its walls cut up by the
+         * join below the top: the top pushed in past those points flattens
+         * them on the new top, no wall folded over it. */
+        ge_scene sc;
+        char line[120];
+        float pos[3], size[3];
+        int top = -1, k;
+        memset(&sc, 0, sizeof sc);
+        expect(ge_start(&sc.stock, NULL, line, (int)sizeof line) == 0 && ge_shape(&sc.added, 0, &sc.stock) == 0 &&
+                   ge_fit(&sc.added, 0, 80.f) == 0,
+               "the holed cube and an 80 mm box");
+        ge_where(&sc.added, pos, size);
+        ge_place(&sc.added, 110.f, 110.f, pos[2]);
+        sc.has_added = sc.on_added = 1;
+        expect(ge_bool(&sc, 0, NULL) == 0, "joined");
+        for (k = 0; k < sc.stock.n && top < 0; k++)
+            if (sc.stock.t[k].a.z > sc.stock.max.z - 1e-3f && sc.stock.t[k].b.z > sc.stock.max.z - 1e-3f &&
+                sc.stock.t[k].c.z > sc.stock.max.z - 1e-3f)
+                top = k;
+        expect(ge_pull(&sc.stock, top, -40.f, line, (int)sizeof line) > 0, "its top pushed in 40 mm");
+        ge_where(&sc.stock, pos, size);
+        expect(near(size[2], 40.f) && fabsf(signed_volume(&sc.stock) - 80.f * 80.f * 40.f) < 20.f,
+               "40 mm tall, 80 by 80 by 40 in it: nothing folded");
+        ge_scene_free(&sc);
+    }
     printf("edit ok\n");
     return 0;
 }
