@@ -14,7 +14,7 @@ typedef struct {
     float power;  /* 0 to 100, every layer; 0: 50 */
     float speed;  /* mm/s for a cut; 0: 20 */
     float travel; /* mm/s for a travel; 0: the machine's most X, or 150 */
-    int passes;   /* 0 or 1: once */
+    int passes;   /* 0 or 1: once; more than 1: that many */
     int constant; /* 0: M4, not 0: M3 */
     float s100;   /* S at 100%; 0: 1000 */
 } burn_opts;
