@@ -18,7 +18,8 @@ OUT=${OUT:-"$HERE/build-amiga/libs"}
 cd "$HERE"
 python3 core/library/gen-library.py machines/library/openmakemachine_lib.sfd core/library/openmakepath_lib.sfd \
     core/library/openmakemesh_lib.sfd core/library/openmakegcode_lib.sfd \
-    core/library/openmakeview_lib.sfd core/library/openmaketask_lib.sfd --check
+    core/library/openmakeview_lib.sfd core/library/openmaketask_lib.sfd \
+    core/library/openmakevec_lib.sfd --check
 
 RT="core/library/runtime.c core/library/runtime_dos.c"
 WARN="-Wall -Wextra -Werror"
@@ -120,5 +121,12 @@ for v in fpu soft; do
         core/library/openmaketask_link.c core/library/link_base.c \
         -DLINK_BASE=OpenMakeTaskBase '-DLINK_NAME="openmaketask.library"' -lm
     echo "$OUT/$v/TestPlanParLib: $(wc -c < "$OUT/$v/TestPlanParLib") bytes"
+    lib "$v" "$flags" openmakevec.library core/include \
+        core/library/openmakevec_lib.c core/src/vec.c
+    # core/tests/test_vec.c, the SVG reader through the library
+    "$CC" $prog -Icore/include -I"$SDK/Include" -s -o "$OUT/$v/TestVecLib" core/tests/test_vec.c \
+        core/library/openmakevec_link.c core/library/link_base.c \
+        -DLINK_BASE=OpenMakeVecBase '-DLINK_NAME="openmakevec.library"' -lm
+    echo "$OUT/$v/TestVecLib: $(wc -c < "$OUT/$v/TestVecLib") bytes"
 done
 echo "build-libraries: $OUT/fpu and $OUT/soft"

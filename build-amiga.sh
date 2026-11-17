@@ -92,6 +92,7 @@ build() {
         core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c core/src/parts.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
+    "$CC" $cf -s -o "$dir/TestVec" core/tests/test_vec.c core/src/vec.c -lm
     for f in "$dir"/[A-Z]*; do
         # fpu-count.sh: the FPU instructions, not counting addresses.
         n=$(OBJDUMP=$OBJDUMP sh "$HERE/fpu-count.sh" "$f")

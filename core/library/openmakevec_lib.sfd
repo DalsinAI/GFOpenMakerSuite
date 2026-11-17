@@ -1,0 +1,20 @@
+==id $Id: openmakevec_lib.sfd 1.0 (17.11.2026) $
+* "openmakevec.library": OpenMakeCore's 2D vector drawings (gs_vec.h),
+* and an SVG reader written from the W3C SVG 1.1 specification. Each
+* call is its C function in snake case (GV_LoadSvg is gv_load_svg);
+* floats travel as their bits. Never reorder or take a call out; add new
+* ones at the end. core/library/gen-library.py writes the rest from this.
+==base _OpenMakeVecBase
+==basetype struct Library *
+==libname openmakevec.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <gs_vec.h>
+void GV_DocInit(gv_doc *d)(a0)
+void GV_DocFree(gv_doc *d)(a0)
+int GV_LoadSvg(gv_doc *d, const char *path, char *err, int errlen)(a0,a1,a2,d0)
+int GV_LoadSvgText(gv_doc *d, const char *text, int n, char *err, int errlen)(a0,a1,d0,a2,d1)
+unsigned GV_PathColour(const gv_path *p)(a0)
+void GV_PathBox(const gv_path *p, float *minx, float *miny, float *maxx, float *maxy)(a0,a1,a2,a3,d0)
+==end
