@@ -294,6 +294,60 @@ int main(void)
         ge_where(&p, pos, size);
         expect(pos[0] == 0.f && size[2] == 0.f, "where: an empty part is nowhere");
     }
+    {
+        /* The hole tools on a 40 x 40 x 10 plate up off the plate at z 8. */
+        gs_mesh plate, tool, before;
+        ge_holes hs;
+        char why[96];
+        float v0;
+        memset(&plate, 0, sizeof plate);
+        memset(&tool, 0, sizeof tool);
+        memset(&before, 0, sizeof before);
+        hs.d = 4.f, hs.n = 4, hs.pcd = 24.f, hs.pitch = 10.f, hs.cb = 9.f, hs.deep = 3.f;
+        expect(gm_cube(&plate, 80.f, 80.f, 8.f, 40.f, 40.f, 10.f) == 0, "a plate");
+        v0 = signed_volume(&plate);
+        expect(ge_hole_tool(&tool, GE_BOLT_CIRCLE, &hs, &plate, why, (int)sizeof why) == 0 && tool.min.z < 8.f &&
+                   tool.max.z > 18.f && near((tool.min.x + tool.max.x) * 0.5f, 100.f) && near(tool.max.x, 114.f),
+               "bolt circle: through the plate, about its middle");
+        expect(ge_hole_tool(&tool, GE_HOLE_ROW, &hs, &plate, why, (int)sizeof why) == 0 && near(tool.min.x, 83.f) &&
+                   near(tool.max.x, 117.f),
+               "hole row: four along X, 10 apart");
+        expect(ge_hole_tool(&tool, GE_COUNTERBORE, &hs, &plate, why, (int)sizeof why) == 0 && tool.max.z > 18.f &&
+                   tool.min.z < 8.f && near(tool.max.x - tool.min.x, 9.f),
+               "counterbore: through, the bore at the top");
+        ge_copy(&before, &plate);
+        expect(ge_drill(&plate, GE_BOLT_CIRCLE, &hs, why, (int)sizeof why) == 0 && gm_open_edges(&plate) == 0 &&
+                   signed_volume(&plate) < v0 - 4 * 10.f * 12.f,
+               "bolt circle: four holes cut, closed");
+        expect(ge_drill(&plate, GE_COUNTERBORE, &hs, why, (int)sizeof why) == 0 && gm_open_edges(&plate) == 0,
+               "and a counterbore in the middle");
+        hs.pcd = 6.f;
+        expect(ge_drill(&before, GE_BOLT_CIRCLE, &hs, why, (int)sizeof why) == -1 && strstr(why, "overlap") &&
+                   near(signed_volume(&before), v0),
+               "holes that overlap: refused, said, the part kept");
+        hs.pcd = 44.f;
+        expect(ge_hole_tool(&tool, GE_BOLT_CIRCLE, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "wider"),
+               "a pitch circle wider than the part");
+        hs.pitch = 14.f;
+        expect(ge_hole_tool(&tool, GE_HOLE_ROW, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "wider"),
+               "a row wider than the part");
+        hs.pitch = 3.f;
+        expect(ge_hole_tool(&tool, GE_HOLE_ROW, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "overlap"),
+               "a row that overlaps");
+        hs.cb = 4.2f;
+        expect(ge_hole_tool(&tool, GE_COUNTERBORE, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "wider than the drill"),
+               "a bore no wider than the drill");
+        hs.cb = 9.f, hs.deep = 10.f;
+        expect(ge_hole_tool(&tool, GE_COUNTERBORE, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "deep"),
+               "a bore as deep as the part");
+        hs.deep = 3.f, hs.cb = 44.f;
+        expect(ge_hole_tool(&tool, GE_COUNTERBORE, &hs, &before, why, (int)sizeof why) == -1 && strstr(why, "wider than the part"),
+               "a bore wider than the part");
+        gs_mesh_free(&plate);
+        expect(ge_drill(&plate, GE_COUNTERBORE, &hs, why, (int)sizeof why) == -1 && why[0], "no part to drill");
+        gs_mesh_free(&tool);
+        gs_mesh_free(&before);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

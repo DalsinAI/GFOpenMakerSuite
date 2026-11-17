@@ -476,3 +476,97 @@ int ge_fit(gs_mesh *m, int axis, float mm)
     ge_place(m, pos[0], pos[1], pos[2]);
     return 0;
 }
+
+int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part, char *why, int whylen)
+{
+    float cx, cy, half, thick, z0, len, r = h->d * 0.5f;
+    int n = h->n;
+    why[0] = 0;
+    if (!part || !part->t || !part->n) {
+        snprintf(why, (size_t)whylen, "There is no part to drill.");
+        return -1;
+    }
+    if (!(h->d >= 0.5f)) {
+        snprintf(why, (size_t)whylen, "The drill has to be at least 0.5 mm.");
+        return -1;
+    }
+    cx = (part->min.x + part->max.x) * 0.5f;
+    cy = (part->min.y + part->max.y) * 0.5f;
+    half = part->max.x - cx;
+    if (part->max.y - cy > half) half = part->max.y - cy;
+    thick = part->max.z - part->min.z;
+    /* From 4 mm under the part to 4 over it, as the bench's drills. */
+    z0 = part->min.z - 4.f;
+    len = thick + 8.f;
+    if (kind == GE_BOLT_CIRCLE) {
+        float pr = h->pcd * 0.5f;
+        if (n < 2) n = 2;
+        if (n > 12) n = 12;
+        if (!(h->pcd * sinf(3.14159265f / (float)n) >= h->d + 0.3f)) {
+            snprintf(why, (size_t)whylen, "Those holes overlap. Use fewer, or a wider pitch circle.");
+            return -1;
+        }
+        if (pr + r > half + 0.4f) {
+            snprintf(why, (size_t)whylen, "A %.1f mm pitch circle is wider than the part.", (double)h->pcd);
+            return -1;
+        }
+        return gm_bolt_circle(tool, cx, cy, z0, len, h->d, h->pcd, n) ? (snprintf(why, (size_t)whylen, "The holes did not build."), -1) : 0;
+    }
+    if (kind == GE_HOLE_ROW) {
+        float span;
+        if (n < 2) n = 2;
+        if (n > 8) n = 8;
+        if (!(h->pitch >= h->d + 0.3f)) {
+            snprintf(why, (size_t)whylen, "Those holes overlap. Widen the pitch.");
+            return -1;
+        }
+        span = (float)(n - 1) * h->pitch;
+        if (cx - span * 0.5f - r < part->min.x - 0.2f || cx + span * 0.5f + r > part->max.x + 0.2f) {
+            snprintf(why, (size_t)whylen, "That row is wider than the part.");
+            return -1;
+        }
+        return gm_hole_row(tool, cx, cy, z0, len, h->d, h->pitch, n) ? (snprintf(why, (size_t)whylen, "The holes did not build."), -1) : 0;
+    }
+    if (kind == GE_COUNTERBORE) {
+        if (!(h->cb >= h->d + 0.4f)) {
+            snprintf(why, (size_t)whylen, "The counterbore has to be wider than the drill.");
+            return -1;
+        }
+        if (!(h->deep >= 0.4f) || h->deep >= thick - 0.15f) {
+            snprintf(why, (size_t)whylen, "That counterbore is as deep as the part, or too shallow.");
+            return -1;
+        }
+        if (h->cb * 0.5f > half + 0.2f) {
+            snprintf(why, (size_t)whylen, "That counterbore is wider than the part.");
+            return -1;
+        }
+        /* The drill ends 0.4 over the top, the bore as deep again below it. */
+        return gm_counterbore(tool, cx, cy, z0, thick + 4.4f, h->d, h->cb, h->deep + 0.4f)
+                   ? (snprintf(why, (size_t)whylen, "The counterbore did not build."), -1)
+                   : 0;
+    }
+    snprintf(why, (size_t)whylen, "No such hole tool.");
+    return -1;
+}
+
+int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen)
+{
+    gs_mesh tool, out;
+    int rc;
+    memset(&tool, 0, sizeof tool);
+    memset(&out, 0, sizeof out);
+    if (ge_hole_tool(&tool, kind, h, part, why, whylen)) {
+        gs_mesh_free(&tool);
+        return -1;
+    }
+    rc = gm_subtract(&out, part, &tool);
+    gs_mesh_free(&tool);
+    if (rc || !out.n) {
+        gs_mesh_free(&out);
+        snprintf(why, (size_t)whylen, "The holes did not cut.");
+        return -1;
+    }
+    gs_mesh_free(part);
+    *part = out;
+    return 0;
+}

@@ -92,4 +92,21 @@ void ge_place(gs_mesh *m, float x, float y, float z);
  * 0, or -1 (no part, no axis, no size, or one too thin to scale). */
 int ge_fit(gs_mesh *m, int axis, float mm);
 
+/* The bench's hole tools, about the middle of the part and through it:
+ * n drills d wide round a pitch circle pcd wide (2 to 12), or along X
+ * pitch apart (2 to 8), or one drill with a counterbore cb wide and deep
+ * in its top. */
+enum { GE_BOLT_CIRCLE, GE_HOLE_ROW, GE_COUNTERBORE };
+typedef struct {
+    float d;
+    int n;
+    float pcd, pitch, cb, deep;
+} ge_holes;
+
+/* The drill to cut (core's gm_bolt_circle, gm_hole_row, gm_counterbore),
+ * replacing tool. 0, or -1 with why says what is wrong, as the bench. */
+int ge_hole_tool(gs_mesh *tool, int kind, const ge_holes *h, const gs_mesh *part, char *why, int whylen);
+/* Those holes cut from part, replacing it. 0, or -1 with why, part kept. */
+int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen);
+
 #endif
