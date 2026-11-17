@@ -1,7 +1,8 @@
-==id $Id: openmakegcode_lib.sfd 1.2 (17.11.2026) $
-* "openmakegcode.library": OpenMakeCore's G-code for a printer
-* (gs_gcode.h) from a toolpath: how long and how much, the job for
-* om_check, and the G-code itself to the program's own put. The machine's
+==id $Id: openmakegcode_lib.sfd 1.3 (17.11.2026) $
+* "openmakegcode.library": OpenMakeCore's G-code (gs_gcode.h) from a
+* toolpath: a printer's, and (1.3) a Grbl laser's: how long and how
+* much, the job for om_check, and the G-code itself to the program's
+* own put. The machine's
 * start and end code are filled in by openmakemachine.library. Each call
 * is its C function in snake case (GC_WriteTo is gc_write_to); floats
 * travel as their bits. Never reorder or take a call out; add new ones at
@@ -23,4 +24,12 @@ int GC_EstimateHow(const gt_path *p, const om_machine *m, const gc_opts *o, gc_s
 void GC_MoreDefaults(gc_more *x, const gc_opts *o)(a0,a1)
 int GC_EstimateMore(const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st)(a0,a1,a2,a3)
 int GC_WriteMore(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_more *x, gc_stats *st, char *err, int errlen)(a0,a1,a2,a3,d0,d1,d2,d3)
+* 1.3: Grbl laser G-code (M3/M4, S scaled to s100, travels with the laser off)
+void GC_LaserDefaults(gc_laser *l)(a0)
+void GC_LaserJob(const gt_path *p, const om_machine *m, const gc_laser *l, om_job *job)(a0,a1,a2,a3)
+int GC_LaserEstimateHow(const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st)(a0,a1,a2,a3)
+int GC_LaserWriteTo(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st, char *err, int errlen)(a0,a1,a2,a3,d0,d1,d2,d3)
+void GC_LaserMoreDefaults(gc_laser_more *x, const gc_laser *l)(a0,a1)
+int GC_LaserEstimateMore(const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st)(a0,a1,a2,a3)
+int GC_LaserWriteMore(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st, char *err, int errlen)(a0,a1,a2,a3,d0,d1,d2,d3)
 ==end

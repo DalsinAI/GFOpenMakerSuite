@@ -51,7 +51,49 @@ static int LIB_GC_WriteMore(REG(a0, gc_put put), REG(a1, void *ud), REG(a2, cons
     return gc_write_more(put, ud, p, m, x, st, err, errlen);
 }
 
-#define OPENMAKEGCODE_LAST_BIAS 72
+static void LIB_GC_LaserDefaults(REG(a0, gc_laser *l), REG(a6, struct Library *base))
+{
+    (void)base;
+    gc_laser_defaults(l);
+}
+
+static void LIB_GC_LaserJob(REG(a0, const gt_path *p), REG(a1, const om_machine *m), REG(a2, const gc_laser *l), REG(a3, om_job *job), REG(a6, struct Library *base))
+{
+    (void)base;
+    gc_laser_job(p, m, l, job);
+}
+
+static int LIB_GC_LaserEstimateHow(REG(a0, const gt_path *p), REG(a1, const om_machine *m), REG(a2, const gc_laser *l), REG(a3, gc_stats *st), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gc_laser_estimate_how(p, m, l, st);
+}
+
+static int LIB_GC_LaserWriteTo(REG(a0, gc_put put), REG(a1, void *ud), REG(a2, const gt_path *p), REG(a3, const om_machine *m), REG(d0, const gc_laser *l), REG(d1, gc_stats *st), REG(d2, char *err), REG(d3, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gc_laser_write_to(put, ud, p, m, l, st, err, errlen);
+}
+
+static void LIB_GC_LaserMoreDefaults(REG(a0, gc_laser_more *x), REG(a1, const gc_laser *l), REG(a6, struct Library *base))
+{
+    (void)base;
+    gc_laser_more_defaults(x, l);
+}
+
+static int LIB_GC_LaserEstimateMore(REG(a0, const gt_path *p), REG(a1, const om_machine *m), REG(a2, const gc_laser_more *x), REG(a3, gc_stats *st), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gc_laser_estimate_more(p, m, x, st);
+}
+
+static int LIB_GC_LaserWriteMore(REG(a0, gc_put put), REG(a1, void *ud), REG(a2, const gt_path *p), REG(a3, const om_machine *m), REG(d0, const gc_laser_more *x), REG(d1, gc_stats *st), REG(d2, char *err), REG(d3, int errlen), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gc_laser_write_more(put, ud, p, m, x, st, err, errlen);
+}
+
+#define OPENMAKEGCODE_LAST_BIAS 114
 #define OPENMAKEGCODE_VECTORS \
     (APTR)LIB_GC_Defaults, \
     (APTR)LIB_GC_Estimate, \
@@ -60,4 +102,11 @@ static int LIB_GC_WriteMore(REG(a0, gc_put put), REG(a1, void *ud), REG(a2, cons
     (APTR)LIB_GC_EstimateHow, \
     (APTR)LIB_GC_MoreDefaults, \
     (APTR)LIB_GC_EstimateMore, \
-    (APTR)LIB_GC_WriteMore
+    (APTR)LIB_GC_WriteMore, \
+    (APTR)LIB_GC_LaserDefaults, \
+    (APTR)LIB_GC_LaserJob, \
+    (APTR)LIB_GC_LaserEstimateHow, \
+    (APTR)LIB_GC_LaserWriteTo, \
+    (APTR)LIB_GC_LaserMoreDefaults, \
+    (APTR)LIB_GC_LaserEstimateMore, \
+    (APTR)LIB_GC_LaserWriteMore

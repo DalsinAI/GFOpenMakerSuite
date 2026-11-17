@@ -42,3 +42,38 @@ int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, c
 {
     return GC_WriteMore(put, ud, p, m, x, st, err, errlen);
 }
+
+void gc_laser_defaults(gc_laser *l)
+{
+    GC_LaserDefaults(l);
+}
+
+void gc_laser_job(const gt_path *p, const om_machine *m, const gc_laser *l, om_job *job)
+{
+    GC_LaserJob(p, m, l, job);
+}
+
+int gc_laser_estimate_how(const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st)
+{
+    return GC_LaserEstimateHow(p, m, l, st);
+}
+
+int gc_laser_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st, char *err, int errlen)
+{
+    return GC_LaserWriteTo(put, ud, p, m, l, st, err, errlen);
+}
+
+void gc_laser_more_defaults(gc_laser_more *x, const gc_laser *l)
+{
+    GC_LaserMoreDefaults(x, l);
+}
+
+int gc_laser_estimate_more(const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st)
+{
+    return GC_LaserEstimateMore(p, m, x, st);
+}
+
+int gc_laser_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st, char *err, int errlen)
+{
+    return GC_LaserWriteMore(put, ud, p, m, x, st, err, errlen);
+}

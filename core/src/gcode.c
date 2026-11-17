@@ -364,3 +364,313 @@ int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, c
     }
     return 0;
 }
+
+/* ---- Grbl laser G-code (public Grbl 1.1 laser-mode documentation) ---- */
+
+void gc_laser_defaults(gc_laser *l)
+{
+    memset(l, 0, sizeof *l);
+    l->size = (int)sizeof *l;
+}
+
+void gc_laser_more_defaults(gc_laser_more *x, const gc_laser *l)
+{
+    memset(x, 0, sizeof *x);
+    x->size = (int)sizeof *x;
+    x->l = l;
+}
+
+static void laser_of(const gc_laser *l, gc_laser *to)
+{
+    gc_laser_defaults(to);
+    if (!l) return;
+    if (l->size >= (int)(offsetof(gc_laser, constant) + sizeof l->constant)) to->constant = l->constant;
+    if (l->size >= (int)(offsetof(gc_laser, s100) + sizeof l->s100)) to->s100 = l->s100;
+    if (l->size >= (int)(offsetof(gc_laser, speed) + sizeof l->speed)) to->speed = l->speed;
+    if (l->size >= (int)(offsetof(gc_laser, travel) + sizeof l->travel)) to->travel = l->travel;
+    if (l->size >= (int)(offsetof(gc_laser, z) + sizeof l->z)) to->z = l->z;
+}
+
+static void laser_more_of(const gc_laser_more *x, gc_laser_more *to)
+{
+    gc_laser_more_defaults(to, NULL);
+    if (!x) return;
+    if (x->size >= (int)(offsetof(gc_laser_more, l) + sizeof x->l)) to->l = x->l;
+    if (x->size >= (int)(offsetof(gc_laser_more, speed) + sizeof x->speed)) to->speed = x->speed;
+}
+
+static float laser_s100(const gc_laser *l)
+{
+    return l->s100 > 0.f ? l->s100 : 1000.f;
+}
+
+static float laser_cut_speed(const gc_laser *l, const om_machine *m, const float *speeds, int i)
+{
+    float v = 0.f;
+    if (speeds && i >= 0) v = speeds[i];
+    if (v <= 0.f) v = l->speed > 0.f ? l->speed : 20.f;
+    return held(m, OM_X, v);
+}
+
+static float laser_travel_speed(const gc_laser *l, const om_machine *m)
+{
+    float v = l->travel;
+    if (v <= 0.f) v = (m && m->speed[OM_X] > 0.f) ? m->speed[OM_X] : 150.f;
+    return held(m, OM_X, v);
+}
+
+static int laser_s(const gc_laser *l, float power)
+{
+    float s100 = laser_s100(l);
+    if (power < 0.f) power = 0.f;
+    if (power > 100.f) power = 100.f;
+    return (int)(power * s100 / 100.f + 0.5f);
+}
+
+typedef struct {
+    gc_put put;
+    void *ud;
+    const om_machine *m;
+    gc_laser l;
+    const float *speeds;
+    gc_stats *st;
+    planner *pl;
+    int how;
+    int bad;
+    int spindle; /* 1 after M3/M4, 0 after M5 */
+    int s;       /* last S written, -1 none */
+    int f;       /* last F written, 0 none */
+} lwriter;
+
+static void lsay(lwriter *w, const char *line)
+{
+    long n = (long)strlen(line);
+    if (w->put && !w->bad && w->put(line, n, w->ud) != n) w->bad = 1;
+}
+
+static void lcode(lwriter *w, const char *code)
+{
+    size_t n = strlen(code);
+    lsay(w, code);
+    if (n && code[n - 1] != '\n') lsay(w, "\n");
+}
+
+static void lwrite_s(lwriter *w, int s)
+{
+    char buf[32];
+    if (w->s == s) return;
+    snprintf(buf, sizeof buf, "S%d\n", s);
+    lsay(w, buf);
+    w->s = s;
+}
+
+static void lmove(lwriter *w, const gt_move *a, const gt_move *b, int i, int place)
+{
+    char buf[128];
+    float dx = a ? b->x - a->x : 0.f, dy = a ? b->y - a->y : 0.f, dz = a ? b->z - a->z : 0.f;
+    float len = sqrtf(dx * dx + dy * dy + dz * dz), t = 0.f, v;
+    int cut = !place && b->kind != GT_TRAVEL && b->w > 0.f;
+    int s = cut ? laser_s(&w->l, b->w) : 0;
+    v = cut ? laser_cut_speed(&w->l, w->m, w->speeds, i) : laser_travel_speed(&w->l, w->m);
+    if (v <= 0.f) v = 10.f;
+    if (len > 0.f) {
+        float vz = held(w->m, OM_Z, v);
+        t = len / v;
+        if (dz != 0.f && fabsf(dz) / vz > t) t = fabsf(dz) / vz;
+        v = len / t;
+    }
+    if (!cut) {
+        /* Laser off before a travel, and never S on a G0. */
+        if (w->s != 0) lwrite_s(w, 0);
+        if ((int)(v * 60.f + 0.5f) != w->f) {
+            snprintf(buf, sizeof buf, "G0 X%.3f Y%.3f Z%.3f F%d\n", (double)b->x, (double)b->y, (double)b->z,
+                     (int)(v * 60.f + 0.5f));
+            w->f = (int)(v * 60.f + 0.5f);
+        } else
+            snprintf(buf, sizeof buf, "G0 X%.3f Y%.3f Z%.3f\n", (double)b->x, (double)b->y, (double)b->z);
+        lsay(w, buf);
+    } else {
+        if (!w->spindle) {
+            lsay(w, w->l.constant ? "M3\n" : "M4\n");
+            w->spindle = 1;
+        }
+        lwrite_s(w, s);
+        if ((int)(v * 60.f + 0.5f) != w->f) {
+            snprintf(buf, sizeof buf, "G1 X%.3f Y%.3f Z%.3f F%d\n", (double)b->x, (double)b->y, (double)b->z,
+                     (int)(v * 60.f + 0.5f));
+            w->f = (int)(v * 60.f + 0.5f);
+        } else
+            snprintf(buf, sizeof buf, "G1 X%.3f Y%.3f Z%.3f\n", (double)b->x, (double)b->y, (double)b->z);
+        lsay(w, buf);
+    }
+    w->st->moves++;
+    if (w->pl) plan_add(w->pl, w->m, len, v, dx, dy, dz, 0);
+    else w->st->seconds += t;
+}
+
+static int lrun(lwriter *w, const gt_path *p, const om_machine *m, char *err, int errlen)
+{
+    char code[OM_CODE + 256];
+    planner *pl = NULL;
+    int i;
+    memset(w->st, 0, sizeof *w->st);
+    w->s = -1;
+    w->f = 0;
+    w->spindle = 0;
+    w->how = GC_AT_SPEEDS;
+    if (m && m->accel[OM_X] > 0.f && m->accel[OM_Y] > 0.f) {
+        pl = (planner *)GC_CALLOC(1, sizeof *pl);
+        w->pl = pl;
+        w->how = pl ? GC_WITH_ACCEL : GC_FELL_BACK;
+    }
+    if (w->put) {
+        if (om_code(m->start, 0.f, 0.f, code, (int)sizeof code)) {
+            snprintf(err, (size_t)errlen, "the machine's start code is too long");
+            if (pl) free(pl);
+            w->pl = NULL;
+            return -1;
+        }
+        lsay(w, "; GFOpenMake laser\n");
+        lcode(w, code);
+        lsay(w, "M5\n");
+        lwrite_s(w, 0);
+    }
+    for (i = 0; i < p->n; i++)
+        lmove(w, i ? &p->m[i - 1] : NULL, &p->m[i], i, i == 0);
+    if (w->put) {
+        lwrite_s(w, 0);
+        lsay(w, "M5\n");
+        w->spindle = 0;
+        if (om_code(m->end, 0.f, 0.f, code, (int)sizeof code)) {
+            snprintf(err, (size_t)errlen, "the machine's end code is too long");
+            if (pl) {
+                plan_flush(pl, pl->n);
+                free(pl);
+            }
+            w->pl = NULL;
+            return -1;
+        }
+        lcode(w, code);
+    }
+    if (pl) {
+        plan_flush(pl, pl->n);
+        w->st->seconds = pl->seconds;
+        free(pl);
+        w->pl = NULL;
+    }
+    return 0;
+}
+
+static int laser_ready(const om_machine *m, const gc_laser_more *more, gc_laser *l, const float **speeds, char *err,
+                       int errlen)
+{
+    gc_laser_more x;
+    laser_more_of(more, &x);
+    if (!x.l) {
+        if (err) snprintf(err, (size_t)errlen, "no options: the gc_laser_more is too short");
+        return -1;
+    }
+    laser_of(x.l, l);
+    *speeds = x.speed;
+    if (!m) {
+        if (err) snprintf(err, (size_t)errlen, "no machine");
+        return -1;
+    }
+    if (m->family != OM_LASER) {
+        if (err)
+            snprintf(err, (size_t)errlen, "%s is not a laser: this G-code is for a Grbl laser", m->name[0] ? m->name : "the machine");
+        return -1;
+    }
+    return 0;
+}
+
+int gc_laser_estimate_more(const gt_path *p, const om_machine *m, const gc_laser_more *x, gc_stats *st)
+{
+    lwriter w;
+    gc_laser l;
+    const float *speeds = NULL;
+    gc_stats mine;
+    if (!st) st = &mine;
+    memset(st, 0, sizeof *st);
+    if (laser_ready(m, x, &l, &speeds, NULL, 0)) return GC_AT_SPEEDS;
+    memset(&w, 0, sizeof w);
+    w.m = m;
+    w.l = l;
+    w.speeds = speeds;
+    w.st = st;
+    lrun(&w, p, m, NULL, 0);
+    return w.how;
+}
+
+int gc_laser_estimate_how(const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st)
+{
+    gc_laser_more x;
+    gc_laser_more_defaults(&x, l);
+    return gc_laser_estimate_more(p, m, &x, st);
+}
+
+void gc_laser_job_more(const gt_path *p, const om_machine *m, const gc_laser_more *more, om_job *job)
+{
+    gc_laser l;
+    const float *speeds = NULL;
+    int i, k;
+    memset(job, 0, sizeof *job);
+    if (laser_ready(m, more, &l, &speeds, NULL, 0) && !more) return;
+    /* A bad more still reports the path's box if we have a laser's options. */
+    if (more && more->size >= (int)(offsetof(gc_laser_more, l) + sizeof more->l) && more->l)
+        laser_of(more->l, &l);
+    else if (!more)
+        return;
+    for (i = 0; i < p->n; i++) {
+        const gt_move *a = &p->m[i];
+        const float v[3] = {a->x, a->y, a->z};
+        int cut = i && a->kind != GT_TRAVEL && a->w > 0.f;
+        float s = cut ? laser_cut_speed(&l, m, speeds, i) : laser_travel_speed(&l, m);
+        for (k = 0; k < 3; k++) {
+            if (!i || v[k] < job->min[k]) job->min[k] = v[k];
+            if (!i || v[k] > job->max[k]) job->max[k] = v[k];
+        }
+        if (s > job->speed[OM_X]) job->speed[OM_X] = job->speed[OM_Y] = s;
+        if (i && a->z != p->m[i - 1].z) job->speed[OM_Z] = held(m, OM_Z, s);
+        if (cut && a->w > job->laser) job->laser = a->w > 100.f ? 100.f : a->w;
+    }
+    if (job->laser > 0.f) job->needs = OM_LASER_POWER;
+}
+
+void gc_laser_job(const gt_path *p, const om_machine *m, const gc_laser *l, om_job *job)
+{
+    gc_laser_more x;
+    gc_laser_more_defaults(&x, l);
+    gc_laser_job_more(p, m, &x, job);
+}
+
+int gc_laser_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser_more *x,
+                        gc_stats *st, char *err, int errlen)
+{
+    lwriter w;
+    gc_laser l;
+    const float *speeds = NULL;
+    gc_stats mine;
+    if (laser_ready(m, x, &l, &speeds, err, errlen)) return -1;
+    memset(&w, 0, sizeof w);
+    w.put = put;
+    w.ud = ud;
+    w.m = m;
+    w.l = l;
+    w.speeds = speeds;
+    w.st = st ? st : &mine;
+    if (lrun(&w, p, m, err, errlen)) return -1;
+    if (w.bad) {
+        snprintf(err, (size_t)errlen, "the G-code could not be written");
+        return -1;
+    }
+    return 0;
+}
+
+int gc_laser_write_to(gc_put put, void *ud, const gt_path *p, const om_machine *m, const gc_laser *l, gc_stats *st,
+                      char *err, int errlen)
+{
+    gc_laser_more x;
+    gc_laser_more_defaults(&x, l);
+    return gc_laser_write_more(put, ud, p, m, &x, st, err, errlen);
+}
