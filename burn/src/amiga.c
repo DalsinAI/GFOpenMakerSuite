@@ -343,13 +343,12 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
 static void on_frame(olui *ui, const olui_event *ev, void *userdata)
 {
     om_machine m;
-    gt_path fr;
     char pathbuf[256], err[160], status[180];
     gc_stats st;
     (void)ev;
     (void)userdata;
-    if (!have_path && preview_job(ui, &m, err, (int)sizeof err)) {
-        omv_say(ui, err);
+    if (!svg_path[0]) {
+        omv_say(ui, "Open a drawing first");
         return;
     }
     if (laser(ui, &m, err, (int)sizeof err)) {
@@ -357,17 +356,13 @@ static void on_frame(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (!ask_file(ui, "Save framing G-code", TRUE, "#?.gcode", pathbuf, (int)sizeof pathbuf)) return;
-    gt_init(&fr);
     read_opts(ui);
     memset(&st, 0, sizeof st);
-    if (burn_frame_path(&fr, &path) || burn_write_path(&fr, NULL, pathbuf, &m, &opts, &st, err, (int)sizeof err)) {
-        omv_say(ui, err);
-        gt_free(&fr);
-        return;
+    if (burn_write_frame(svg_path, pathbuf, &m, &opts, &st, err, (int)sizeof err)) omv_say(ui, err);
+    else {
+        burn_ui_status(status, (int)sizeof status, m.name, st.moves, st.seconds);
+        omv_say(ui, status);
     }
-    burn_ui_status(status, (int)sizeof status, m.name, st.moves, st.seconds);
-    omv_say(ui, status);
-    gt_free(&fr);
 }
 
 int main(void)

@@ -324,9 +324,75 @@ int main(void)
                    strstr(g, "M5") && st.moves == 5,
                "framing G-code is travels only, laser off");
         free(g);
+        expect(fr.m[0].x == 0.f && fr.m[0].y == 0.f && fr.m[1].x == 10.f && fr.m[1].y == 0.f &&
+                   fr.m[2].x == 10.f && fr.m[2].y == 10.f && fr.m[3].x == 0.f && fr.m[3].y == 10.f,
+               "the frame starts at min x, min y and walks the sides");
+        o.constant = 1;
+        o.power = 100.f;
+        memset(&st, 0, sizeof st);
+        expect(burn_write_path(&fr, NULL, "build/rect-frame-m3.gcode", &m, &o, &st, err, (int)sizeof err) == 0, "frame at M3 settings");
+        g = slurp("build/rect-frame-m3.gcode");
+        expect(g && !strstr(g, "G1 ") && !strstr(g, "M4") && !strstr(g, "M3\n") && strstr(g, "M5"),
+               "even with constant=1 the frame never fires");
+        free(g);
         gv_doc_free(&d);
         gt_free(&job);
         gt_free(&fr);
+
+        /* A frame around two squares is the box that holds both. */
+        burn_defaults(&o);
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/two-rects.svg", err, (int)sizeof err) == 0, "two squares, for a frame");
+        gt_init(&job);
+        gt_init(&fr);
+        expect(burn_path(&job, NULL, &d, &o) == 0 && burn_frame_path(&fr, &job) == 0, "a frame around both squares");
+        expect(fr.n == 5 && fr.m[0].x == 0.f && fr.m[0].y == 10.f && fr.m[2].x == 30.f && fr.m[2].y == 20.f,
+               "the box is 0,10 to 30,20, Y-up on the 20 mm page");
+        gv_doc_free(&d);
+        gt_free(&job);
+        gt_free(&fr);
+
+        /* After a 0.2 mm kerf the box is the grown cut, not the drawn square. */
+        burn_defaults(&o);
+        o.kerf = 0.2f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/square-10mm-at-5.svg", err, (int)sizeof err) == 0,
+               "the square on the bed, for a framed kerf");
+        gt_init(&job);
+        gt_init(&fr);
+        expect(burn_path(&job, NULL, &d, &o) == 0 && burn_frame_path(&fr, &job) == 0, "a frame after kerf");
+        expect(fr.m[0].x > 4.85f && fr.m[0].x < 4.95f && fr.m[2].x > 15.05f && fr.m[2].x < 15.15f,
+               "the frame follows the kerf, 4.9 to 15.1 mm");
+        memset(&st, 0, sizeof st);
+        err[0] = 0;
+        expect(burn_write_frame("burn/tests/data/square-10mm-at-5.svg", "build/frame-kerf.gcode", &m, &o, &st, err,
+                                (int)sizeof err) == 0 &&
+                   st.moves == 5,
+               "burn_write_frame wrote five travels");
+        g = slurp("build/frame-kerf.gcode");
+        expect(g && strstr(g, "X4.900") && strstr(g, "X15.100") && !strstr(g, "G1 "),
+               "framing G-code is on the kerf box, laser off");
+        free(g);
+        gv_doc_free(&d);
+        gt_free(&job);
+        gt_free(&fr);
+
+        /* No cuts: nothing to frame. */
+        burn_defaults(&o);
+        {
+            burn_layer off;
+            expect(burn_parse_layer("1,on=0", &off, err, (int)sizeof err) == 0, "layer 1 off");
+            o.layer = &off;
+            o.nlayer = 1;
+            err[0] = 0;
+            remove("build/frame-none.gcode");
+            expect(burn_write_frame("core/tests/data/rect-10mm.svg", "build/frame-none.gcode", &m, &o, NULL, err,
+                                    (int)sizeof err) == -1 &&
+                       strstr(err, "nothing to frame") && !exists("build/frame-none.gcode"),
+                   "a job with no cuts is refused");
+            o.layer = NULL;
+            o.nlayer = 0;
+        }
     }
 
     {

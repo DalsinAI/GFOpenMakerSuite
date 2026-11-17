@@ -245,6 +245,39 @@ int main(int argc, char **argv)
             return 1;
         }
         have_path = 1;
+        if (getenv("FRAME") && atoi(getenv("FRAME"))) {
+            gt_path fr;
+            int i;
+            gt_init(&fr);
+            if (burn_frame_path(&fr, &path)) {
+                fprintf(stderr, "nothing to frame\n");
+                gt_free(&fr);
+                free(speeds);
+                return 1;
+            }
+            /* The written frame is all travels (not drawn). A copy as cuts
+             * sits on the job so the box shows in this picture only. */
+            for (i = 0; i < fr.n; i++) {
+                if (gt_add(&path, i ? GT_CUT : GT_TRAVEL, fr.m[i].x, fr.m[i].y, fr.m[i].z, i ? 50.f : 0.f)) {
+                    fprintf(stderr, "out of memory\n");
+                    gt_free(&fr);
+                    free(speeds);
+                    return 1;
+                }
+            }
+            gc_laser_defaults(&L);
+            L.constant = o.constant;
+            L.s100 = o.s100;
+            L.speed = o.speed;
+            L.travel = o.travel;
+            gc_laser_more_defaults(&more, &L);
+            more.speed = NULL;
+            memset(&st, 0, sizeof st);
+            gc_laser_estimate_more(&fr, &m, &more, &st);
+            gt_free(&fr);
+            free(speeds);
+            speeds = NULL;
+        } else {
         gc_laser_defaults(&L);
         L.constant = o.constant;
         L.s100 = o.s100;
@@ -255,6 +288,7 @@ int main(int argc, char **argv)
         memset(&st, 0, sizeof st);
         gc_laser_estimate_more(&path, &m, &more, &st);
         free(speeds);
+        }
         base = strrchr(argv[3], '/');
         snprintf(name, sizeof name, "Work:%.26s", base ? base + 1 : argv[3]);
         olui_set_text(ui, olui_find(ui, "path"), name);

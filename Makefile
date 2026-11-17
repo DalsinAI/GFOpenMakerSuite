@@ -414,6 +414,15 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-tabs-fit.gcode tabs=4 tabw=20 \
 	    2> $(BUILD)/burn-tabs-fit.txt
 	grep -q 'tabs do not fit' $(BUILD)/burn-tabs-fit.txt && test ! -e $(BUILD)/burn-tabs-fit.gcode
+	$(BUILD)/openmake-burn burn/tests/data/two-rects.svg $(BUILD)/burn-frame.gcode frame=1 > /dev/null
+	grep -q 'G0 ' $(BUILD)/burn-frame.gcode && ! grep -q 'G1 ' $(BUILD)/burn-frame.gcode && \
+	    ! grep -q '^M4' $(BUILD)/burn-frame.gcode && ! grep -q '^M3' $(BUILD)/burn-frame.gcode && \
+	    grep -q 'X0' $(BUILD)/burn-frame.gcode && grep -q 'X30' $(BUILD)/burn-frame.gcode && \
+	    test $$(grep -c '^G0 ' $(BUILD)/burn-frame.gcode) -ge 5
+	$(BUILD)/openmake-burn burn/tests/data/square-10mm-at-5.svg $(BUILD)/burn-frame-kerf.gcode \
+	    frame=1 kerf=0.2 constant=1 > /dev/null
+	grep -q 'X4.900' $(BUILD)/burn-frame-kerf.gcode && ! grep -q 'G1 ' $(BUILD)/burn-frame-kerf.gcode && \
+	    ! grep -q '^M3' $(BUILD)/burn-frame-kerf.gcode && ! grep -q '^M4' $(BUILD)/burn-frame-kerf.gcode
 	@echo "openmake-burn command ok"
 	# openmake-workshop: new, list, add (including an unknown kind).
 	! $(BUILD)/openmake-workshop 2> $(BUILD)/ws-usage.txt && grep -q 'usage: openmake-workshop' $(BUILD)/ws-usage.txt

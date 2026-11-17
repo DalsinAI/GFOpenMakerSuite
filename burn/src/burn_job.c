@@ -928,3 +928,84 @@ int burn_write_path(const gt_path *p, const float *speed, const char *gcode, con
     }
     return rc;
 }
+
+static int frame_from_job(gt_path *fr, const gt_path *job, char *err, int errlen)
+{
+    if (!job || job->n < 2 || burn_frame_path(fr, job)) {
+        snprintf(err, (size_t)errlen, "nothing to frame");
+        return -1;
+    }
+    return 0;
+}
+
+int burn_write_frame(const char *drawing, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st,
+                     char *err, int errlen)
+{
+    gv_doc d;
+    gt_path p, fr;
+    float *speeds = NULL;
+    int rc;
+    if (!m || m->family != OM_LASER) {
+        snprintf(err, (size_t)errlen, "%s is not a laser", (m && m->name[0]) ? m->name : "the machine");
+        return -1;
+    }
+    gv_doc_init(&d);
+    gt_init(&p);
+    gt_init(&fr);
+    if (burn_is_image(drawing)) {
+        burn_image im;
+        burn_image_init(&im);
+        if (burn_image_load(&im, drawing, err, errlen)) {
+            burn_image_free(&im);
+            return -1;
+        }
+        if (burn_image_path(&p, &speeds, &im, o)) {
+            snprintf(err, (size_t)errlen, "out of memory");
+            burn_image_free(&im);
+            gt_free(&p);
+            gt_free(&fr);
+            return -1;
+        }
+        if (frame_from_job(&fr, &p, err, errlen)) {
+            burn_image_free(&im);
+            gt_free(&p);
+            gt_free(&fr);
+            free(speeds);
+            return -1;
+        }
+        rc = burn_write_path(&fr, NULL, gcode, m, o, st, err, errlen);
+        burn_image_free(&im);
+        gt_free(&p);
+        gt_free(&fr);
+        free(speeds);
+        return rc;
+    }
+    if (gv_load(&d, drawing, err, errlen)) {
+        gv_doc_free(&d);
+        return -1;
+    }
+    if (check_indexes(&d, o, err, errlen)) {
+        gv_doc_free(&d);
+        return -1;
+    }
+    if (burn_path(&p, &speeds, &d, o)) {
+        snprintf(err, (size_t)errlen, "%s", path_why[0] ? path_why : "out of memory");
+        gv_doc_free(&d);
+        gt_free(&p);
+        gt_free(&fr);
+        return -1;
+    }
+    if (frame_from_job(&fr, &p, err, errlen)) {
+        gv_doc_free(&d);
+        gt_free(&p);
+        gt_free(&fr);
+        free(speeds);
+        return -1;
+    }
+    rc = burn_write_path(&fr, NULL, gcode, m, o, st, err, errlen);
+    gv_doc_free(&d);
+    gt_free(&p);
+    gt_free(&fr);
+    free(speeds);
+    return rc;
+}
