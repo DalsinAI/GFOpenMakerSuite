@@ -113,15 +113,8 @@ The host check:
 make test
 ```
 
-The Amiga program is `slicer/src/amiga.c`. It needs `gfopenlayout.library` and the
-link library that goes with it:
-
-```
-m68k-amigaos-gcc -O2 -std=c99 -noixemul -Icore/include -Islicer/include -o GFOpenSlicer \
-    slicer/src/amiga.c slicer/src/job.c core/src/stl.c slicer/src/slice.c -lgfopenlayout -lm
-```
-
-GFOpenMake and the core tests have their own recipe, `build-amiga.sh`. It builds
+The Amiga programs, GFOpenSlicer (`slicer/src/amiga.c`) and GFOpenMake
+(`cad/src/make.c`), and the core tests have their own recipe, `build-amiga.sh`. It builds
 them twice, into `build-amiga/fpu` (68040/68060 or a 68881/68882, `-mhard-float`)
 and `build-amiga/soft` (no FPU: `-msoft-float` with the SDK's
 `m68k-soft-m68040.specs`). It fails if the soft build holds any FPU instruction

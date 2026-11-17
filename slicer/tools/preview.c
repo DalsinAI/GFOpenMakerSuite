@@ -1,13 +1,17 @@
 /* Host picture of the GFOpenLayout window. The layout is the real one;
  * this only records the draw operations.
  *   preview empty out.ops
- *   preview sliced out.ops stl
- * with SIZE=WxH last: the window's inside (640x480 to start)
+ *   preview sliced out.ops stl [upto]
+ * with SIZE=WxH last: the window's inside (640x480 to start). Sliced as
+ * amiga.c's Slice does (sl_job, the toolpath engine on 4 tasks) for the
+ * suite's printer picked first, and drawn as its view: the toolpath, layers
+ * 1 to upto with Show ticked (0: all).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
-#include "gs_job.h"
-#include "gs_view.h"
 #include "markup.h"
+#include "omview_machines.h"
 #include "omview_ui.h"
+#include "sl_job.h"
+#include "slicer_ui.h"
 
 #include <gfopenlayout_ui.h>
 
@@ -54,8 +58,9 @@ int main(int argc, char **argv)
     olui *ui;
     char err[160];
     int w = 640, h = 480; /* as amiga.c opens it */
-    gs_job job;
-    int have = 0;
+    sl_job job;
+    omv_machines printers;
+    int upto = 0;
     if (argc > 3 && !strncmp(argv[argc - 1], "SIZE=", 5)) {
         if (sscanf(argv[argc - 1] + 5, "%dx%d", &w, &h) != 2 || w < 64 || h < 64) return 2;
         argc--;
@@ -67,52 +72,53 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return 1;
     }
-    gs_job_init(&job);
+    memset(&printers, 0, sizeof printers);
+    omv_machines_scan(&printers, "machines", "printer");
+    omv_machines_fill(ui, "machine", &printers, "No printers");
+    sl_init(&job);
     if (strcmp(argv[1], "sliced") == 0) {
-        gs_cfg cfg;
-        char name[32], value[16], status[160];
-        int i;
-        gs_cfg_default(&cfg);
-        cfg.layer_h = omv_number(ui, "layer");
-        cfg.infill = omv_number(ui, "infill");
-        cfg.line_w = omv_number(ui, "line");
-        cfg.filament = omv_number(ui, "filament");
-        cfg.hotend = omv_number(ui, "hotend");
-        cfg.bed = omv_number(ui, "bed");
-        cfg.skirt = olui_get_checked(olui_find(ui, "skirt"));
-        if (argc < 4 || gs_job_slice(&job, argv[3], "/tmp/gs-preview.gcode", &cfg, err, (int)sizeof err)) {
+        gp_opts po;
+        gc_opts go;
+        om_machine m;
+        char name[64], status[180];
+        const char *base;
+        if (argc < 4 || omv_machines_load(&printers, 0, &m, err, (int)sizeof err) ||
+            sl_load(&job, argv[3], m.area[0], m.area[1], err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", argc < 4 ? "need an stl" : err);
             return 1;
         }
-        have = 1;
-        {
-            /* The STL's own name, in an Amiga drawer. */
-            const char *base = strrchr(argv[3], '/');
-            snprintf(name, sizeof name, "Work:%.26s", base ? base + 1 : argv[3]);
-            olui_set_text(ui, olui_find(ui, "path"), name);
+        sl_ui_opts(ui, &po, &go);
+        if (sl_slice(&job, &po, &go, &m, 4, err, (int)sizeof err)) {
+            fprintf(stderr, "%s\n", err);
+            return 1;
         }
-        for (i = 0; i < job.layers; i++) {
-            gs_job_layer_name(&job, i, name, (int)sizeof name);
-            snprintf(value, sizeof value, "%d", i);
-            olui_list_add(ui, olui_find(ui, "layers"), NULL, name, value);
+        upto = argc > 4 ? atoi(argv[4]) : 0;
+        if (upto > job.path.nlayers) upto = job.path.nlayers;
+        /* The STL's own name, in an Amiga drawer. */
+        base = strrchr(argv[3], '/');
+        snprintf(name, sizeof name, "Work:%.26s", base ? base + 1 : argv[3]);
+        olui_set_text(ui, olui_find(ui, "path"), name);
+        if (upto) {
+            olui_set_checked(ui, olui_find(ui, "show"), 1);
+            olui_set_slider(ui, olui_find(ui, "layerno"), omv_slider_of(upto, job.path.nlayers));
         }
-        snprintf(status, sizeof status, "%d triangles, %d layers, CPU drawer", job.triangles, job.layers);
+        omv_slice_status(status, (int)sizeof status, job.path.nlayers, job.st.moves, job.st.seconds, job.st.filament, upto);
         omv_say(ui, status);
-        olui_set_progress(ui, olui_find(ui, "progress"), 100);
+        printf("%s (%d tasks)\n", status, job.tasks);
     }
     if (!olui_layout(ui, w, h)) return 1;
     ops = fopen(argv[2], "w");
     if (!ops) return 1;
     fprintf(ops, "W %d %d\n", w, h);
     olui_draw(ui, NULL, draw, NULL);
-    if (have) {
+    if (job.sliced) {
         olui_rect box;
         unsigned char *rgb;
         gs_cam cam;
         if (olui_box(ui, olui_find(ui, "view"), &box) && box.w > 8 && box.h > 8) {
             rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
             gs_cam_home(&cam);
-            if (rgb && !gs_view_solid(&job.mesh, &cam, rgb, box.w, box.h)) {
+            if (rgb && !gt_paint_part(&job.path, &cam, upto, rgb, box.w, box.h)) {
                 char ppm[256];
                 FILE *pf;
                 snprintf(ppm, sizeof ppm, "%s.ppm", argv[2]);
@@ -128,7 +134,8 @@ int main(int argc, char **argv)
         }
     }
     fclose(ops);
-    gs_job_free(&job);
+    sl_free(&job);
+    omv_machines_free(&printers);
     olui_free(ui);
     return 0;
 }

@@ -1,5 +1,8 @@
 /* The shared machine picker (omview_machines.h).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE /* opendir under -std=c99 on the host */
+#endif
 #include "omview_machines.h"
 
 #include <dirent.h>

@@ -32,8 +32,9 @@ $(BUILD)/test_model: core/tests/test_model.c core/src/model.c core/src/stl.c cor
 $(BUILD)/test_gpu: core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_gpu.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -I$(SDK) -o $@ core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
-$(BUILD)/preview: slicer/tools/preview.c core/ui/view_ui.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c slicer/src/markup.h core/include/gs.h slicer/include/gs_job.h core/include/gs_view.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/include -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tools/preview.c core/ui/view_ui.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c \
+$(BUILD)/preview: slicer/tools/preview.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/machines_ui.c $(SL_JOB) core/src/toolpath_paint.c | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/ui -Islicer/include -Islicer/src -Imachines/include -I$(LAYOUT)/include -o $@ \
+	    slicer/tools/preview.c slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/machines_ui.c $(sort $(SL_JOB)) core/src/toolpath_paint.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
@@ -50,8 +51,9 @@ $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # GFOpenSlicer's window at 640 by 480, its status and numbers through core/ui.
-$(BUILD)/test_slicer_ui: slicer/tests/test_slicer_ui.c slicer/src/markup.h core/ui/view_ui.c core/ui/omview_ui.h core/src/view.c core/src/solid.c | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tests/test_slicer_ui.c \
+$(BUILD)/test_slicer_ui: slicer/tests/test_slicer_ui.c slicer/src/markup.h slicer/src/slicer_ui.c core/ui/view_ui.c core/ui/omview_ui.h core/src/view.c core/src/solid.c | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/src -Imachines/include -I$(LAYOUT)/include -o $@ slicer/tests/test_slicer_ui.c \
+	    slicer/src/slicer_ui.c $(PLAN) core/src/gcode.c machines/src/machine.c core/src/model.c core/src/stl.c \
 	    core/ui/view_ui.c core/src/view.c core/src/solid.c $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
@@ -62,7 +64,7 @@ $(BUILD)/test_sl_job: slicer/tests/test_sl_job.c slicer/include/sl_job.h $(SL_JO
 
 # The machine picker the apps share (core/ui), on the test machines.
 $(BUILD)/test_machine_ui: core/tests/test_machine_ui.c core/ui/machines_ui.c core/ui/omview_machines.h machines/src/machine.c | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -D_DEFAULT_SOURCE -Icore/ui -Imachines/include -I$(LAYOUT)/include -o $@ core/tests/test_machine_ui.c \
+	$(CC) $(CFLAGS) $(WARN) -Icore/ui -Imachines/include -I$(LAYOUT)/include -o $@ core/tests/test_machine_ui.c \
 	    core/ui/machines_ui.c machines/src/machine.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
@@ -197,7 +199,7 @@ preview: $(BUILD)/preview $(BUILD)/make_preview
 
 # GFOpenMake's window after Slice, on the host (cad/tools/make_preview.c).
 $(BUILD)/make_preview: cad/tools/make_preview.c cad/src/make_ui.h cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c $(PLAN) core/src/gcode.c | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -D_DEFAULT_SOURCE -Icore/include -Icore/ui -Icad/include -Icad/src -Imachines/include -I$(LAYOUT)/include -o $@ \
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Icad/include -Icad/src -Imachines/include -I$(LAYOUT)/include -o $@ \
 	    cad/tools/make_preview.c cad/src/edit.c core/ui/view_ui.c core/ui/machines_ui.c $(PLAN) core/src/toolpath_paint.c core/src/gcode.c \
 	    machines/src/machine.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
