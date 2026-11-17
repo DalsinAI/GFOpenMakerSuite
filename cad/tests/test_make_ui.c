@@ -305,15 +305,17 @@ int main(void)
         olui_layout(ui, w, h);
     }
     {
-        /* The Shape tab (the bench's Extrude): the sketch's shape, width, depth and height, and
+        /* The Shape tab (the bench's Extrude, and its face tools): the sketch's shape, width, depth and height,
+         * Add, On top and Cut; Face's distance and Pull; and
          * Add, On top and Cut, each in the side and clear, above the status
          * line, at 640 by 480 and sized up. */
-        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut"};
+        static const char *const ids[] = {"xkind", "xw", "xd", "xh", "xadd", "xon", "xcut", "fmm", "pull"};
+        static const char tags[] = "snnnbbbnb"; /* select, number, button */
         const int nx = (int)(sizeof ids / sizeof ids[0]);
         static const int at[][2] = {{640, 480}, {1912, 1048}};
         int s;
         for (s = 0; s < 2; s++) {
-            olui_rect side, st, r[7];
+            olui_rect side, st, r[9];
             int a, b;
             char what[96];
             olui_tabs_select(ui, side_tabs, GM_TAB_SHAPE);
@@ -325,8 +327,8 @@ int main(void)
                 snprintf(what, sizeof what, "%s in the side at %d by %d, above the status line", ids[a], at[s][0], at[s][1]);
                 expect(el && olui_box(ui, el, &r[a]) && r[a].x >= side.x && r[a].x + r[a].w <= side.x + side.w &&
                            r[a].y + r[a].h <= st.y &&
-                           !strcmp(olui_tag(el), a == 0 ? "select" : a < 4 ? "spinner" : "button") &&
-                           r[a].w >= (a < 4 ? 72 : 60),
+                           !strcmp(olui_tag(el), tags[a] == 's' ? "select" : tags[a] == 'n' ? "spinner" : "button") &&
+                           r[a].w >= (tags[a] == 'b' ? 60 : 72),
                        what);
                 for (b = 0; b < a; b++) {
                     snprintf(what, sizeof what, "%s is clear of %s", ids[a], ids[b]);

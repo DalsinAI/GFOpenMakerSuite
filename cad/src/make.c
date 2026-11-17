@@ -645,6 +645,7 @@ static void on_plist(olui *ui, const olui_event *ev, void *userdata)
     if (!ev->value || atoi(ev->value) == gs_parts_picked(parts)) return;
     gs_parts_pick(parts, atoi(ev->value));
     marks = 0;
+    picked = -1; /* the face was the other part's */
     refresh(ui);
 }
 
@@ -735,6 +736,23 @@ static void take_added(olui *ui, gs_mesh box, const char *name)
 
 /* Extrude's Add, On top or Cut: Add is a new part on the bed, to place;
  * On top and Cut change the picked part, as Holes does. */
+/* Pull: the face clicked in Orbit moved along its normal by Face's
+ * distance, its plane with it, as the bench's Pull by a distance. */
+static void on_pull(olui *ui, const olui_event *ev, void *userdata)
+{
+    char line[96];
+    (void)ev;
+    (void)userdata;
+    remember();
+    if (ge_pull(work(), picked, omv_number(ui, "fmm"), line, (int)sizeof line) < 0) {
+        forget();
+        say(ui, line);
+        return;
+    }
+    refresh(ui);
+    say(ui, line);
+}
+
 static void on_extrude(olui *ui, const olui_event *ev, void *userdata)
 {
     int op = (int)(intptr_t)userdata, kind = olui_select_index(olui_find(ui, "xkind"));
@@ -1012,6 +1030,7 @@ int main(int argc, char **argv)
         int c;
         for (c = 0; c < 6; c++) olui_on(ui, sw[c], OLUI_CLICK, on_part, (void *)(intptr_t)c);
     }
+    olui_on(ui, "pull", OLUI_CLICK, on_pull, NULL);
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);

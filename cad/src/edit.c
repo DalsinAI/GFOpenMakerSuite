@@ -805,3 +805,125 @@ int ge_drill(gs_mesh *part, int kind, const ge_holes *h, char *why, int whylen)
     *part = out;
     return 0;
 }
+
+/* The face's plane: its unit normal and how far along it; 0, or -1 for a
+ * face with no area. */
+static int plane_of(const gs_tri *t, gs_v *n, float *w)
+{
+    float ux = t->b.x - t->a.x, uy = t->b.y - t->a.y, uz = t->b.z - t->a.z;
+    float vx = t->c.x - t->a.x, vy = t->c.y - t->a.y, vz = t->c.z - t->a.z;
+    float l;
+    n->x = uy * vz - uz * vy;
+    n->y = uz * vx - ux * vz;
+    n->z = ux * vy - uy * vx;
+    l = sqrtf(n->x * n->x + n->y * n->y + n->z * n->z);
+    if (l < 1e-6f) return -1;
+    n->x /= l, n->y /= l, n->z /= l;
+    *w = n->x * t->a.x + n->y * t->a.y + n->z * t->a.z;
+    return 0;
+}
+
+/* Marks the faces in face's plane, as the bench's regionVerts. How many. */
+static int region(const gs_mesh *m, int face, gs_v *n0, unsigned char *on)
+{
+    float w0, w;
+    int i, k = 0;
+    if (plane_of(&m->t[face], n0, &w0)) return 0;
+    for (i = 0; i < m->n; i++) {
+        const gs_tri *t = &m->t[i];
+        gs_v n;
+        on[i] = 0;
+        if (plane_of(t, &n, &w) || n.x * n0->x + n.y * n0->y + n.z * n0->z < 0.992f) continue;
+        if (fabsf(n0->x * t->a.x + n0->y * t->a.y + n0->z * t->a.z - w0) > 0.4f ||
+            fabsf(n0->x * t->b.x + n0->y * t->b.y + n0->z * t->b.z - w0) > 0.4f ||
+            fabsf(n0->x * t->c.x + n0->y * t->c.y + n0->z * t->c.z - w0) > 0.4f)
+            continue;
+        on[i] = 1;
+        k++;
+    }
+    return k;
+}
+
+/* A face's k-th point (0 a, 1 b, 2 c). */
+static gs_v *corner(gs_tri *t, int k) { return k == 0 ? &t->a : k == 1 ? &t->b : &t->c; }
+
+static int same_point(const gs_v *a, const gs_v *b)
+{
+    return fabsf(a->x - b->x) < 1e-3f && fabsf(a->y - b->y) < 1e-3f && fabsf(a->z - b->z) < 1e-3f;
+}
+
+int ge_pull(gs_mesh *m, int face, float mm, char *line, int len)
+{
+    unsigned char *on, *go;
+    gs_v n0;
+    int i, j, f, g, moved = 0;
+    if (!m || !m->t || face < 0 || face >= m->n) {
+        snprintf(line, (size_t)len, "Click a face, then pull it by a distance.");
+        return -1;
+    }
+    if (!(fabsf(mm) >= 0.05f)) {
+        snprintf(line, (size_t)len, "Pull needs a distance of at least 0.1 mm.");
+        return -1;
+    }
+    on = (unsigned char *)calloc((size_t)m->n, 1);
+    go = (unsigned char *)calloc((size_t)m->n * 3, 1);
+    if (!on || !go || !region(m, face, &n0, on)) {
+        free(on);
+        free(go);
+        snprintf(line, (size_t)len, "That face has nothing to pull.");
+        return -1;
+    }
+    /* every point on the face's: the face's own, and the walls' at them */
+    for (i = 0; i < m->n; i++)
+        for (j = 0; j < 3; j++) {
+            const gs_v *p = corner(&m->t[i], j);
+            for (f = 0; f < m->n && !go[i * 3 + j]; f++)
+                for (g = 0; on[f] && g < 3; g++)
+                    if (same_point(p, corner(&m->t[f], g))) {
+                        go[i * 3 + j] = 1;
+                        break;
+                    }
+            /* the face's points, each once */
+            if (on[i] && go[i * 3 + j]) {
+                int first = 1;
+                for (f = 0; f <= i && first; f++)
+                    for (g = 0; on[f] && g < (f == i ? j : 3); g++)
+                        if (same_point(p, corner(&m->t[f], g))) first = 0;
+                moved += first;
+            }
+        }
+    {
+        /* The face's box: the other faces' points in it on the plane (where
+         * the walls meet its edges between its corners) go with it; pushed
+         * in, the points it passes stay on the new plane, so no wall folds
+         * over it. */
+        gs_v lo = n0, hi = n0;
+        float w0 = n0.x * m->t[face].a.x + n0.y * m->t[face].a.y + n0.z * m->t[face].a.z;
+        int any = 0;
+        for (i = 0; i < m->n * 3; i++)
+            if (on[i / 3]) {
+                const gs_v *p = corner(&m->t[i / 3], i % 3);
+                if (!any++) lo = hi = *p;
+                lo.x = fminf(lo.x, p->x), lo.y = fminf(lo.y, p->y), lo.z = fminf(lo.z, p->z);
+                hi.x = fmaxf(hi.x, p->x), hi.y = fmaxf(hi.y, p->y), hi.z = fmaxf(hi.z, p->z);
+            }
+        for (i = 0; i < m->n * 3; i++) {
+            gs_v *p = corner(&m->t[i / 3], i % 3);
+            float h = n0.x * p->x + n0.y * p->y + n0.z * p->z - w0, step;
+            float fx = p->x - n0.x * h, fy = p->y - n0.y * h, fz = p->z - n0.z * h;
+            if (go[i]) step = mm;
+            else if (fx < lo.x - 1e-3f || fy < lo.y - 1e-3f || fz < lo.z - 1e-3f || fx > hi.x + 1e-3f ||
+                     fy > hi.y + 1e-3f || fz > hi.z + 1e-3f)
+                continue;
+            else if (fabsf(h) < 1e-3f) step = mm;
+            else if (mm < 0.f && h > mm && h < 0.f) step = mm - h;
+            else continue;
+            p->x += n0.x * step, p->y += n0.y * step, p->z += n0.z * step;
+        }
+    }
+    free(on);
+    free(go);
+    bound(m);
+    snprintf(line, (size_t)len, "Pulled %.1f mm. %d points moved on that face.", (double)mm, moved);
+    return moved;
+}
