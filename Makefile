@@ -15,7 +15,7 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/sr
 SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/openmake-slice
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/openmake-slice $(BUILD)/openmake-burn
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -102,6 +102,14 @@ $(BUILD)/test_machine: machines/tests/test_machine.c machines/src/machine.c mach
 # Every machine profile, loaded over its driver; the test target slices with each printer.
 $(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c machines/include/om_machine.h $(wildcard machines/printer/*/driver.om machines/printer/*/profiles/*.om machines/laser/*/driver.om machines/laser/*/profiles/*.om) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
+
+# OpenMakeBurn: an SVG to Grbl laser G-code (line mode).
+BURN_JOB = burn/src/burn_job.c core/src/vec.c core/src/gcode.c core/src/toolpath.c machines/src/machine.c
+$(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h $(BURN_JOB) | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/tests/test_burn.c $(BURN_JOB) -lm
+
+$(BUILD)/openmake-burn: burn/src/cli.c burn/include/burn_job.h $(BURN_JOB) | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/src/cli.c $(BURN_JOB) -lm
 
 # openmakemachine.library's calls through its jump table, on the host; the
 # glue is written by core/library/gen-library.py, and must be as it writes it.
@@ -194,7 +202,7 @@ $(BUILD)/test_vec_lib: core/tests/test_vec_lib.c core/src/vec.c $(VEC_LIB) core/
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/openmake-slice $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_solids
@@ -262,12 +270,30 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	! $(BUILD)/gfopenslicer 2> $(BUILD)/cli-usage.txt && grep -q 'usage: gfopenslicer' $(BUILD)/cli-usage.txt
 	# Every printer profile: loaded, and the wrench sliced for it.
 	$(BUILD)/test_profiles
+	$(BUILD)/test_burn
 	for p in machines/printer/*/profiles/*.om; do d=$${p%/profiles/*}; \
 	    $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/profile.gcode DRIVER=$$d/driver.om PROFILE=$$p \
 	    > $(BUILD)/profile.txt 2>&1 && grep -q '^; LAYER ' $(BUILD)/profile.gcode && grep -q '^G28' $(BUILD)/profile.gcode && \
 	    grep -q '^M109 S200' $(BUILD)/profile.gcode && tail -n 1 $(BUILD)/profile.gcode | grep -q M84 || { cat $(BUILD)/profile.txt; echo "$$p"; exit 1; }; \
 	    rm -f $(BUILD)/profile.gcode; done
 	@echo "gfopenslicer command ok"
+	# openmake-burn: the 10 mm square to Grbl G-code on the generic diode.
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-rect.gcode \
+	    > $(BUILD)/burn-rect.txt
+	grep -q 'wrote .*burn-rect.gcode' $(BUILD)/burn-rect.txt && grep -q 'Generic Diode 400' $(BUILD)/burn-rect.txt
+	grep -q '^M4' $(BUILD)/burn-rect.gcode && grep -q '^S500' $(BUILD)/burn-rect.gcode && \
+	    grep -q '^M5' $(BUILD)/burn-rect.gcode && grep -q '^G21' $(BUILD)/burn-rect.gcode && \
+	    grep -q '^G0 ' $(BUILD)/burn-rect.gcode && grep -q '^G1 ' $(BUILD)/burn-rect.gcode
+	$(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-m3.gcode constant=1 power=100 > /dev/null
+	grep -q '^M3' $(BUILD)/burn-m3.gcode && grep -q '^S1000' $(BUILD)/burn-m3.gcode && ! grep -q '^M4' $(BUILD)/burn-m3.gcode
+	! $(BUILD)/openmake-burn 2> $(BUILD)/burn-usage.txt && grep -q 'usage: openmake-burn' $(BUILD)/burn-usage.txt
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-bad.gcode spped=20 2> $(BUILD)/burn-bad.txt
+	grep -q 'spped=20: no such setting' $(BUILD)/burn-bad.txt && test ! -e $(BUILD)/burn-bad.gcode
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-pr.gcode \
+	    DRIVER=machines/printer/marlin/driver.om PROFILE=machines/printer/marlin/profiles/generic-220.om \
+	    2> $(BUILD)/burn-pr.txt
+	grep -q 'not a laser' $(BUILD)/burn-pr.txt && test ! -e $(BUILD)/burn-pr.gcode
+	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview
 
