@@ -20,8 +20,8 @@ all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/gfopenslicer: slicer/src/cli.c core/src/stl.c slicer/src/slice.c core/include/gs.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Islicer/include -o $@ slicer/src/cli.c core/src/stl.c slicer/src/slice.c -lm
+$(BUILD)/gfopenslicer: slicer/src/cli.c slicer/include/sl_job.h $(SL_JOB) | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Islicer/include -Imachines/include -o $@ slicer/src/cli.c $(sort $(SL_JOB)) -lm
 
 $(BUILD)/test_slice: slicer/tests/test_slice.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c core/include/gs.h core/include/gs_view.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Islicer/include -o $@ slicer/tests/test_slice.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c -lm
@@ -158,7 +158,7 @@ $(BUILD)/test_task_lib: core/tests/test_task_lib.c core/src/par_posix.c core/inc
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice $(BUILD)/gfopenslicer
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
@@ -199,6 +199,14 @@ test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_ed
 	    > $(BUILD)/wrench-$$t.txt && cmp $(BUILD)/wrench.gcode $(BUILD)/wrench-$$t.gcode && \
 	    grep -q "layers made on $$t task" $(BUILD)/wrench-$$t.txt || exit 1; done
 	@echo "slice command ok"
+	# gfopenslicer: the same engine and the same G-code, for the generic
+	# Marlin printer unless DRIVER/PROFILE say otherwise; SKIRT is gone.
+	$(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli.gcode SKIRT=1 > $(BUILD)/cli.txt 2>&1
+	cmp $(BUILD)/wrench.gcode $(BUILD)/cli.gcode && grep -q 'SKIRT is gone' $(BUILD)/cli.txt && grep -q 'wrote .*cli.gcode' $(BUILD)/cli.txt
+	! $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-tiny.gcode PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/cli-tiny.txt
+	grep -q 'Tiny 50 cannot print this' $(BUILD)/cli-tiny.txt && test ! -e $(BUILD)/cli-tiny.gcode
+	! $(BUILD)/gfopenslicer 2> $(BUILD)/cli-usage.txt && grep -q 'usage: gfopenslicer' $(BUILD)/cli-usage.txt
+	@echo "gfopenslicer command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview
 
