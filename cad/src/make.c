@@ -820,6 +820,38 @@ static void on_holes(olui *ui, const olui_event *ev, void *userdata)
 }
 
 /* A new part, picked: Parts' Add, Extrude's Add. */
+/* Arrange, as the bench's (ge_duplicate to ge_solo): Copy, Line X, Line
+ * Y and Ring with Arrange's copies and gap, Mirror, Turn (90 degrees about
+ * Z), Stack and Solo, on the picked part; each a step for Undo, and taken
+ * back with the status line saying why when refused. */
+enum { AR_COPY, AR_LINEX, AR_LINEY, AR_RING, AR_MIRROR, AR_TURN, AR_STACK, AR_SOLO };
+
+static void on_arrange(olui *ui, const olui_event *ev, void *userdata)
+{
+    int what = (int)(intptr_t)userdata, n = (int)(omv_number(ui, "acount") + 0.5f), was = gs_parts_count(parts), r;
+    float gap = omv_number(ui, "agap");
+    char line[120];
+    (void)ev;
+    remember();
+    r = what == AR_COPY    ? ge_duplicate(parts, line, (int)sizeof line)
+        : what == AR_LINEX ? ge_line(parts, 0, n, gap, line, (int)sizeof line)
+        : what == AR_LINEY ? ge_line(parts, 1, n, gap, line, (int)sizeof line)
+        : what == AR_RING  ? ge_ring(parts, n, line, (int)sizeof line)
+        : what == AR_MIRROR ? ge_mirror(parts, line, (int)sizeof line)
+        : what == AR_TURN  ? ge_turn(parts, 2, 90.f, line, (int)sizeof line)
+        : what == AR_STACK ? ge_stack(parts, line, (int)sizeof line)
+                           : ge_solo(parts, line, (int)sizeof line);
+    if (r < 0) {
+        forget();
+        say(ui, line);
+        return;
+    }
+    if (gs_parts_count(parts) != was) picked = -1; /* the copy picked: its faces unclicked */
+    verts_fit(0);
+    refresh(ui);
+    say(ui, line);
+}
+
 static void take_added(olui *ui, gs_mesh box, const char *name)
 {
     if (gs_parts_count(parts) >= GS_PARTS_MAX) {
@@ -1135,6 +1167,11 @@ int main(int argc, char **argv)
     olui_on(ui, "pull", OLUI_CLICK, on_pull, NULL);
     olui_on(ui, "chamfer", OLUI_CLICK, on_pull, (void *)(intptr_t)1);
     olui_on(ui, "fdrag", OLUI_CLICK, on_fdrag, NULL);
+    {
+        static const char *const ar[] = {"dup", "linex", "liney", "ring", "mirror", "turn", "stack", "solo"};
+        int k;
+        for (k = 0; k < 8; k++) olui_on(ui, ar[k], OLUI_CLICK, on_arrange, (void *)(intptr_t)k);
+    }
     olui_on(ui, "join", OLUI_CLICK, on_bool, (void *)(intptr_t)0);
     olui_on(ui, "cut", OLUI_CLICK, on_bool, (void *)(intptr_t)1);
     olui_on(ui, "meet", OLUI_CLICK, on_bool, (void *)(intptr_t)2);
