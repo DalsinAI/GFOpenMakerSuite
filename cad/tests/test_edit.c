@@ -427,6 +427,68 @@ int main(void)
         gs_mesh_free(&part);
         gs_mesh_free(&out);
     }
+    {
+        /* The bench's Join, Cut and Intersect on a parts list: the picked
+         * part is the tool, the one before it the stock. */
+        gs_parts *ps = gs_parts_new();
+        gs_mesh a, b;
+        gs_facts f;
+        char line[100];
+        memset(&a, 0, sizeof a);
+        memset(&b, 0, sizeof b);
+        gm_cube(&a, 0, 0, 0, 20, 20, 20);
+        gs_parts_add(ps, &a, "Plate");
+        expect(ge_combine(ps, 1, line, (int)sizeof line) == -1 && !strcmp(line, "Need two parts. The picked one is the tool."),
+               "combine needs two parts");
+        gm_cube(&b, 10, 0, 0, 20, 20, 20);
+        gs_parts_add(ps, &b, "Block");
+        expect(ge_combine(ps, 1, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 1 &&
+                   !strcmp(gs_parts_name(ps, 0), "Plate") && gs_parts_colour(ps, 0) == 0 && gs_parts_picked(ps) == 0 &&
+                   gm_facts(gs_parts_mesh(ps, 0), &f) == 0 && fabsf(f.volume - 4000.f) < 1.f &&
+                   !strncmp(line, "Cut Block out of Plate.", 23),
+               "Cut: the tool out of the stock, which keeps its name and colour");
+        gm_cube(&b, 100, 100, 0, 5, 5, 5);
+        gs_parts_add(ps, &b, "Far");
+        expect(ge_combine(ps, 2, line, (int)sizeof line) == -2 && gs_parts_count(ps) == 2 &&
+                   !strcmp(line, "Those two do not meet, so the solid was left as it was."),
+               "parts that do not meet are left as they were");
+        gs_parts_remove(ps, 1);
+        gm_cube(&b, 5, 5, 10, 4, 4, 20);
+        gs_parts_add(ps, &b, "Peg");
+        gs_parts_pick(ps, 0); /* the first picked: the tool, the one after it the stock */
+        expect(ge_combine(ps, 2, line, (int)sizeof line) == 0 && gs_parts_count(ps) == 1 &&
+                   !strcmp(gs_parts_name(ps, 0), "Peg and Plate"),
+               "Intersect: named for both; the first part picked uses the one after");
+        gm_cube(&b, 0, 0, 20, 4, 4, 4);
+        gs_parts_add(ps, &b, NULL);
+        expect(ge_combine(ps, 0, line, (int)sizeof line) == 0 && !strncmp(line, "Joined into Peg and Plate.", 26),
+               "Join");
+        {
+            /* Undo and redo over the list. */
+            ge_steps *st = ge_steps_new();
+            gs_parts *was;
+            int i;
+            expect(st && ge_steps_undo(st, ps) == NULL && ge_steps_redo(st, ps) == NULL, "nothing to undo or redo yet");
+            ge_steps_push(st, ps);
+            gm_cube(&b, 50, 50, 0, 5, 5, 5);
+            gs_parts_add(ps, &b, "New");
+            was = ge_steps_undo(st, ps);
+            expect(was && gs_parts_count(was) == 1 && ge_steps_back(st) == 0 && ge_steps_ahead(st) == 1,
+                   "undo hands back the list before");
+            ps = ge_steps_redo(st, was);
+            expect(ps && gs_parts_count(ps) == 2 && !strcmp(gs_parts_name(ps, 1), "New") && ge_steps_ahead(st) == 0 &&
+                       ge_steps_back(st) == 1,
+                   "redo hands back the one undone");
+            was = ge_steps_undo(st, ps);
+            ge_steps_push(st, was);
+            expect(ge_steps_ahead(st) == 0, "a new step empties redo");
+            ps = was;
+            for (i = 0; i < 40; i++) ge_steps_push(st, ps);
+            expect(ge_steps_back(st) == 32, "32 steps back at most");
+            ge_steps_free(st);
+        }
+        gs_parts_free(ps);
+    }
     ge_hist_free(h);
     gs_mesh_free(&m);
     gs_mesh_free(&box);

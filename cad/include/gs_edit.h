@@ -6,6 +6,7 @@
 #define GS_EDIT_H
 
 #include "gs_view.h"
+#include "gs_parts.h"
 
 /* Replace dst with a copy of src. 0, or -1. */
 int ge_copy(gs_mesh *dst, const gs_mesh *src);
@@ -81,6 +82,28 @@ int ge_hist_pop_scene(ge_hist *h, ge_scene *s);
  * step in h. 0; -1 with no second part; -2 when they do not meet or memory
  * ran out, and then the scene and h are as they were. */
 int ge_bool(ge_scene *s, int op, ge_hist *h);
+
+/* Undo and redo over a parts list (gs_parts.h), as the bench's: up to 32
+ * steps back. Push a copy before each change; that empties redo. Undo
+ * takes now (kept for redo, not copied) and hands back the list before;
+ * redo hands back the one undone and keeps now for undo. NULL, and now
+ * still the caller's, when there is nothing to go to. */
+typedef struct ge_steps ge_steps;
+ge_steps *ge_steps_new(void);
+void ge_steps_free(ge_steps *s);
+int ge_steps_push(ge_steps *s, const gs_parts *now);
+gs_parts *ge_steps_undo(ge_steps *s, gs_parts *now);
+gs_parts *ge_steps_redo(ge_steps *s, gs_parts *now);
+int ge_steps_back(const ge_steps *s);
+int ge_steps_ahead(const ge_steps *s);
+
+/* The bench's Join, Cut and Intersect (0, 1, 2) on a parts list: the
+ * picked part is the tool, the one before it (or after, when first) the
+ * stock. Both go; the result is added last with the stock's name (an
+ * intersect "stock and tool") and colour, and picked. What was done in
+ * line. 0; -1 without two parts; -2 when they do not meet or memory ran
+ * out, the list as it was. */
+int ge_combine(gs_parts *ps, int op, char *line, int len);
 
 /* The shapes Parts adds, as the bench's Make has them. */
 enum { GE_BOX, GE_CYLINDER, GE_SPHERE, GE_CONE, GE_TORUS, GE_WEDGE, GE_SLOT, GE_SHAPES };

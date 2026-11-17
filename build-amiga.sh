@@ -64,7 +64,7 @@ build() {
     mkdir -p "$dir"
     : > "$OUT/$name.fpu"
     cf="$flags -noixemul -O2 -std=gnu99 $WARN $INC"
-    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
+    "$CC" $cf -s -o "$dir/GFOpenMake" cad/src/make.c cad/src/edit.c core/src/parts.c core/src/gpu.c core/src/layer.c core/src/layer_paint.c core/src/loops.c \
         core/ui/view_ui.c core/ui/window_amiga.c core/ui/view_gpu_amiga.c core/ui/machines_ui.c core/ui/settings_ui.c core/src/settings.c core/src/plan_par.c core/src/par_exec.c core/src/gcode.c \
         machines/src/machine.c $PLAN $CORE "$OLUI" -lm
     # The machines, as PROGDIR:machines, for the printer picker: every
@@ -90,7 +90,7 @@ build() {
     # The layers on exec tasks (par_exec.c): the same toolpath as one task's
     "$CC" $cf -s -o "$dir/TestPlanPar" core/tests/test_plan_par.c core/src/plan_par.c core/src/par_exec.c \
         core/src/layer.c core/src/loops.c $PLAN $CORE -lm
-    "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c $CORE -lm
+    "$CC" $cf -s -o "$dir/TestEdit" cad/tests/test_edit.c cad/src/edit.c core/src/parts.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestMachine" machines/tests/test_machine.c machines/src/machine.c -lm
     for f in "$dir"/[A-Z]*; do
         # fpu-count.sh: the FPU instructions, not counting addresses.
