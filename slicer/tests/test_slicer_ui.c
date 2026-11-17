@@ -1,0 +1,83 @@
+/* GFOpenSlicer's window (slicer/src/markup.h), laid out on the host by
+ * the real GFOpenLayout at the size amiga.c opens it: 640 by 480 inside,
+ * which with the title bar and sizing border fits a 640 by 512 PAL screen.
+ * Its status line and numbers go through core/ui (omview_ui.h).
+ * MIT, Copyright (c) 2026 AmiCradle Team. */
+#include "markup.h"
+#include "omview_ui.h"
+
+#include <stdio.h>
+#include <string.h>
+
+static int fails;
+
+static void expect(int ok, const char *what)
+{
+    if (!ok) {
+        printf("fail: %s\n", what);
+        fails++;
+    }
+}
+
+static int measure(void *userdata, const char *utf8, size_t length, const ol_style *style, ol_text_metrics *metrics)
+{
+    (void)userdata;
+    (void)utf8;
+    metrics->width = (ol_unit)(length * (size_t)style->font_size * 60 / 100);
+    metrics->ascent = style->font_size * 80 / 100;
+    metrics->descent = style->font_size * 22 / 100;
+    return 1;
+}
+
+static int inside(const olui_rect *r, int w, int h)
+{
+    return r->w > 0 && r->h > 0 && r->x >= 0 && r->y >= 0 && r->x + r->w <= w && r->y + r->h <= h;
+}
+
+static int overlap(const olui_rect *a, const olui_rect *b)
+{
+    return a->x < b->x + b->w && b->x < a->x + a->w && a->y < b->y + b->h && b->y < a->y + a->h;
+}
+
+/* Every control amiga.c reads or answers, and what it is. */
+static const char *const controls[][2] = {
+    {"path", "input"}, {"open", "button"}, {"slice", "button"}, {"layer", "spinner"}, {"infill", "spinner"},
+    {"line", "spinner"}, {"skirt", "checkbox"}, {"filament", "spinner"}, {"hotend", "spinner"}, {"bed", "spinner"},
+    {"layers", "list"}, {"progress", "progress"}
+};
+#define N ((int)(sizeof controls / sizeof controls[0]))
+
+int main(void)
+{
+    olui *ui = olui_new();
+    char err[160];
+    olui_rect box[N], view, status;
+    int w = 640, h = 480, i, j;
+    olui_set_measure(ui, measure, NULL);
+    expect(olui_load(ui, gs_markup, gs_css, err, sizeof err), "the window loads");
+    expect(olui_layout(ui, w, h), "the window lays out at 640 by 480, as amiga.c opens it");
+    for (i = 0; i < N; i++) {
+        olui_el *el = olui_find(ui, controls[i][0]);
+        char what[80];
+        snprintf(what, sizeof what, "%s is a %s in the window", controls[i][0], controls[i][1]);
+        expect(el && !strcmp(olui_tag(el), controls[i][1]) && olui_box(ui, el, &box[i]) && inside(&box[i], w, h), what);
+        for (j = 0; el && j < i; j++) {
+            snprintf(what, sizeof what, "%s is clear of %s", controls[i][0], controls[j][0]);
+            expect(!overlap(&box[i], &box[j]), what);
+        }
+    }
+    expect(olui_find(ui, "ver") == NULL, "the name and version are in the title bar, not a row");
+    expect(olui_box(ui, olui_find(ui, "view"), &view) && inside(&view, w, h) && view.h >= h / 2,
+           "the view has at least half the height");
+    expect(olui_box(ui, olui_find(ui, "status"), &status) && inside(&status, w, h) && status.y >= view.y + view.h,
+           "the status line is under the view");
+    expect(status.y + status.h >= h - 40 && status.w >= 78 * 8, "the status line along the bottom, 78 characters wide");
+
+    omv_say(ui, "Sliced: 100 layers");
+    expect(!strcmp(olui_get_text(olui_find(ui, "status")), "Sliced: 100 layers"), "omv_say says it on the status line");
+    expect(omv_number(ui, "layer") == 0.2f && omv_number(ui, "infill") == 20.f && omv_number(ui, "filament") == 1.75f,
+           "omv_number reads the spinners: 0.20 mm, 20 %, 1.75 mm");
+    olui_free(ui);
+    printf(fails ? "slicer ui: %d failed\n" : "slicer ui ok\n", fails);
+    return fails != 0;
+}

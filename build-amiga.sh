@@ -45,6 +45,9 @@ build() {
         mkdir -p "$dir/$(dirname "$f")"
         cp "$f" "$dir/$f"
     done
+    # GFOpenSlicer's window (slicer/src/amiga.c), on core/ui's helpers
+    "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/job.c \
+        slicer/src/slice.c core/ui/view_ui.c $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm

@@ -13,7 +13,7 @@ LAYOUT ?= ../gfopenlayout
 # OpenMakeCore's slice: a part's layers as a toolpath.
 PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/toolpath.c core/src/layer.c core/src/loops.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_view_ui $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+all: $(BUILD)/gfopenslicer $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_view_ui $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -30,8 +30,8 @@ $(BUILD)/test_model: core/tests/test_model.c core/src/model.c core/src/stl.c cor
 $(BUILD)/test_gpu: core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_gpu.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -I$(SDK) -o $@ core/tests/test_gpu.c core/src/gpu.c $(PLAN) core/src/toolpath_paint.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
-$(BUILD)/preview: slicer/tools/preview.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c slicer/src/markup.h core/include/gs.h slicer/include/gs_job.h core/include/gs_view.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Islicer/include -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tools/preview.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c \
+$(BUILD)/preview: slicer/tools/preview.c core/ui/view_ui.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c slicer/src/markup.h core/include/gs.h slicer/include/gs_job.h core/include/gs_view.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/include -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tools/preview.c core/ui/view_ui.c slicer/src/job.c core/src/stl.c slicer/src/slice.c core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
@@ -45,6 +45,12 @@ $(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_pai
 $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icad/src -I$(LAYOUT)/include -o $@ cad/tests/test_make_ui.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
+	    $(LAYOUT)/build/libopenlayout.a -lm
+
+# GFOpenSlicer's window at 640 by 480, its status and numbers through core/ui.
+$(BUILD)/test_slicer_ui: slicer/tests/test_slicer_ui.c slicer/src/markup.h core/ui/view_ui.c core/ui/omview_ui.h core/src/view.c core/src/solid.c | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Islicer/src -I$(LAYOUT)/include -o $@ slicer/tests/test_slicer_ui.c \
+	    core/ui/view_ui.c core/src/view.c core/src/solid.c $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # The machine picker the apps share (core/ui), on the test machines.
@@ -139,13 +145,14 @@ $(BUILD)/test_task_lib: core/tests/test_task_lib.c core/src/par_posix.c core/inc
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_view_ui $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
+test: $(BUILD)/test_slice $(BUILD)/test_model $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_view_ui $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/openmake-slice
 	$(BUILD)/test_slice
 	$(BUILD)/test_model
 	$(BUILD)/test_gpu
 	$(BUILD)/test_edit
 	$(BUILD)/test_layer
 	$(BUILD)/test_make_ui
+	$(BUILD)/test_slicer_ui
 	$(BUILD)/test_view_ui
 	$(BUILD)/test_machine_ui
 	$(BUILD)/test_machine
