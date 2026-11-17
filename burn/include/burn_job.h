@@ -104,12 +104,18 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o);
 int burn_write(const char *drawing, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st, char *err,
                int errlen);
 
-/* A travel around the job's box (laser off). Replaces out. 0, or -1 if
- * the job has no cuts or memory ran out. */
+/* A travel around the job's box (laser off, no margin). Starts at
+ * (min x, min y) and walks the sides, then closes. Replaces out. 0, or
+ * -1 if the job has no cuts or memory ran out. */
 int burn_frame_path(gt_path *out, const gt_path *job);
 
 /* Write p (a frame, or any path) as Grbl laser G-code for m. 0, or -1. */
 int burn_write_path(const gt_path *p, const float *speed, const char *gcode, const om_machine *m, const burn_opts *o,
                     gc_stats *st, char *err, int errlen);
+
+/* Like burn_write, but only the travel around the job's box (laser
+ * off). 0, or -1 with why in err ("nothing to frame" if there are no cuts). */
+int burn_write_frame(const char *drawing, const char *gcode, const om_machine *m, const burn_opts *o, gc_stats *st,
+                     char *err, int errlen);
 
 #endif
