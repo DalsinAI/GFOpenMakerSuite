@@ -141,6 +141,27 @@ int main(void)
         }
     }
     {
+        /* A plate with a bolt circle cut, then a counterbore: building the
+         * holed plate's tree on its first polygon's plane let the hole walls
+         * cut its faces into slivers (1620 triangles to 9355), and the cut
+         * came out open, with 17000 triangles. */
+        gs_mesh plate, tool, one, two;
+        float v1;
+        memset(&plate, 0, sizeof plate), memset(&tool, 0, sizeof tool);
+        memset(&one, 0, sizeof one), memset(&two, 0, sizeof two);
+        expect(gm_cube(&plate, 80, 80, 8, 40, 40, 10) == 0 && gm_bolt_circle(&tool, 100, 100, 4, 18, 4, 24, 4) == 0 &&
+                   gm_subtract(&one, &plate, &tool) == 0 && gm_open_edges(&one) == 0,
+               "a plate with a bolt circle");
+        v1 = volume(&one);
+        expect(gm_counterbore(&tool, 100, 100, 4, 14.4f, 4, 9, 3.4f) == 0 && gm_subtract(&two, &one, &tool) == 0 &&
+                   gm_open_edges(&two) == 0,
+               "and a counterbore after it: closed");
+        expect(volume(&two) < v1 - 150.f && volume(&two) > v1 - 300.f, "the counterbore took its volume");
+        fprintf(stderr, "bolt circle then counterbore: %d then %d triangles\n", one.n, two.n);
+        expect(one.n < 2500 && two.n < 8000, "without slivers by the thousand");
+        gs_mesh_free(&plate), gs_mesh_free(&tool), gs_mesh_free(&one), gs_mesh_free(&two);
+    }
+    {
         /* A sliver from a cut once made its own plane split it again, for
          * ever: r = 5 and 5.5 on 32 sides overflowed the stack. */
         static const int sides[2] = {32, 24};
