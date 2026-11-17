@@ -41,7 +41,7 @@ static int count_files(void)
 {
     static const char *const drivers[] = {"marlin", "klipper", "reprap"};
     int d, n = 0, k;
-    char dir[128], what[160];
+    char dir[64], what[400];
     for (d = 0; d < 3; d++) {
         DIR *h;
         struct dirent *e;
@@ -57,7 +57,7 @@ static int count_files(void)
                 if (!strcmp(known[k].driver, drivers[d]) && !strncmp(known[k].profile, e->d_name, len - 3) &&
                     strlen(known[k].profile) == len - 3)
                     found = 1;
-            snprintf(what, sizeof what, "%s/%.64s is tested here", dir, e->d_name);
+            snprintf(what, sizeof what, "%s/%s is tested here", dir, e->d_name);
             expect(found, what);
         }
         closedir(h);
