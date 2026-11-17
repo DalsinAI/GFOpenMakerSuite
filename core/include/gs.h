@@ -23,25 +23,10 @@ typedef struct {
     gs_v min, max;
 } gs_mesh;
 
-typedef struct {
-    float layer_h;     /* mm */
-    float line_w;      /* mm, the nozzle's line */
-    float filament;    /* mm, the filament's diameter */
-    float infill;      /* 0 to 100 */
-    float hotend;      /* degrees, 0: no heat commands */
-    float bed;
-    int skirt;         /* loops of a rectangle around the first layer */
-} gs_cfg;
-
 /* 0, or -1 with why in err. */
 int gs_stl_load(gs_mesh *m, const char *path, char *err, int errlen);
 void gs_mesh_free(gs_mesh *m);
 /* Welds vertices, drops empty triangles, and turns the outside out. */
 void gs_mesh_repair(gs_mesh *m);
-
-void gs_cfg_default(gs_cfg *c);
-
-/* Writes G-code for a repaired mesh. 0, or -1. */
-int gs_slice(const gs_mesh *m, const gs_cfg *c, FILE *out, char *err, int errlen);
 
 #endif
