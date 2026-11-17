@@ -10,7 +10,8 @@
  * grouped boxes down the left, a label beside its field, one status line
  * along the bottom, Save STL the accent primary button. The chosen tool
  * is :selected and lit in the accent too. Slice turns the part into a
- * toolpath, shown in the view, its layers up to the Layers slider's. */
+ * toolpath, shown in the view, its layers up to the Layers slider's;
+ * Save G-code writes it for the printer picked (core/ui's machine picker). */
 static const char gm_markup[] =
     "<row><h2>GFOpenMake</h2><spacer></spacer><span id=\"ver\">0.1.0</span></row>"
     "<row id=\"body\">"
@@ -37,6 +38,7 @@ static const char gm_markup[] =
     "<row><button id=\"prev\">Prev</button><slider id=\"layer\" min=\"1\" max=\"100\" value=\"1\"><button id=\"next\">Next</button></row>"
     "</fieldset>"
     "<fieldset><legend>Slice</legend>"
+    "<row><label for=\"machine\">Printer</label><select id=\"machine\"></select></row>"
     "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
     "</fieldset>"
     "</column>"
@@ -48,7 +50,7 @@ static const char gm_markup[] =
 static const char gm_css[] =
     "window{background:#f9f9f9;color:#1b1b1b;font-size:12px;padding:8px;gap:8px}"
     "#body{flex:1;padding:0;gap:8px}"
-    "#side{width:224px;gap:8px}"
+    "#side{width:224px;gap:6px}"
     "fieldset{border:1px solid #d0d0d0;border-radius:8px;padding:0 8px 8px}"
     "fieldset row{padding:0;gap:6px}"
     "button{flex:1;border:1px solid #d0d0d0;border-radius:4px;color:#1b1b1b;"
@@ -58,6 +60,7 @@ static const char gm_css[] =
     "button:selected,button.primary{background:#0067c0;border-color:#0067c0;color:#ffffff}"
     "button.primary:active{background:#005ba1}"
     "label{width:40px;color:#616161}"
+    "select{flex:1}"
     "spinner{flex:1}"
     "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"

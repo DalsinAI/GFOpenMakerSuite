@@ -3,13 +3,16 @@
  * slicer/tools/paint.py, and the view as the CPU drawer draws the toolpath
  * (gt_paint_part, fitted to the part: what the pens show without OpenGPU), with the status line
  * make.c's Slice says. Not the Amiga, not OpenGPU.
- *   make_preview out.ops [upto]
- * upto: the Layers slider's layer, Show layer ticked (0: all layers).
+ *   make_preview out.ops [upto [machines [open]]]
+ * upto: the Layers slider's layer, Show layer ticked (0: all layers);
+ * machines: where the printer picker looks (machines/ to start); open:
+ * the picker's list shown open.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_gcode.h"
 #include "gs_plan.h"
 #include "make_ui.h"
+#include "omview_machines.h"
 #include "omview_ui.h"
 
 #include <stdio.h>
@@ -63,7 +66,9 @@ int main(int argc, char **argv)
     unsigned char *rgb;
     int w = 640, h = 580, upto = argc > 2 ? atoi(argv[2]) : 0;
     FILE *pf;
+    omv_machines printers;
     if (argc < 2) return 2;
+    memset(&printers, 0, sizeof printers);
     memset(&part, 0, sizeof part);
     if (ge_start(&part, NULL, err, (int)sizeof err)) {
         fprintf(stderr, "%s\n", err);
@@ -85,6 +90,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return 1;
     }
+    omv_machines_scan(&printers, argc > 3 ? argv[3] : "machines", "printer");
+    omv_machines_fill(ui, "machine", &printers, "No printers");
     omv_slice_status(status, (int)sizeof status, path.nlayers, st.moves, st.seconds, st.filament, upto);
     omv_say(ui, status);
     if (upto) {
@@ -92,6 +99,10 @@ int main(int argc, char **argv)
         olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(upto, path.nlayers));
     }
     if (!olui_layout(ui, w, h)) return 1;
+    if (argc > 4 && !strcmp(argv[4], "open")) {
+        olui_select_open(ui, olui_find(ui, "machine"), 1);
+        if (!olui_layout(ui, w, h)) return 1;
+    }
     ops = fopen(argv[1], "w");
     if (!ops) return 1;
     fprintf(ops, "W %d %d\n", w, h);
@@ -115,6 +126,7 @@ int main(int argc, char **argv)
     printf("%s\n", status);
     gt_free(&path);
     gs_mesh_free(&part);
+    omv_machines_free(&printers);
     olui_free(ui);
     return 0;
 }
