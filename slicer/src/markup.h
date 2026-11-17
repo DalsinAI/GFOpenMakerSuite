@@ -1,5 +1,7 @@
 /* The whole window. GFOpenLayout lays this out; the program answers
- * Open, Slice, the layer slider and Save G-code, and draws the view. 640 by 480
+ * Open, Slice, the layer slider and Save G-code, and draws the view. The
+ * print settings are core/ui's panel (omview_settings.h), in the side
+ * column beside the view, under the printer picked. 640 by 480
  * inside, to fit a 640 by 512 PAL screen with the window's borders: the
  * name and version are in the title bar. OpenLayout Clear, as GFOpenMake's
  * (cad/src/make_ui.h): one light window, grouped boxes, one status line
@@ -8,6 +10,8 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef GS_MARKUP_H
 #define GS_MARKUP_H
+
+#include "omview_settings.h"
 
 static const char gs_markup[] =
     "<fieldset><legend>Part</legend>"
@@ -18,21 +22,15 @@ static const char gs_markup[] =
     "<button id=\"slice\" class=\"primary\">Slice</button>"
     "</row>"
     "</fieldset>"
+    "<row id=\"body\">"
+    "<column id=\"side\">"
     "<fieldset><legend>Settings</legend>"
-    "<row>"
-    "<label for=\"layer\">Layer mm</label><spinner id=\"layer\" min=\"0.08\" max=\"0.80\" step=\"0.01\" value=\"0.20\">"
-    "<label for=\"infill\">Infill %</label><spinner id=\"infill\" min=\"0\" max=\"100\" step=\"5\" value=\"20\">"
-    "<label for=\"line\">Line mm</label><spinner id=\"line\" min=\"0.20\" max=\"1.20\" step=\"0.05\" value=\"0.40\">"
-    "<label for=\"walls\">Walls</label><spinner id=\"walls\" min=\"1\" max=\"8\" step=\"1\" value=\"2\">"
-    "</row>"
-    "<row>"
-    "<label for=\"hotend\">Hotend</label><spinner id=\"hotend\" min=\"0\" max=\"300\" step=\"5\" value=\"200\">"
-    "<label for=\"bed\">Bed</label><spinner id=\"bed\" min=\"0\" max=\"120\" step=\"5\" value=\"60\">"
-    "<label for=\"brim\">Brim</label><spinner id=\"brim\" min=\"0\" max=\"10\" step=\"1\" value=\"3\">"
-    "<label for=\"machine\">Printer</label><select id=\"machine\"></select>"
-    "</row>"
+    "<row><label for=\"machine\">Printer</label><select id=\"machine\"></select></row>"
+    "<div id=\"settings\"></div>"
     "</fieldset>"
+    "</column>"
     "<div id=\"view\"></div>"
+    "</row>"
     "<row id=\"layerbar\">"
     "<checkbox id=\"show\">Show layers to</checkbox>"
     "<button id=\"prev\">Prev</button>"
@@ -53,7 +51,9 @@ static const char gs_css[] =
     "button.primary{background:#0067c0;border-color:#0067c0;color:#ffffff}"
     "button.primary:active{background:#005ba1}"
     "label{color:#616161}"
-    "spinner{width:72px}"
+    "#body{flex:1;padding:0;gap:8px}"
+    "#side{width:" OMV_SETTINGS_W_CSS "}"
+    "fieldset row label{width:48px}"
     "#path{flex:1}"
     "#layerbar{padding:0;gap:6px}"
     "slider{flex:1}"

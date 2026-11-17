@@ -2,18 +2,19 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "slicer_ui.h"
 
-#include "omview_ui.h"
+#include "omview_settings.h"
+
+int sl_ui_init(olui *ui, char *err, int errlen)
+{
+    gs_settings s;
+    if (omv_settings_add(ui, "settings", err, errlen)) return -1;
+    gs_settings_default(&s);
+    omv_settings_show(ui, &s);
+    return 0;
+}
 
 void sl_ui_settings(olui *ui, gs_settings *s)
 {
     gs_settings_default(s);
-    s->layer_h = omv_number(ui, "layer");
-    s->infill = omv_number(ui, "infill");
-    s->line_w = omv_number(ui, "line");
-    s->walls = (int)(omv_number(ui, "walls") + 0.5f);
-    s->loops = (int)(omv_number(ui, "brim") + 0.5f);
-    s->around = s->loops > 0 ? GS_BRIM : GS_NONE;
-    s->distance = 0.f;
-    s->hotend = omv_number(ui, "hotend");
-    s->bed = omv_number(ui, "bed");
+    omv_settings_read(ui, s);
 }

@@ -13,6 +13,7 @@
 #include "omview_machines.h"
 #include "gs_gpu.h"
 #include "omview_scene.h"
+#include "omview_settings.h"
 #include "omview_ui.h"
 #include "sl_job.h"
 #include "slicer_ui.h"
@@ -134,6 +135,21 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", err);
         return 1;
     }
+    if (sl_ui_init(ui, err, (int)sizeof err)) {
+        fprintf(stderr, "%s\n", err);
+        return 1;
+    }
+    /* SETTINGS: a profile's lines shown in the panel; TAB: the tab shown. */
+    if (getenv("SETTINGS")) {
+        gs_settings s;
+        sl_ui_settings(ui, &s);
+        if (gs_settings_parse(&s, getenv("SETTINGS"), err, (int)sizeof err)) {
+            fprintf(stderr, "SETTINGS: %s\n", err);
+            return 1;
+        }
+        omv_settings_show(ui, &s);
+    }
+    if (getenv("TAB")) omv_settings_tab(ui, atoi(getenv("TAB")));
     memset(&printers, 0, sizeof printers);
     omv_machines_scan(&printers, "machines", "printer");
     omv_machines_fill(ui, "machine", &printers, "No printers");
@@ -148,6 +164,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "%s\n", argc < 4 ? "need an stl" : err);
             return 1;
         }
+        omv_settings_fit(ui, &m, &set, status, (int)sizeof status);
+        if (status[0]) printf("%s\n", status);
         sl_ui_settings(ui, &set);
         if (sl_slice(&job, &set, &m, 4, err, (int)sizeof err)) {
             fprintf(stderr, "%s\n", err);
