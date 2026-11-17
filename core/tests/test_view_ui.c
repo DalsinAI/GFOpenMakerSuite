@@ -90,6 +90,22 @@ int main(void)
         printf("%s\n", line);
     }
 
+    {
+        /* The size a window opens at: 640 by 480 inside at the least (a
+         * 640 by 512 PAL screen less 8 across and 21 down of borders), up to
+         * 1024 by 768 on a big RTG screen, four fifths of it between. */
+        int ww, wh;
+        omv_window_fit(640, 512, 8, 21, &ww, &wh);
+        expect(ww == 640 && wh == 480, "a 640 by 512 PAL screen: 640 by 480");
+        omv_window_fit(640, 256, 8, 21, &ww, &wh);
+        expect(ww == 640 && wh == 480, "never under 640 by 480 (Intuition holds it to the screen)");
+        omv_window_fit(1024, 768, 8, 21, &ww, &wh);
+        expect(ww == 812 && wh == 597, "1024 by 768: four fifths, 812 by 597");
+        omv_window_fit(1920, 1080, 8, 21, &ww, &wh);
+        expect(ww == 1024 && wh == 768, "1920 by 1080: 1024 by 768 at most");
+        expect(OMV_MIN_W == 640 && OMV_MIN_H == 480, "the smallest a window is sized to: 640 by 480 inside");
+    }
+
     memset(&box, 0, sizeof box);
     expect(gm_cube(&box, 90, 90, 0, 40, 30, 20) == 0, "a box");
     gs_cam_home(&cam);

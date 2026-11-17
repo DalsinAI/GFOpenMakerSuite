@@ -3,10 +3,10 @@
  * slicer/tools/paint.py, and the view as the CPU drawer draws the toolpath
  * (gt_paint_part, fitted to the part: what the pens show without OpenGPU), with the status line
  * make.c's Slice says. Not the Amiga, not OpenGPU.
- *   make_preview out.ops [upto [machines [open]]]
+ *   make_preview out.ops [upto [machines [open]]] [SIZE=WxH]
  * upto: the Layers slider's layer, Show layer ticked (0: all layers);
  * machines: where the printer picker looks (machines/ to start); open:
- * the picker's list shown open.
+ * the picker's list shown open; SIZE: the window's inside, 640x480 to start.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_edit.h"
 #include "gs_gcode.h"
@@ -67,6 +67,11 @@ int main(int argc, char **argv)
     int w = 640, h = 480, upto = argc > 2 ? atoi(argv[2]) : 0;
     FILE *pf;
     omv_machines printers;
+    if (argc > 2 && !strncmp(argv[argc - 1], "SIZE=", 5)) {
+        if (sscanf(argv[argc - 1] + 5, "%dx%d", &w, &h) != 2 || w < 64 || h < 64) return 2;
+        argc--;
+        upto = argc > 2 ? atoi(argv[2]) : 0;
+    }
     if (argc < 2) return 2;
     memset(&printers, 0, sizeof printers);
     memset(&part, 0, sizeof part);

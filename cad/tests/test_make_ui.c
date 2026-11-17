@@ -195,6 +195,23 @@ int main(void)
     first_box = 0;
     olui_draw(ui, NULL, collect, NULL);
     expect(seen.move_bg == ACCENT, "the chosen tool is lit in the accent");
+
+    /* Sized up, as on an RTG screen: the same controls, the side as wide,
+     * the view taking the rest, the status line still along the bottom. */
+    {
+        olui_rect side0, view1, side1, st1, r;
+        int big_w = 1024, big_h = 768, ok = 1;
+        olui_box(ui, olui_find(ui, "side"), &side0);
+        expect(olui_layout(ui, big_w, big_h), "the window lays out at 1024 by 768");
+        for (i = 0; i < NBUTTONS; i++) ok &= olui_box(ui, olui_find(ui, buttons[i]), &r) && inside(&r, big_w, big_h);
+        for (i = 0; i < NCONTROLS; i++) ok &= olui_box(ui, olui_find(ui, controls[i][0]), &r) && inside(&r, big_w, big_h);
+        expect(ok, "at 1024 by 768 every control is in the window");
+        expect(olui_box(ui, olui_find(ui, "view"), &view1) && olui_box(ui, olui_find(ui, "side"), &side1) &&
+                   side1.w == side0.w && view1.w >= view.w + 384 - 8 && view1.h >= view.h + 288 - 8,
+               "the side keeps its width; the view grows with the window");
+        expect(olui_box(ui, olui_find(ui, "status"), &st1) && st1.y + st1.h >= big_h - 16 && st1.w >= big_w - 16,
+               "the status line along the bottom, the window's width");
+    }
     olui_free(ui);
     if (failed) {
         printf("%d failed\n", failed);
