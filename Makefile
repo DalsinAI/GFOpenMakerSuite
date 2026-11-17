@@ -16,7 +16,7 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/sr
 SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -129,6 +129,12 @@ $(BUILD)/test_burn_ui: burn/tests/test_burn_ui.c burn/src/markup.h burn/src/burn
 	    core/src/view.c core/src/solid.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
+# OpenMakeBurn's ARexx commands (burn/src/burn_rexx.c), on the host stub.
+$(BUILD)/test_burn_rexx: burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c $(BURN_JOB) core/src/toolpath_paint.c core/src/view.c core/src/solid.c burn/src/burn_rexx.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/src -Imachines/include -Iburn/include -Iburn/src -o $@ \
+	    burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c $(BURN_JOB) \
+	    core/src/toolpath_paint.c core/src/view.c core/src/solid.c -lm
+
 
 $(BUILD)/burn_preview: burn/tools/preview.c burn/src/markup.h burn/src/burn_ui.c $(BURN_JOB) core/ui/view_gpu.c core/src/gpu.c core/src/toolpath_paint.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iburn/include -Iburn/src -Imachines/include -I$(LAYOUT)/include -I$(SDK) -o $@ \
@@ -250,7 +256,7 @@ $(BUILD)/test_rexx_lib: core/tests/test_rexx_lib.c core/src/rexx.c $(REXX_LIB) c
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/test_burn_rexx $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/openmake-workshop $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_solids
@@ -326,6 +332,7 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	$(BUILD)/test_profiles
 	$(BUILD)/test_burn
 	$(BUILD)/test_burn_ui
+	$(BUILD)/test_burn_rexx
 	for p in machines/printer/*/profiles/*.om; do d=$${p%/profiles/*}; \
 	    $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/profile.gcode DRIVER=$$d/driver.om PROFILE=$$p \
 	    > $(BUILD)/profile.txt 2>&1 && grep -q '^; LAYER ' $(BUILD)/profile.gcode && grep -q '^G28' $(BUILD)/profile.gcode && \
