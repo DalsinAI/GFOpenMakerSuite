@@ -50,6 +50,26 @@ static float signed_volume(const gs_mesh *m)
     return (float)(s / 6.0);
 }
 
+/* Every edge met once each way: closed, no edge split on one side only. */
+static int closed(const gs_mesh *m)
+{
+    int i, j, k, l;
+    for (i = 0; i < m->n; i++)
+        for (k = 0; k < 3; k++) {
+            const gs_v *a = k == 0 ? &m->t[i].a : k == 1 ? &m->t[i].b : &m->t[i].c;
+            const gs_v *b = k == 0 ? &m->t[i].b : k == 1 ? &m->t[i].c : &m->t[i].a;
+            int back = 0;
+            for (j = 0; j < m->n; j++)
+                for (l = 0; l < 3; l++) {
+                    const gs_v *c = l == 0 ? &m->t[j].a : l == 1 ? &m->t[j].b : &m->t[j].c;
+                    const gs_v *e = l == 0 ? &m->t[j].b : l == 1 ? &m->t[j].c : &m->t[j].a;
+                    back += !memcmp(c, b, sizeof *c) && !memcmp(e, a, sizeof *e);
+                }
+            if (back != 1) return 0;
+        }
+    return 1;
+}
+
 int main(void)
 {
     gs_mesh m, box;
@@ -576,6 +596,63 @@ int main(void)
         expect(near(size[2], 40.f) && fabsf(signed_volume(&sc.stock) - 80.f * 80.f * 40.f) < 20.f,
                "40 mm tall, 80 by 80 by 40 in it: nothing folded");
         ge_scene_free(&sc);
+    }
+    {
+        /* Chamfer: the picked face's edges cut back at 45 degrees by the
+         * distance, its height kept, the walls cut where the bevel meets
+         * them; closed. (The bench lowers the face and leans the walls.) */
+        gs_mesh c, t;
+        char line[120];
+        float pos[3], size[3];
+        int top = -1, k, ok = 1;
+        memset(&c, 0, sizeof c);
+        memset(&t, 0, sizeof t);
+        expect(gm_cube(&c, 100.f, 100.f, 0.f, 20.f, 20.f, 20.f) == 0, "a cube to chamfer");
+        for (k = 0; k < c.n && top < 0; k++)
+            if (near(c.t[k].a.z, 20.f) && near(c.t[k].b.z, 20.f) && near(c.t[k].c.z, 20.f)) top = k;
+        expect(ge_chamfer(&c, top, 2.f, line, (int)sizeof line) == 0 && strstr(line, "by 2.0 mm"), "the top chamfered 2 mm");
+        ge_where(&c, pos, size);
+        expect(near(size[2], 20.f) && near(c.min.z, 0.f) && near(size[0], 20.f), "as tall, its foot where it was, as wide");
+        for (k = 0; k < c.n * 3; k++) {
+            const gs_v *p = k % 3 == 0 ? &c.t[k / 3].a : k % 3 == 1 ? &c.t[k / 3].b : &c.t[k / 3].c;
+            if (near(p->z, 20.f)) ok &= p->x > 101.99f && p->x < 118.01f && p->y > 101.99f && p->y < 118.01f;
+            else ok &= p->z < 0.01f || near(p->z, 18.f);
+        }
+        /* four edges' prisms, 2 by 2 by 20 halved, less the corners counted twice */
+        expect(ok && fabsf(signed_volume(&c) - (8000.f - 160.f + 4.f * 8.f / 3.f)) < 0.5f,
+               "the top 2 mm in from every side, the walls cut at 18 mm; the volume a chamfered cube's");
+        expect(ge_chamfer(&c, top, 50.f, line, (int)sizeof line) == -1 && strstr(line, "too big"),
+               "the bench's most, 20 mm, is as much as the 20 mm part has: refused");
+        expect(ge_chamfer(&c, top, 8.f, line, (int)sizeof line) == -1 && strstr(line, "too big"),
+               "8 mm in from each side of a 16 mm face: refused");
+        ge_where(&c, pos, size);
+        expect(near(size[2], 20.f), "refused chamfers leave the part");
+        one(&t, 0.f, 0.f, 3.f);
+        expect(ge_chamfer(&t, 0, 1.f, line, (int)sizeof line) == -1 && strstr(line, "no edge to chamfer"),
+               "a lone face has no edge to chamfer");
+        expect(ge_chamfer(&c, -1, 1.f, line, (int)sizeof line) == -1 && strstr(line, "Click a face"), "no face, no chamfer");
+        gs_mesh_free(&c);
+        gs_mesh_free(&t);
+    }
+    {
+        /* The holed cube's top: its outside edges and the hole's rim both
+         * chamfered (the rim opened out), closed, as tall. */
+        gs_mesh c;
+        char line[120];
+        float pos[3], size[3], v0;
+        int top = -1, k, was;
+        memset(&c, 0, sizeof c);
+        expect(ge_start(&c, NULL, line, (int)sizeof line) == 0 && closed(&c), "the holed cube, closed");
+        for (k = 0; k < c.n && top < 0; k++)
+            if (near(c.t[k].a.z, c.max.z) && near(c.t[k].b.z, c.max.z) && near(c.t[k].c.z, c.max.z)) top = k;
+        v0 = signed_volume(&c);
+        was = c.n;
+        expect(ge_chamfer(&c, top, 1.f, line, (int)sizeof line) == 0, "its top chamfered 1 mm");
+        ge_where(&c, pos, size);
+        expect(closed(&c) && near(size[2], 20.f) && c.n > was && signed_volume(&c) < v0 - 30.f &&
+                   signed_volume(&c) > v0 - 200.f,
+               "closed, as tall, the walls cut, about the bevels' volume taken");
+        gs_mesh_free(&c);
     }
     printf("edit ok\n");
     return 0;
