@@ -2,12 +2,15 @@
  * checked against the machine before it is written.
  *   openmake-slice in.stl out.gcode DRIVER=driver.om PROFILE=profile.om
  *       [LAYER=0.2] [LINE=0.4] [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=3]
- *       [HOTEND=200] [BED=60] [PREVIEW=picture.ppm] [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part]
+ *       [HOTEND=200] [BED=60] [TASKS=cores] [PREVIEW=picture.ppm] [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part]
+ * TASKS: the layers made on that many tasks at once (gp_part_par); the
+ * G-code is the same on any number. By default one a core (gs_par_cores).
  * PREVIEW also draws the toolpath (gt_paint) to a PPM picture: ZOOM times
  * nearer than the home view, layers 1 to UPTO (0: all), framed to the part
  * (VIEW=part) or to the plate (VIEW=plate).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_gcode.h"
+#include "gs_par.h"
 #include "gs_plan.h"
 
 #include <stdio.h>
@@ -72,11 +75,11 @@ int main(int argc, char **argv)
     char err[160];
     const char *driver = arg(argc, argv, "DRIVER"), *profile = arg(argc, argv, "PROFILE");
     FILE *out;
-    int check, rc = 1;
+    int check, rc = 1, tasks = gs_par_cores();
     if (argc < 3 || !driver) {
         fprintf(stderr, "usage: openmake-slice in.stl out.gcode DRIVER=driver.om [PROFILE=profile.om] [LAYER=0.2] [LINE=0.4]\n"
-                        "       [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=3] [HOTEND=200] [BED=60] [PREVIEW=out.ppm] [SIZE=800x600]\n"
-                        "       [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
+                        "       [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=3] [HOTEND=200] [BED=60] [TASKS=cores] [PREVIEW=out.ppm]\n"
+                        "       [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
         return 2;
     }
     gp_defaults(&po);
@@ -87,6 +90,9 @@ int main(int argc, char **argv)
     whole(argc, argv, "WALLS", &po.walls);
     whole(argc, argv, "SKINS", &po.skins);
     whole(argc, argv, "BRIM", &po.brim);
+    whole(argc, argv, "TASKS", &tasks);
+    if (tasks < 1) tasks = 1;
+    if (tasks > 64) tasks = 64;
     num(argc, argv, "HOTEND", &go.hotend);
     num(argc, argv, "BED", &go.bed);
     po.layer_h = gl_height(po.layer_h);
@@ -104,10 +110,12 @@ int main(int argc, char **argv)
     gs_mesh_repair(&part);
     gp_place(&part, m.area[0], m.area[1]);
     gt_init(&path);
-    if (gp_part(&path, &part, &po)) {
+    if (tasks > gp_layers(&part, &po)) tasks = gp_layers(&part, &po) > 1 ? gp_layers(&part, &po) : 1; /* as gp_part_par does */
+    if (gp_part_par(&path, &part, &po, tasks)) {
         fprintf(stderr, "openmake-slice: out of memory\n");
         goto done;
     }
+    printf("%d layers made on %d task%s\n", path.nlayers, tasks, tasks == 1 ? "" : "s");
     /* The machine first: a job it cannot do is not written. Speeds are
      * held to the machine's as they are written, so never too fast. */
     gc_job(&path, &m, &go, &job);
