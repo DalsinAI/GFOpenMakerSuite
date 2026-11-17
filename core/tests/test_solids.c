@@ -1,5 +1,5 @@
 /* The bench's other solids in C (gs_model.h): sphere, cone, torus, wedge
- * and slot. Each closed, its outside out, the size asked for, and the
+ * and slot, and the hole tools (bolt circle, hole row, counterbore). Each closed, its outside out, the size asked for, and the
  * volume near the true one for its number of sides.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_model.h"
@@ -88,6 +88,39 @@ int main(void)
                gm_torus(&m, 0, 0, 0, 3, 4, 28, 14) == -1 && gm_wedge(&m, 0, 0, 0, 0, 1, 1) == -1 &&
                gm_slot(&m, 0, 0, 0, 5, 5, 0, 20) == -1,
            "no size, or a tube wider than its ring, is refused");
+    {
+        /* The hole tools: drills to cut from a part, each closed and outside out. */
+        gs_mesh blk = {0}, cut = {0};
+        float rod = 28.f / 2.f * 9.f * sinf(2.f * pi / 28.f); /* a 28-sided r 3 drill's end */
+        expect(gm_bolt_circle(&m, 50, 40, -4, 28, 6, 30, 4) == 0, "a bolt circle");
+        check(&m, "bolt circle", 4 * rod * 28, 0.001f);
+        expect(box_is(&m, 32, 22, -4, 68, 58, 24), "bolt circle: 4 on a 30 mm circle about 50, 40");
+        expect(gm_bolt_circle(&m, 0, 0, 0, 10, 6, 10, 6) == -1, "bolt circle: holes that overlap are refused");
+        expect(gm_hole_row(&m, 50, 40, -4, 28, 6, 10, 3) == 0, "a hole row");
+        check(&m, "hole row", 3 * rod * 28, 0.001f);
+        expect(box_is(&m, 37, 37, -4, 63, 43, 24), "hole row: 3 along X, 10 apart, about 50, 40");
+        expect(gm_hole_row(&m, 0, 0, 0, 10, 6, 5, 3) == -1, "hole row: a pitch under the drill is refused");
+        expect(gm_counterbore(&m, 50, 40, -4, 28, 6, 11, 5) == 0, "a counterbore");
+        check(&m, "counterbore", (23 * 9.f + 5 * 30.25f) * 16.f * sinf(2.f * pi / 32.f), 0.001f);
+        expect(box_is(&m, 44.5f, 34.5f, -4, 55.5f, 45.5f, 24), "counterbore: the bore 11 wide at the top");
+        expect(gm_counterbore(&m, 0, 0, 0, 10, 6, 6, 3) == -1 && gm_counterbore(&m, 0, 0, 0, 10, 6, 11, 10) == -1,
+               "counterbore: as narrow as the drill, or as deep as it is long, is refused");
+        expect(gm_bolt_circle(&m, 0, 0, 0, 10, 0, 30, 4) == -1 && gm_hole_row(&m, 0, 0, 0, 0, 6, 10, 3) == -1 &&
+                   gm_bolt_circle(&m, 0, 0, 0, 10, 6, 30, 0) == -1 && gm_hole_row(&m, 0, 0, 0, 10, 6, 10, 0) == -1,
+               "no drill, no length or no holes is refused");
+        /* Cut from a plate 20 thick: the holes come out of it, closed. */
+        gm_cube(&blk, 20, 10, 0, 60, 60, 20);
+        gm_counterbore(&m, 50, 40, -4, 24.4f, 6, 11, 5.4f); /* the bore from 15 to just over the top */
+        expect(gm_subtract(&cut, &blk, &m) == 0 && gm_open_edges(&cut) == 0 &&
+                   near(volume(&cut), 72000.f - (15 * 9.f + 5 * 30.25f) * 16.f * sinf(2.f * pi / 32.f), 2.f),
+               "a counterbore cut from a plate takes the drill and the bore");
+        gm_bolt_circle(&m, 50, 40, -4, 28, 6, 30, 4);
+        expect(gm_subtract(&cut, &blk, &m) == 0 && gm_open_edges(&cut) == 0 &&
+                   near(volume(&cut), 72000.f - 4 * rod * 20, 2.f),
+               "a bolt circle cut from a plate takes four holes");
+        gs_mesh_free(&blk);
+        gs_mesh_free(&cut);
+    }
     gs_mesh_free(&m);
     if (failed) {
         printf("%d failed\n", failed);
