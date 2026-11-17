@@ -8,6 +8,7 @@
  * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "burn_job.h"
+#include "burn_rexx.h"
 #include "burn_ui.h"
 #include "burn_image.h"
 #include "burn_material.h"
@@ -52,7 +53,35 @@ static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static omv_gpu gpu;
 
+/* ARexx: the port OPENMAKEBURN.1, and the command table in burn_rexx.c. */
+static gb_rexx rexx;
+static omr_port *rexx_port;
+
 static void hook_shifts(olui *ui);
+
+static void rexx_activate(void *win)
+{
+    WindowToFront((struct Window *)win);
+    ActivateWindow((struct Window *)win);
+}
+
+static void rexx_hide(void *win) { WindowToBack((struct Window *)win); }
+
+static void rexx_sync(olui *ui)
+{
+    char err[160];
+    snprintf(svg_path, sizeof svg_path, "%s", rexx.file);
+    if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), svg_path);
+    burn_ui_kind(ui, svg_path);
+    if (have_doc) {
+        err[0] = 0;
+        if (burn_ui_layers(ui, &doc, &opts, err, (int)sizeof err)) omv_say(ui, err);
+        else hook_shifts(ui);
+        if (have_image && olui_find(ui, "layer-0-name")) olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
+    }
+    if (olui_find(ui, "constant")) olui_set_checked(ui, olui_find(ui, "constant"), opts.constant);
+    olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
 
 static void read_opts(olui *ui)
 {
@@ -314,13 +343,12 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
 static void on_frame(olui *ui, const olui_event *ev, void *userdata)
 {
     om_machine m;
-    gt_path fr;
     char pathbuf[256], err[160], status[180];
     gc_stats st;
     (void)ev;
     (void)userdata;
-    if (!have_path && preview_job(ui, &m, err, (int)sizeof err)) {
-        omv_say(ui, err);
+    if (!svg_path[0]) {
+        omv_say(ui, "Open a drawing first");
         return;
     }
     if (laser(ui, &m, err, (int)sizeof err)) {
@@ -328,17 +356,13 @@ static void on_frame(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (!ask_file(ui, "Save framing G-code", TRUE, "#?.gcode", pathbuf, (int)sizeof pathbuf)) return;
-    gt_init(&fr);
     read_opts(ui);
     memset(&st, 0, sizeof st);
-    if (burn_frame_path(&fr, &path) || burn_write_path(&fr, NULL, pathbuf, &m, &opts, &st, err, (int)sizeof err)) {
-        omv_say(ui, err);
-        gt_free(&fr);
-        return;
+    if (burn_write_frame(svg_path, pathbuf, &m, &opts, &st, err, (int)sizeof err)) omv_say(ui, err);
+    else {
+        burn_ui_status(status, (int)sizeof status, m.name, st.moves, st.seconds);
+        omv_say(ui, status);
     }
-    burn_ui_status(status, (int)sizeof status, m.name, st.moves, st.seconds);
-    omv_say(ui, status);
-    gt_free(&fr);
 }
 
 int main(void)
@@ -393,9 +417,45 @@ int main(void)
     if (stocks.skipped) omv_say(ui, stocks.why);
     olui_amiga_layout(a);
     if (lasers.skipped) omv_say(ui, lasers.why);
+    /* ARexx: Wait() on the window and OPENMAKEBURN.1 together. */
+    gb_rexx_init(&rexx);
+    rexx.doc = &doc;
+    rexx.pic = &pic;
+    rexx.have_doc = &have_doc;
+    rexx.have_image = &have_image;
+    rexx.path = &path;
+    rexx.have_path = &have_path;
+    rexx.opts = &opts;
+    rexx.store = layers;
+    rexx.store_cap = 64;
+    rexx.version = "OpenMakeBurn 0.1.0";
+    rexx.activate = rexx_activate;
+    rexx.hide = rexx_hide;
+    rexx.win = w;
+    rexx.ui = ui;
+    snprintf(rexx.file, sizeof rexx.file, "%s", svg_path);
+    rexx_port = omr_open(GB_REXX_PORT, rexx.version);
+    if (rexx_port) {
+        rexx.port_name = omr_name(rexx_port);
+        omr_attach(rexx_port, gb_rexx_verbs(), gb_rexx_nverbs(), &rexx);
+    }
     for (;;) {
         int r;
-        WaitPort(w->UserPort);
+        ULONG mask = 1UL << w->UserPort->mp_SigBit, got, rmask = omr_mask(rexx_port);
+        got = Wait(mask | rmask);
+        if (rmask && (got & rmask)) {
+            omr_cmd *cmd;
+            char why[160];
+            snprintf(rexx.file, sizeof rexx.file, "%s", svg_path);
+            read_opts(ui);
+            rexx.have_machine = laser(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gb_rexx_verbs(), gb_rexx_nverbs(), &rexx);
+            strncpy(svg_path, rexx.file, sizeof svg_path - 1);
+            svg_path[sizeof svg_path - 1] = 0;
+            rexx_sync(ui);
+            if (rexx.quit) goto done;
+        }
+        if (!(got & mask)) continue;
         while ((msg = (struct IntuiMessage *)GetMsg(w->UserPort))) {
             WORD mx = msg->MouseX, my = msg->MouseY;
             ULONG cls = msg->Class;
@@ -428,6 +488,7 @@ int main(void)
         olui_amiga_draw(a);
     }
 done:
+    omr_close(rexx_port);
     olui_amiga_free(a);
     CloseWindow(w);
     burn_materials_free(&stocks);

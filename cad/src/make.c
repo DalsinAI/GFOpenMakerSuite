@@ -18,6 +18,7 @@
 #include "gs_par.h"
 #include "gs_plan.h"
 #include "gs_settings.h"
+#include "make_rexx.h"
 #include "make_ui.h"
 #include "omview_gpu.h"
 #include "omview_machines.h"
@@ -60,6 +61,18 @@ static int gpu_on, on_chip, draw_grid, presented;
 static gs_v pick_at; /* where picked was clicked, on the part */
 static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip;
 static ge_steps *steps;
+
+/* ARexx: the port GFOPENMAKE.1, and the command table in make_rexx.c. */
+static gm_rexx rexx;
+static omr_port *rexx_port;
+
+static void rexx_activate(void *win)
+{
+    WindowToFront((struct Window *)win);
+    ActivateWindow((struct Window *)win);
+}
+
+static void rexx_hide(void *win) { WindowToBack((struct Window *)win); }
 static char stl_path[256] = "RAM:hole.stl";
 /* The Layers group: the height, whether a layer is shown, which, and its walls. */
 static float layer_h = 0.2f;
@@ -1235,9 +1248,42 @@ int main(int argc, char **argv)
     refresh(ui);
     if (printers.skipped) say(ui, printers.why);
     else if (printers.n) on_machine(ui, NULL, NULL); /* the settings held to the first printer */
+    /* ARexx: Wait() on the window and GFOPENMAKE.1 together. */
+    gm_rexx_init(&rexx);
+    rexx.parts = &parts;
+    rexx.steps = steps;
+    rexx.version = "GFOpenMake 0.1.0";
+    rexx.activate = rexx_activate;
+    rexx.hide = rexx_hide;
+    rexx.win = w;
+    rexx.ui = ui;
+    snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
+    rexx.face = picked;
+    rexx_port = omr_open(GM_REXX_PORT, rexx.version);
+    if (rexx_port) {
+        rexx.port_name = omr_name(rexx_port);
+        omr_attach(rexx_port, gm_rexx_verbs(), gm_rexx_nverbs(), &rexx);
+    }
     for (;;) {
         int r, lx, ly;
-        WaitPort(w->UserPort);
+        ULONG mask = 1UL << w->UserPort->mp_SigBit, got, rmask = omr_mask(rexx_port);
+        got = Wait(mask | rmask);
+        if (rmask && (got & rmask)) {
+            omr_cmd *cmd;
+            char why[160];
+            rexx.face = picked;
+            snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
+            settings(ui, &rexx.set);
+            rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gm_rexx_verbs(), gm_rexx_nverbs(), &rexx);
+            omv_settings_show(ui, &rexx.set);
+            picked = rexx.face;
+            strncpy(stl_path, rexx.file, sizeof stl_path - 1);
+            stl_path[sizeof stl_path - 1] = 0;
+            refresh(ui);
+            if (rexx.quit) goto done;
+        }
+        if (!(got & mask)) continue;
         while ((m = (struct IntuiMessage *)GetMsg(w->UserPort))) {
             WORD mx = m->MouseX, my = m->MouseY;
             ULONG cls = m->Class;
@@ -1322,6 +1368,7 @@ int main(int argc, char **argv)
         }
     }
 done:
+    omr_close(rexx_port);
     olui_amiga_free(a);
     CloseWindow(w);
     ge_steps_free(steps);
