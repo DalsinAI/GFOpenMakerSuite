@@ -75,11 +75,18 @@ int main(void)
     {
         char line[160];
         omv_slice_status(line, (int)sizeof line, 130, 161919, 5160.f, 5610.f, 0);
-        expect(!strcmp(line, "Sliced: 130 layers, 161919 moves, about 1 h 26 min, 5.61 m of filament."),
+        expect(!strcmp(line, "Sliced: 130 layers, 161919 moves, 1 h 26 min, 5.61 m filament."),
                "omv_slice_status, all the layers shown");
         omv_slice_status(line, (int)sizeof line, 130, 161919, 5160.f, 5610.f, 40);
-        expect(!strcmp(line, "Sliced: 130 layers, 161919 moves, about 1 h 26 min, 5.61 m of filament. Layers 1 to 40."),
+        expect(!strcmp(line, "Sliced: layers 1 to 40 of 130, 161919 moves, 1 h 26 min, 5.61 m filament."),
                "and layers 1 to 40");
+        omv_slice_status(line, (int)sizeof line, 100, 42090, 1200.f, 1170.f, 50);
+        expect(!strcmp(line, "Sliced: layers 1 to 50 of 100, 42090 moves, 20 min, 1.17 m filament."),
+               "under an hour, minutes only");
+        /* The status line is 624 px (640 less the padding): 78 characters
+         * of Topaz's 8 px, 86 at the host's 7.2. A long print still fits. */
+        omv_slice_status(line, (int)sizeof line, 1000, 999999, 99.f * 3600.f + 59.f * 60.f, 99990.f, 1000);
+        expect(strlen(line) <= 78, "a long print's status fits the line, 78 characters");
         printf("%s\n", line);
     }
 
