@@ -21,6 +21,7 @@ void burn_defaults(burn_opts *o)
     o->s100 = 1000.f;
     o->interval = 0.2f;
     o->cuts_last = 1;
+    o->tabw = 1.f;
 }
 
 
@@ -234,6 +235,21 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen)
                 return -1;
             }
             L->set |= BURN_SET_KERF;
+        } else if (parse_key(buf, "tabs", &rest) || parse_key(buf, "TABS", &rest)) {
+            long n = strtol(rest, &end, 10);
+            if (end == rest || *end || n < 0 || n > 32) {
+                snprintf(err, (size_t)errlen, "layer=: tabs is a whole number, 0 to 32");
+                return -1;
+            }
+            L->tabs = (int)n;
+            L->set |= BURN_SET_TABS;
+        } else if (parse_key(buf, "tabw", &rest) || parse_key(buf, "TABW", &rest)) {
+            L->tabw = strtof(rest, &end);
+            if (end == rest || *end || L->tabw < 0.f) {
+                snprintf(err, (size_t)errlen, "layer=: tabw is a width in mm, 0 or more");
+                return -1;
+            }
+            L->set |= BURN_SET_TABW;
         } else {
             snprintf(err, (size_t)errlen, "%s: no such setting", buf);
             return -1;
@@ -255,6 +271,8 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
     out->mode = o->mode;
     out->interval = interval_of(o->interval);
     out->kerf = o->kerf > 0.f ? o->kerf : 0.f;
+    out->tabs = o->tabs > 0 ? o->tabs : 0;
+    out->tabw = o->tabw > 0.f ? o->tabw : 1.f;
     if (!d || L < 0 || L >= d->nlayer) return;
     out->colour = d->layer[L].colour;
     out->index = L + 1;
@@ -271,6 +289,8 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
         if (s->set & BURN_SET_MODE) out->mode = s->mode;
         if (s->set & BURN_SET_INTERVAL) out->interval = interval_of(s->interval);
         if (s->set & BURN_SET_KERF) out->kerf = s->kerf > 0.f ? s->kerf : 0.f;
+        if (s->set & BURN_SET_TABS) out->tabs = s->tabs > 0 ? s->tabs : 0;
+        if (s->set & BURN_SET_TABW) out->tabw = s->tabw > 0.f ? s->tabw : 1.f;
     }
 }
 
@@ -518,46 +538,79 @@ static int add_offset(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc
 }
 
 
+/* One closed cut, with holding tabs if the layer asks for them. Shared
+ * geometry is gl_tabs in openmakepath. 0, -1, or -2 if the tabs do not fit. */
+static int add_closed_loop(gt_path *p, float **spd, int *nspd, int *cap, const gl_loop *l, const burn_layer *ly)
+{
+    int start = p->n, i, rc;
+    gl_loops cuts;
+    if (ly->tabs <= 0 || ly->tabw <= 0.f) {
+        if (gt_loop(p, GT_CUT, l, 0.f, ly->power)) return -1;
+        if (spd && *spd) {
+            if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) return -1;
+        }
+        return 0;
+    }
+    memset(&cuts, 0, sizeof cuts);
+    rc = gl_tabs(l, ly->tabs, ly->tabw, &cuts);
+    if (rc) {
+        gl_loops_free(&cuts);
+        return rc;
+    }
+    for (i = 0; i < cuts.n; i++) {
+        if (cuts.l[i].n < 2) continue;
+        if (gt_loop(p, GT_CUT, &cuts.l[i], 0.f, ly->power)) {
+            gl_loops_free(&cuts);
+            return -1;
+        }
+    }
+    gl_loops_free(&cuts);
+    if (spd && *spd) {
+        if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) return -1;
+    }
+    return 0;
+}
+
 /* Closed cuts of the layer, grown by half the kerf (holes shrink), then
- * any open paths unshifted. Shared geometry is gl_inset in openmakepath. */
+ * holding tabs if asked for, then any open paths unshifted. Shared
+ * geometry is gl_inset and gl_tabs in openmakepath. 0, -1, or -2. */
 static int add_line(gt_path *p, float **spd, int *nspd, int *cap, const gv_doc *d, const burn_layer *ly)
 {
-    int i, start;
-    if (ly->kerf > 0.f) {
+    int i, rc;
+    if (ly->tabs > 0 && ly->tabw <= 0.f) return -3;
+    if (ly->kerf > 0.f || (ly->tabs > 0 && ly->tabw > 0.f)) {
         gl_loops region, cut;
         memset(&cut, 0, sizeof cut);
         if (loops_of(d, ly->colour, &region)) return -1;
-        face_even_odd(&region);
-        if (region.n) {
-            gl_loops united;
-            memset(&united, 0, sizeof united);
-            if (gl_union(&region, &united)) {
+        if (ly->kerf > 0.f) {
+            face_even_odd(&region);
+            if (region.n) {
+                gl_loops united;
+                memset(&united, 0, sizeof united);
+                if (gl_union(&region, &united)) {
+                    gl_loops_free(&region);
+                    return -1;
+                }
                 gl_loops_free(&region);
-                return -1;
-            }
-            gl_loops_free(&region);
-            if (gl_inset(&united, -0.5f * ly->kerf, &cut)) {
+                if (gl_inset(&united, -0.5f * ly->kerf, &cut)) {
+                    gl_loops_free(&united);
+                    return -1;
+                }
                 gl_loops_free(&united);
-                return -1;
+            } else
+                gl_loops_free(&region);
+        } else {
+            cut = region;
+        }
+        for (i = 0; i < cut.n; i++) {
+            if (!cut.l[i].closed || cut.l[i].n < 3) continue;
+            rc = add_closed_loop(p, spd, nspd, cap, &cut.l[i], ly);
+            if (rc) {
+                gl_loops_free(&cut);
+                return rc;
             }
-            gl_loops_free(&united);
-            start = p->n;
-            for (i = 0; i < cut.n; i++) {
-                if (!cut.l[i].closed || cut.l[i].n < 3) continue;
-                if (gt_loop(p, GT_CUT, &cut.l[i], 0.f, ly->power)) {
-                    gl_loops_free(&cut);
-                    return -1;
-                }
-            }
-            if (spd && *spd) {
-                if (grow_speed(spd, cap, p->n) || tag_speeds(*spd, nspd, p, start, ly->speed)) {
-                    gl_loops_free(&cut);
-                    return -1;
-                }
-            }
-            gl_loops_free(&cut);
-        } else
-            gl_loops_free(&region);
+        }
+        gl_loops_free(&cut);
         for (i = 0; i < d->n; i++) {
             if (gv_path_colour(&d->p[i]) != ly->colour || d->p[i].closed) continue;
             if (add_path(p, spd, nspd, cap, &d->p[i], ly->power, ly->speed)) return -1;
@@ -647,10 +700,13 @@ int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap)
     return 0;
 }
 
+static char path_why[160];
+
 int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
 {
     float *spd = NULL;
-    int pass, L, nspd = 0, cap = 0;
+    int pass, L, nspd = 0, cap = 0, rc;
+    path_why[0] = 0;
     gt_free(p);
     gt_init(p);
     if (speed) *speed = NULL;
@@ -690,7 +746,12 @@ int burn_path(gt_path *p, float **speed, const gv_doc *d, const burn_opts *o)
                     }
                     continue;
                 }
-                if (add_line(p, speed ? &spd : NULL, &nspd, &cap, d, &ly)) {
+                rc = add_line(p, speed ? &spd : NULL, &nspd, &cap, d, &ly);
+                if (rc) {
+                    if (rc == -2)
+                        snprintf(path_why, sizeof path_why, "tabs do not fit this cut");
+                    else if (rc == -3)
+                        snprintf(path_why, sizeof path_why, "tabw is a width in mm, more than 0");
                     free(spd);
                     if (speed) *speed = NULL;
                     gt_free(p);
@@ -786,7 +847,7 @@ int burn_write(const char *drawing, const char *gcode, const om_machine *m, cons
         return -1;
     }
     if (burn_path(&p, &speeds, &d, o)) {
-        snprintf(err, (size_t)errlen, "out of memory");
+        snprintf(err, (size_t)errlen, "%s", path_why[0] ? path_why : "out of memory");
         gv_doc_free(&d);
         gt_free(&p);
         return -1;

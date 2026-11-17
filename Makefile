@@ -16,7 +16,7 @@ PLAN = core/src/plan.c core/src/fill.c core/src/inset.c core/src/union.c core/sr
 SL_JOB = slicer/src/sl_job.c slicer/src/sl_args.c $(PLAN) core/src/plan_par.c core/src/par_posix.c \
 	core/src/gcode.c core/src/settings.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c
 
-all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn
+all: $(BUILD)/gfopenslicer $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -223,6 +223,14 @@ $(BUILD)/test_vec_lib: core/tests/test_vec_lib.c core/src/vec.c core/src/dxf.c $
 	python3 core/library/gen-library.py $(VEC_LIB) --check
 	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_vec_lib.c core/src/vec.c core/src/dxf.c -lm
 
+# A GFOpenMakerWorkshop project (openmakeproject.library).
+$(BUILD)/test_project: core/tests/test_project.c core/src/project.c core/include/gs_project.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_project.c core/src/project.c
+
+PROJ_LIB = core/library/openmakeproject_lib.sfd
+$(BUILD)/test_project_lib: core/tests/test_project_lib.c core/src/project.c $(PROJ_LIB) core/library/gen-library.py core/library/omlib.h | $(BUILD)
+	python3 core/library/gen-library.py $(PROJ_LIB) --check
+	$(CC) $(CFLAGS) $(WARN) -DOM_LIB_HOST -Icore/include -Icore/library -o $@ core/tests/test_project_lib.c core/src/project.c
 
 # ARexx parser, dispatch, and the host stub for a port and a client
 # (openmakerexx.library). The Amiga port is core/src/rexx_amiga.c.
@@ -238,7 +246,7 @@ $(BUILD)/test_rexx_lib: core/tests/test_rexx_lib.c core/src/rexx.c $(REXX_LIB) c
 $(BUILD)/test_runtime: core/tests/test_runtime.c core/library/runtime.c core/library/runtime.h | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -DOM_RT_HOST -o $@ core/tests/test_runtime.c core/library/runtime.c -lm
 
-test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/gfopenslicer
+test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_parts $(BUILD)/test_gpu $(BUILD)/test_edit $(BUILD)/test_make_rexx $(BUILD)/test_layer $(BUILD)/test_make_ui $(BUILD)/test_slicer_ui $(BUILD)/test_sl_job $(BUILD)/test_view_ui $(BUILD)/test_view_gpu $(BUILD)/test_machine_ui $(BUILD)/test_machine $(BUILD)/test_runtime $(BUILD)/test_machine_lib $(BUILD)/test_path_lib $(BUILD)/test_mesh_lib $(BUILD)/test_gcode_lib $(BUILD)/test_view_lib $(BUILD)/test_task_lib $(BUILD)/test_vec $(BUILD)/test_vec_lib $(BUILD)/test_project $(BUILD)/test_project_lib $(BUILD)/test_rexx $(BUILD)/test_rexx_lib $(BUILD)/test_dxf $(BUILD)/test_toolpath $(BUILD)/test_inset $(BUILD)/test_fill $(BUILD)/test_gcode $(BUILD)/test_plan $(BUILD)/test_plan_par $(BUILD)/test_plan_one $(BUILD)/test_toolpath_paint $(BUILD)/test_settings $(BUILD)/test_settings_ui $(BUILD)/test_sl_args $(BUILD)/test_profiles $(BUILD)/test_burn $(BUILD)/test_burn_ui $(BUILD)/openmake-slice $(BUILD)/openmake-burn $(BUILD)/gfopenslicer
 	$(BUILD)/test_stl
 	$(BUILD)/test_model
 	$(BUILD)/test_solids
@@ -263,6 +271,8 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	$(BUILD)/test_task_lib
 	$(BUILD)/test_vec
 	$(BUILD)/test_vec_lib
+	$(BUILD)/test_project
+	$(BUILD)/test_project_lib
 	$(BUILD)/test_rexx
 	$(BUILD)/test_rexx_lib
 	$(BUILD)/test_dxf
@@ -387,6 +397,12 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-kerf-off.gcode kerf=0.2 \
 	    2> $(BUILD)/burn-kerf-off.txt
 	grep -q 'cannot burn this' $(BUILD)/burn-kerf-off.txt && test ! -e $(BUILD)/burn-kerf-off.gcode
+	$(BUILD)/openmake-burn burn/tests/data/square-10mm-at-5.svg $(BUILD)/burn-tabs.gcode tabs=4 tabw=1 kerf=0.2 > /dev/null
+	grep -q 'X4.900' $(BUILD)/burn-tabs.gcode && grep -q 'X15.100' $(BUILD)/burn-tabs.gcode && \
+	    test $$(grep -c '^G0 ' $(BUILD)/burn-tabs.gcode) -ge 4
+	! $(BUILD)/openmake-burn core/tests/data/rect-10mm.svg $(BUILD)/burn-tabs-fit.gcode tabs=4 tabw=20 \
+	    2> $(BUILD)/burn-tabs-fit.txt
+	grep -q 'tabs do not fit' $(BUILD)/burn-tabs-fit.txt && test ! -e $(BUILD)/burn-tabs-fit.gcode
 	@echo "openmake-burn command ok"
 
 preview: $(BUILD)/preview $(BUILD)/make_preview $(BUILD)/burn_preview

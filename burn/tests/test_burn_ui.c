@@ -146,13 +146,23 @@ int main(void)
                 expect(olui_box(ui, olui_find(ui, "layer-0-kerf"), &kerf) && inside(&kerf, w, h) &&
                            kerf.x >= boxset.x && kerf.x + kerf.w <= boxset.x + boxset.w,
                        "the kerf spinner stays inside the settings box");
+                {
+                    olui_rect tabs, tabw;
+                    expect(olui_box(ui, olui_find(ui, "layer-0-tabs"), &tabs) && inside(&tabs, w, h) &&
+                               tabs.x >= boxset.x && tabs.x + tabs.w <= boxset.x + boxset.w,
+                           "the tabs spinner stays inside the settings box");
+                    expect(olui_box(ui, olui_find(ui, "layer-0-tabw"), &tabw) && inside(&tabw, w, h) &&
+                               tabw.x >= boxset.x && tabw.x + tabw.w <= boxset.x + boxset.w,
+                           "the tab width spinner stays inside the settings box");
+                }
             }
         }
         expect(omv_number(ui, "layer-0-power") == 50.f && omv_number(ui, "layer-0-speed") == 20.f &&
                    omv_number(ui, "layer-0-passes") == 1.f && olui_get_checked(olui_find(ui, "layer-0-on")) &&
                    olui_select_index(olui_find(ui, "layer-0-mode")) == 0 && omv_number(ui, "layer-0-interval") == 0.2f &&
-                   omv_number(ui, "layer-0-kerf") == 0.f,
-               "defaults in the list: 50%, 20 mm/s, one pass, on, line, 0.2 mm gap, no kerf");
+                   omv_number(ui, "layer-0-kerf") == 0.f && omv_number(ui, "layer-0-tabs") == 0.f &&
+                   omv_number(ui, "layer-0-tabw") == 1.f,
+               "defaults in the list: 50%, 20 mm/s, one pass, on, line, 0.2 mm gap, no kerf, no tabs, 1 mm tab width");
         expect(!strcmp(olui_get_text(olui_find(ui, "layer-0-name")), "#ff0000") &&
                    !strcmp(olui_get_text(olui_find(ui, "layer-1-name")), "#0000ff"),
                "red then blue");
@@ -163,12 +173,15 @@ int main(void)
     olui_select_set(ui, olui_find(ui, "layer-0-mode"), 1);
     olui_set_number(ui, olui_find(ui, "layer-0-interval"), 10); /* 0.10 with two decimals */
     olui_set_number(ui, olui_find(ui, "layer-1-kerf"), 20); /* 0.20 with two decimals */
+    olui_set_number(ui, olui_find(ui, "layer-1-tabs"), 4);
+    olui_set_number(ui, olui_find(ui, "layer-1-tabw"), 150); /* 1.50 with two decimals */
     burn_ui_read(ui, &o, store, 8);
     expect(o.nlayer == 2 && o.constant == 1 && store[0].power == 80.f && store[1].speed == 15.f &&
                store[0].colour == 0xff0000u && store[1].index == 2 && store[0].mode == BURN_FILL &&
                store[0].interval == 0.1f && store[1].mode == BURN_LINE && store[1].kerf == 0.2f &&
-               (store[1].set & BURN_SET_KERF),
-           "the list is read back, including M3, fill and kerf");
+               (store[1].set & BURN_SET_KERF) && store[1].tabs == 4 && store[1].tabw == 1.5f &&
+               (store[1].set & BURN_SET_TABS) && (store[1].set & BURN_SET_TABW),
+           "the list is read back, including M3, fill, kerf and tabs");
     olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
     burn_ui_read(ui, &o, store, 8);
     expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");

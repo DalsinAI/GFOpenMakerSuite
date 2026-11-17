@@ -4,6 +4,7 @@
 #include "burn_material.h"
 #include "burn_image.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +72,7 @@ int main(void)
     expect(load_laser(&m, err, (int)sizeof err) == 0 && m.family == OM_LASER, "Generic Diode 400");
     burn_defaults(&o);
     expect(o.size == (int)sizeof o && o.power == 50.f && o.speed == 20.f && o.passes == 1 && o.s100 == 1000.f &&
-               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1 && o.kerf == 0.f,
+               o.constant == 0 && o.mode == BURN_LINE && o.interval == 0.2f && o.cuts_last == 1 && o.kerf == 0.f && o.tabs == 0 && o.tabw == 1.f,
            "burn_defaults");
 
     gv_doc_init(&d);
@@ -170,6 +171,15 @@ int main(void)
                "parse kerf");
         expect(burn_parse_layer("1,kerf=-0.1", &ly, err, (int)sizeof err) == -1 && strstr(err, "kerf"),
                "a negative kerf is refused");
+        expect(burn_parse_layer("1,tabs=4,tabw=1.5", &ly, err, (int)sizeof err) == 0 && ly.tabs == 4 &&
+                   ly.tabw == 1.5f && (ly.set & BURN_SET_TABS) && (ly.set & BURN_SET_TABW),
+               "parse tabs and tabw");
+        expect(burn_parse_layer("1,tabs=-1", &ly, err, (int)sizeof err) == -1 && strstr(err, "tabs"),
+               "a negative tab count is refused");
+        expect(burn_parse_layer("1,tabs=4.5", &ly, err, (int)sizeof err) == -1 && strstr(err, "tabs"),
+               "a fractional tab count is refused");
+        expect(burn_parse_layer("1,tabw=-0.2", &ly, err, (int)sizeof err) == -1 && strstr(err, "tabw"),
+               "a negative tab width is refused");
         expect(burn_parse_layer("0,power=50", &ly, err, (int)sizeof err) == -1, "layer 0 is not a 1-based index");
         expect(burn_parse_layer("red,power=50", &ly, err, (int)sizeof err) == -1, "a name is not a colour here");
 
@@ -689,10 +699,130 @@ int main(void)
                "kerf leaves an open path in place");
         gv_doc_free(&d);
         gt_free(&p);
+
+        /* Four 1 mm tabs on a 10 mm square: 36 mm of cut, mid-edge gaps, four
+         * travels. Applied after a 0.2 mm kerf the square is 10.2 mm a side. */
+        burn_defaults(&o);
+        o.tabs = 4;
+        o.tabw = 1.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "core/tests/data/rect-10mm.svg", err, (int)sizeof err) == 0, "the square, for tabs");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0, "tabs on the square");
+        {
+            int travels = 0, i, mid = 0;
+            float cut = 0.f;
+            for (i = 0; i < p.n; i++) {
+                if (p.m[i].kind == GT_TRAVEL) travels++;
+                if (i > 0 && p.m[i].kind == GT_CUT) {
+                    float dx = p.m[i].x - p.m[i - 1].x, dy = p.m[i].y - p.m[i - 1].y;
+                    cut += sqrtf(dx * dx + dy * dy);
+                }
+                if (p.m[i].kind == GT_CUT && p.m[i].x > 4.9f && p.m[i].x < 5.1f && p.m[i].y > -0.1f &&
+                    p.m[i].y < 0.1f)
+                    mid++;
+            }
+            expect(travels == 4 && cut > 35.9f && cut < 36.1f && mid == 0,
+                   "four mid-edge tabs leave 36 mm of cut in four pieces");
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        burn_defaults(&o);
+        o.tabs = 4;
+        o.tabw = 1.f;
+        o.kerf = 0.2f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/square-10mm-at-5.svg", err, (int)sizeof err) == 0,
+               "the square on the bed, kerf and tabs");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0, "tabs after kerf");
+        {
+            int travels = 0, i;
+            float cut = 0.f, xmin = 1e9f, xmax = -1e9f;
+            for (i = 0; i < p.n; i++) {
+                if (p.m[i].kind == GT_TRAVEL) travels++;
+                if (i > 0 && p.m[i].kind == GT_CUT) {
+                    float dx = p.m[i].x - p.m[i - 1].x, dy = p.m[i].y - p.m[i - 1].y;
+                    cut += sqrtf(dx * dx + dy * dy);
+                }
+                if (p.m[i].kind == GT_CUT) {
+                    if (p.m[i].x < xmin) xmin = p.m[i].x;
+                    if (p.m[i].x > xmax) xmax = p.m[i].x;
+                }
+            }
+            expect(travels == 4 && cut > 36.7f && cut < 36.9f && xmin > 4.85f && xmin < 4.95f && xmax > 15.05f &&
+                       xmax < 15.15f,
+                   "tabs after kerf: 10.2 mm sides less four 1 mm tabs, still grown by 0.1 mm");
+        }
+        memset(&st, 0, sizeof st);
+        g = NULL;
+        expect(burn_write("burn/tests/data/square-10mm-at-5.svg", "build/tabs-square.gcode", &m, &o, &st, err,
+                          (int)sizeof err) == 0 &&
+                   (g = slurp("build/tabs-square.gcode")) && strstr(g, "G0 ") && strstr(g, "X4.900") &&
+                   strstr(g, "X15.100"),
+               "wrote G-code with tabs after kerf, on the bed");
+        free(g);
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        /* A holed square: the outside and the hole each get four tabs. */
+        burn_defaults(&o);
+        o.tabs = 4;
+        o.tabw = 1.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/square-hole.svg", err, (int)sizeof err) == 0, "the holed square, tabs");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0, "tabs on a hole");
+        {
+            int travels = 0, i;
+            for (i = 0; i < p.n; i++)
+                if (p.m[i].kind == GT_TRAVEL) travels++;
+            expect(travels == 8, "outside and hole each get four tabs");
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        /* Fill and open paths are not tabbed. */
+        burn_defaults(&o);
+        o.mode = BURN_FILL;
+        o.interval = 1.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "core/tests/data/rect-10mm.svg", err, (int)sizeof err) == 0, "the square, for fill");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n > 8, "a fill without tabs");
+        {
+            int nfill = p.n;
+            o.tabs = 4;
+            o.tabw = 1.f;
+            expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == nfill, "fill ignores tabs: the same number of moves");
+        }
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        burn_defaults(&o);
+        o.tabs = 4;
+        o.tabw = 1.f;
+        gv_doc_init(&d);
+        expect(gv_load_svg(&d, "burn/tests/data/open-line.svg", err, (int)sizeof err) == 0, "an open line, tabs set");
+        gt_init(&p);
+        expect(burn_path(&p, NULL, &d, &o) == 0 && p.n == 2 && p.m[1].kind == GT_CUT && p.m[1].x == 10.f,
+               "tabs leave an open path in place");
+        gv_doc_free(&d);
+        gt_free(&p);
+
+        burn_defaults(&o);
+        o.tabs = 4;
+        o.tabw = 20.f;
+        err[0] = 0;
+        expect(burn_write("core/tests/data/rect-10mm.svg", "build/tabs-fit.gcode", &m, &o, NULL, err,
+                          (int)sizeof err) == -1 &&
+                   strstr(err, "tabs do not fit") && !exists("build/tabs-fit.gcode"),
+               "tabs that do not fit are refused");
     }
 
     if (fails) {
-        printf("%d failed\\n", fails);
+        printf("%d failed\n", fails);
         return 1;
     }
     printf("burn ok\n");

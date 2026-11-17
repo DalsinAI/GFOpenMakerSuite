@@ -71,6 +71,16 @@ static int toolpath_case(const gl_loops *walls)
     memset(&ib, 0, sizeof ib);
     expect(gl_inset(walls, 0.6f, &ia) == 0 && GL_Inset(walls, 0.6f, &ib) == 0 && ia.n == 2 && same_loops(&ia, &ib),
            "GL_Inset gives the same loops");
+    {
+        gl_loops ta, tb;
+        memset(&ta, 0, sizeof ta);
+        memset(&tb, 0, sizeof tb);
+        expect(gl_tabs(&walls->l[0], 4, 0.5f, &ta) == 0 && GL_Tabs(&walls->l[0], 4, 0.5f, &tb) == 0 &&
+                   ta.n == 4 && same_loops(&ta, &tb),
+               "GL_Tabs (1.4) gives the same cuts");
+        gl_loops_free(&ta);
+        gl_loops_free(&tb);
+    }
     gt_init(&pa);
     GT_Init(&pb);
     expect(pb.n == 0 && pb.m == NULL && pb.nlayers == 0, "GT_Init");
@@ -104,9 +114,9 @@ static int toolpath_case(const gl_loops *walls)
     i = ia.n;
     gl_loops_free(&ia);
     gl_loops_free(&ib);
-    /* GL_Inset, GT_Init, GT_Layer, a GT_Loop a loop, GT_Add, GT_Fill, three
+    /* GL_Inset, GL_Tabs, GT_Init, GT_Layer, a GT_Loop a loop, GT_Add, GT_Fill, three
      * GT_Length, GT_Bounds, GT_Init, two GT_Append, two GT_Free, GT_FillGrid */
-    return 15 + i;
+    return 16 + i;
 }
 
 /* The holed cube placed on a bed and sliced: the GP_ calls against the C
