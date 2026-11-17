@@ -1,4 +1,4 @@
-==id $Id: openmakemesh_lib.sfd 1.6 (17.11.2026) $
+==id $Id: openmakemesh_lib.sfd 1.7 (17.11.2026) $
 * "openmakemesh.library": OpenMakeCore's meshes (gs.h, gs_model.h): STL
 * in and out, repair, and the solids and booleans of a small CAD. Each
 * call is its C function in snake case (GM_OpenEdges is gm_open_edges);
@@ -11,6 +11,7 @@
 ==public
 ==include <exec/types.h>
 ==include <gs_model.h>
+==include <gs_parts.h>
 int GS_StlLoad(gs_mesh *m, const char *path, char *err, int errlen)(a0,a1,a2,d0)
 void GS_MeshFree(gs_mesh *m)(a0)
 void GS_MeshRepair(gs_mesh *m)(a0)
@@ -35,4 +36,22 @@ int GM_Counterbore(gs_mesh *m, float x, float y, float z, float h, float d, floa
 int GM_Facts(const gs_mesh *m, gs_facts *f)(a0,a1)
 * 1.6: the bench's Extrude: a block, round or slot on the bed, on a part's top, or down from it
 int GM_Extrude(gs_mesh *m, const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h)(a0,a1,d0,d1,d2,d3,d4,d5,d6)
+* 1.7: the bench's parts list (gs_parts.h): up to 24 named parts, each a colour, shown or hidden, one picked
+gs_parts *GS_PartsNew(void)()
+void GS_PartsFree(gs_parts *ps)(a0)
+int GS_PartsCount(const gs_parts *ps)(a0)
+int GS_PartsAdd(gs_parts *ps, gs_mesh *m, const char *name)(a0,a1,a2)
+int GS_PartsRemove(gs_parts *ps, int i)(a0,d0)
+gs_mesh *GS_PartsMesh(gs_parts *ps, int i)(a0,d0)
+const char *GS_PartsName(const gs_parts *ps, int i)(a0,d0)
+int GS_PartsRename(gs_parts *ps, int i, const char *name)(a0,d0,a1)
+int GS_PartsColour(const gs_parts *ps, int i)(a0,d0)
+int GS_PartsSetColour(gs_parts *ps, int i, int colour)(a0,d0,d1)
+unsigned long GS_PartsRgb(int colour)(d0)
+int GS_PartsShown(const gs_parts *ps, int i)(a0,d0)
+int GS_PartsShow(gs_parts *ps, int i, int on)(a0,d0,d1)
+int GS_PartsPicked(const gs_parts *ps)(a0)
+int GS_PartsPick(gs_parts *ps, int i)(a0,d0)
+int GS_PartsScene(const gs_parts *ps, gs_mesh *out)(a0,a1)
+gs_parts *GS_PartsCopy(const gs_parts *ps)(a0)
 ==end

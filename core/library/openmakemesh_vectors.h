@@ -2,6 +2,7 @@
  * The library's side of each call: its registers to the C function. */
 #include "omlib.h"
 #include <gs_model.h>
+#include <gs_parts.h>
 
 static int LIB_GS_StlLoad(REG(a0, gs_mesh *m), REG(a1, const char *path), REG(a2, char *err), REG(d0, int errlen), REG(a6, struct Library *base))
 {
@@ -123,7 +124,109 @@ static int LIB_GM_Extrude(REG(a0, gs_mesh *m), REG(a1, const gs_mesh *part), REG
     return gm_extrude(m, part, kind, op, om_lib_float(x), om_lib_float(y), om_lib_float(w), om_lib_float(d), om_lib_float(h));
 }
 
-#define OPENMAKEMESH_LAST_BIAS 144
+static gs_parts * LIB_GS_PartsNew(REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_new();
+}
+
+static void LIB_GS_PartsFree(REG(a0, gs_parts *ps), REG(a6, struct Library *base))
+{
+    (void)base;
+    gs_parts_free(ps);
+}
+
+static int LIB_GS_PartsCount(REG(a0, const gs_parts *ps), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_count(ps);
+}
+
+static int LIB_GS_PartsAdd(REG(a0, gs_parts *ps), REG(a1, gs_mesh *m), REG(a2, const char *name), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_add(ps, m, name);
+}
+
+static int LIB_GS_PartsRemove(REG(a0, gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_remove(ps, i);
+}
+
+static gs_mesh * LIB_GS_PartsMesh(REG(a0, gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_mesh(ps, i);
+}
+
+static const char * LIB_GS_PartsName(REG(a0, const gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_name(ps, i);
+}
+
+static int LIB_GS_PartsRename(REG(a0, gs_parts *ps), REG(d0, int i), REG(a1, const char *name), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_rename(ps, i, name);
+}
+
+static int LIB_GS_PartsColour(REG(a0, const gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_colour(ps, i);
+}
+
+static int LIB_GS_PartsSetColour(REG(a0, gs_parts *ps), REG(d0, int i), REG(d1, int colour), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_set_colour(ps, i, colour);
+}
+
+static unsigned long LIB_GS_PartsRgb(REG(d0, int colour), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_rgb(colour);
+}
+
+static int LIB_GS_PartsShown(REG(a0, const gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_shown(ps, i);
+}
+
+static int LIB_GS_PartsShow(REG(a0, gs_parts *ps), REG(d0, int i), REG(d1, int on), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_show(ps, i, on);
+}
+
+static int LIB_GS_PartsPicked(REG(a0, const gs_parts *ps), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_picked(ps);
+}
+
+static int LIB_GS_PartsPick(REG(a0, gs_parts *ps), REG(d0, int i), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_pick(ps, i);
+}
+
+static int LIB_GS_PartsScene(REG(a0, const gs_parts *ps), REG(a1, gs_mesh *out), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_scene(ps, out);
+}
+
+static gs_parts * LIB_GS_PartsCopy(REG(a0, const gs_parts *ps), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_parts_copy(ps);
+}
+
+#define OPENMAKEMESH_LAST_BIAS 246
 #define OPENMAKEMESH_VECTORS \
     (APTR)LIB_GS_StlLoad, \
     (APTR)LIB_GS_MeshFree, \
@@ -144,4 +247,21 @@ static int LIB_GM_Extrude(REG(a0, gs_mesh *m), REG(a1, const gs_mesh *part), REG
     (APTR)LIB_GM_HoleRow, \
     (APTR)LIB_GM_Counterbore, \
     (APTR)LIB_GM_Facts, \
-    (APTR)LIB_GM_Extrude
+    (APTR)LIB_GM_Extrude, \
+    (APTR)LIB_GS_PartsNew, \
+    (APTR)LIB_GS_PartsFree, \
+    (APTR)LIB_GS_PartsCount, \
+    (APTR)LIB_GS_PartsAdd, \
+    (APTR)LIB_GS_PartsRemove, \
+    (APTR)LIB_GS_PartsMesh, \
+    (APTR)LIB_GS_PartsName, \
+    (APTR)LIB_GS_PartsRename, \
+    (APTR)LIB_GS_PartsColour, \
+    (APTR)LIB_GS_PartsSetColour, \
+    (APTR)LIB_GS_PartsRgb, \
+    (APTR)LIB_GS_PartsShown, \
+    (APTR)LIB_GS_PartsShow, \
+    (APTR)LIB_GS_PartsPicked, \
+    (APTR)LIB_GS_PartsPick, \
+    (APTR)LIB_GS_PartsScene, \
+    (APTR)LIB_GS_PartsCopy

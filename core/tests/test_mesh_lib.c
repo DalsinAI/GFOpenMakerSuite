@@ -103,6 +103,31 @@ int main(void)
         GS_MeshFree(&e0);
         GS_MeshFree(&e1);
     }
+    {
+        /* 1.7: the parts list, a handle in and out, as gs_parts.h says. */
+        gs_parts *ps = GS_PartsNew(), *cp;
+        gs_mesh a = {0}, sc = {0};
+        int n;
+        gm_cube(&a, 0, 0, 0, 10, 10, 10);
+        n = a.n;
+        expect(ps && GS_PartsCount(ps) == 0 && GS_PartsAdd(ps, &a, " Base ") == 0 && a.n == 0 &&
+                   GS_PartsMesh(ps, 0)->n == n && !strcmp(GS_PartsName(ps, 0), "Base"),
+               "GS_PartsNew, GS_PartsAdd, GS_PartsMesh, GS_PartsName");
+        gm_cube(&a, 20, 0, 0, 5, 5, 5);
+        expect(GS_PartsAdd(ps, &a, NULL) == 1 && GS_PartsRename(ps, 1, "Peg") == 0 &&
+                   GS_PartsSetColour(ps, 1, 5) == 0 && GS_PartsColour(ps, 1) == 5 &&
+                   GS_PartsRgb(5) == gs_parts_rgb(5) && GS_PartsShow(ps, 0, 0) == 0 && GS_PartsShown(ps, 0) == 0,
+               "GS_PartsRename, the colours, show and hide");
+        expect(GS_PartsScene(ps, &sc) == 0 && sc.n == 12 && GS_PartsPick(ps, 0) == 0 && GS_PartsPicked(ps) == 0,
+               "GS_PartsScene has the shown part; GS_PartsPick");
+        cp = GS_PartsCopy(ps);
+        expect(cp && gs_parts_count(cp) == 2 && GS_PartsRemove(ps, 0) == 0 && GS_PartsCount(ps) == 1 &&
+                   gs_parts_count(cp) == 2,
+               "GS_PartsCopy is its own; GS_PartsRemove");
+        GS_PartsFree(cp);
+        GS_PartsFree(ps);
+        GS_MeshFree(&sc);
+    }
     GS_MeshFree(&x[0]);
     GS_MeshFree(&x[1]);
 
@@ -137,8 +162,8 @@ int main(void)
             expect(all[k]->n == 0 && all[k]->t == NULL, "GS_MeshFree");
         }
     }
-    expect(calls == 39, "every call went through the table");
-    if (calls != 39)
+    expect(calls == 60, "every call went through the table");
+    if (calls != 60)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);
