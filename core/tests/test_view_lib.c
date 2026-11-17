@@ -156,6 +156,23 @@ static int gaps_case(const gs_mesh *box, const gs_cam *cam)
     return k;
 }
 
+/* 1.4: the faces in the parts' colours, the CPU's picture and the OpenGPU
+ * vertices. Returns how many calls it made. */
+static int tint_case(const gs_mesh *box, const gs_cam *cam)
+{
+    static unsigned char a[W * H * 3], b[W * H * 3];
+    static uint32_t va[64 * 6], vb[64 * 6];
+    static const gs_tint copper[1] = {{12, 0xb87333}};
+    int na, nb;
+    expect(gs_view_bed_tint(box, cam, copper, 1, a, W, H) == 0 && GS_ViewBedTint(box, cam, copper, 1, b, W, H) == 0 &&
+               !memcmp(a, b, sizeof a),
+           "GS_ViewBedTint, the same picture");
+    na = gs_gpu_vertices_plate_tint(box, cam, W, H, copper, 1, va, 64);
+    nb = GS_GpuVerticesPlateTint(box, cam, W, H, copper, 1, vb, 64);
+    expect(na > 0 && na == nb && !memcmp(va, vb, sizeof(uint32_t) * 6 * (size_t)na), "GS_GpuVerticesPlateTint, the same words");
+    return 2;
+}
+
 int main(void)
 {
     static unsigned char a[W * H * 3], b[W * H * 3];
@@ -214,6 +231,10 @@ int main(void)
     calls = 0;
     k = gaps_case(&box, &cb);
     expect(calls == k, "every 1.3 call went through the table");
+
+    calls = 0;
+    k = tint_case(&box, &cb);
+    expect(calls == k, "every 1.4 call went through the table");
 
     gs_mesh_free(&box);
     if (fails) {

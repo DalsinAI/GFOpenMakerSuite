@@ -45,9 +45,10 @@ static uint32_t argb(int r, int g, int b)
     return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }
 
-static int verts_frame(const gs_mesh *m, const gs_cam *cam, const gs_frame *f, uint32_t *verts, int cap)
+static int verts_frame(const gs_mesh *m, const gs_cam *cam, const gs_frame *f, const gs_tint *tints, int ntints,
+                       uint32_t *verts, int cap)
 {
-    int i, n = 0;
+    int i, n = 0, t = 0, upto = tints && ntints > 0 ? tints[0].n : 0;
     if (!m) return -1;
     for (i = 0; i < m->n; i++) {
         gs_v p[3];
@@ -57,7 +58,10 @@ static int verts_frame(const gs_mesh *m, const gs_cam *cam, const gs_frame *f, u
         p[0] = m->t[i].a;
         p[1] = m->t[i].b;
         p[2] = m->t[i].c;
-        if (gs_view_colour(cam, f->origin, p[0], p[1], p[2], &r, &g, &b)) continue;
+        while (tints && t < ntints && i >= upto && ++t < ntints) upto += tints[t].n;
+        if (tints && t < ntints && i < upto ? gs_view_colour_tint(cam, f->origin, p[0], p[1], p[2], tints[t].rgb, &r, &g, &b)
+                                            : gs_view_colour(cam, f->origin, p[0], p[1], p[2], &r, &g, &b))
+            continue;
         if (n + 3 > cap) return -1;
         colour = argb(r, g, b);
         for (k = 0; k < 3; k++) {
@@ -79,15 +83,21 @@ int gs_gpu_vertices(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t 
     gs_frame f;
     if (!verts || cap < 3 || !cam) return -1;
     if (gs_view_frame(m, cam, w, h, &f)) return -1;
-    return verts_frame(m, cam, &f, verts, cap);
+    return verts_frame(m, cam, &f, NULL, 0, verts, cap);
 }
 
 int gs_gpu_vertices_plate(const gs_mesh *m, const gs_cam *cam, int w, int h, uint32_t *verts, int cap)
 {
+    return gs_gpu_vertices_plate_tint(m, cam, w, h, NULL, 0, verts, cap);
+}
+
+int gs_gpu_vertices_plate_tint(const gs_mesh *m, const gs_cam *cam, int w, int h, const gs_tint *tints, int ntints,
+                               uint32_t *verts, int cap)
+{
     gs_frame f;
     if (!verts || cap < 3 || !cam) return -1;
     if (gs_view_frame_bed(m, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
-    return verts_frame(m, cam, &f, verts, cap);
+    return verts_frame(m, cam, &f, tints, ntints, verts, cap);
 }
 
 static void corner(uint32_t *v, float x, float y, uint32_t colour, uint32_t z)

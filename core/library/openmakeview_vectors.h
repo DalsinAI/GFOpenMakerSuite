@@ -174,7 +174,19 @@ static int LIB_GS_ViewPaint(REG(a0, const char *gcode), REG(d0, int len), REG(a1
     return gs_view_paint(gcode, len, rgb, w, h);
 }
 
-#define OPENMAKEVIEW_LAST_BIAS 192
+static int LIB_GS_ViewBedTint(REG(a0, const gs_mesh *m), REG(a1, const gs_cam *cam), REG(a2, const gs_tint *tints), REG(d0, int ntints), REG(a3, unsigned char *rgb), REG(d1, int w), REG(d2, int h), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_view_bed_tint(m, cam, tints, ntints, rgb, w, h);
+}
+
+static int LIB_GS_GpuVerticesPlateTint(REG(a0, const gs_mesh *m), REG(a1, const gs_cam *cam), REG(d0, int w), REG(d1, int h), REG(a2, const gs_tint *tints), REG(d2, int ntints), REG(a3, uint32_t *verts), REG(d3, int cap), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gs_gpu_vertices_plate_tint(m, cam, w, h, tints, ntints, verts, cap);
+}
+
+#define OPENMAKEVIEW_LAST_BIAS 204
 #define OPENMAKEVIEW_VECTORS \
     (APTR)LIB_GS_CamHome, \
     (APTR)LIB_GS_CamOrbit, \
@@ -203,4 +215,6 @@ static int LIB_GS_ViewPaint(REG(a0, const char *gcode), REG(d0, int len), REG(a1
     (APTR)LIB_GS_ViewMapAt, \
     (APTR)LIB_GS_ViewColourOf, \
     (APTR)LIB_GS_ViewLinesInto, \
-    (APTR)LIB_GS_ViewPaint
+    (APTR)LIB_GS_ViewPaint, \
+    (APTR)LIB_GS_ViewBedTint, \
+    (APTR)LIB_GS_GpuVerticesPlateTint
