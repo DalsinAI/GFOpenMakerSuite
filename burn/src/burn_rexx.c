@@ -746,7 +746,6 @@ static int cmd_frame(void *c, void *g0)
     gb_rexx *g = app(g0);
     const char *file = omr_arg(c, "FILE");
     char err[160];
-    gt_path fr;
     gc_stats st;
     err[0] = 0;
     if (!file) {
@@ -757,19 +756,15 @@ static int cmd_frame(void *c, void *g0)
         omr_set_result(c, "no laser");
         return OMR_ERROR;
     }
-    if ((!g->have_path || !*g->have_path) && build_path(g, err, (int)sizeof err)) {
-        omr_set_result(c, err);
+    if (!has_doc(g) || !g->file[0]) {
+        omr_set_result(c, "Open a drawing first");
         return OMR_ERROR;
     }
-    gt_init(&fr);
     memset(&st, 0, sizeof st);
-    if (burn_frame_path(&fr, g->path) ||
-        burn_write_path(&fr, NULL, file, &g->machine, g->opts, &st, err, (int)sizeof err)) {
+    if (burn_write_frame(g->file, file, &g->machine, g->opts, &st, err, (int)sizeof err)) {
         omr_set_result(c, err[0] ? err : "Could not write there");
-        gt_free(&fr);
         return OMR_ERROR;
     }
-    gt_free(&fr);
     omr_set_result(c, file);
     return OMR_OK;
 }
