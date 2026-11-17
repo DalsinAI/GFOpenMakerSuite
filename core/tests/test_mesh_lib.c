@@ -60,6 +60,24 @@ int main(void)
     expect(GM_Cylinder(&r[1], 0, 0, 0, 1, 1, 2) == gm_cylinder(&r[0], 0, 0, 0, 1, 1, 2), "GM_Cylinder refuses two sides");
     expect(GM_Cylinder(&r[1], 10, 5, -1, 3, 8, 24) == 0 && gm_cylinder(&r[0], 10, 5, -1, 3, 8, 24) == 0, "the rod again");
 
+    /* 1.1: the bench's other solids, the same through the library. */
+    expect(gm_sphere(&x[0], 1, 2, 3, 6, 20, 10) == 0 && GM_Sphere(&x[1], 1, 2, 3, 6, 20, 10) == 0 && same(&x[0], &x[1]),
+           "GM_Sphere, four floats, the sides and rings");
+    expect(gm_cone(&x[0], 1, 2, 3, 6, 9, 20) == 0 && GM_Cone(&x[1], 1, 2, 3, 6, 9, 20) == 0 && same(&x[0], &x[1]),
+           "GM_Cone");
+    expect(gm_torus(&x[0], 1, 2, 3, 8, 2.5f, 20, 12) == 0 && GM_Torus(&x[1], 1, 2, 3, 8, 2.5f, 20, 12) == 0 &&
+               same(&x[0], &x[1]),
+           "GM_Torus, five floats and two counts");
+    expect(gm_wedge(&x[0], -1, 2, 0.5f, 20, 10, 7) == 0 && GM_Wedge(&x[1], -1, 2, 0.5f, 20, 10, 7) == 0 &&
+               same(&x[0], &x[1]),
+           "GM_Wedge, six floats");
+    expect(gm_slot(&x[0], -1, 2, 0.5f, 30, 8, 6, 16) == 0 && GM_Slot(&x[1], -1, 2, 0.5f, 30, 8, 6, 16) == 0 &&
+               same(&x[0], &x[1]),
+           "GM_Slot, six floats and the sides");
+    expect(GM_Torus(&x[1], 0, 0, 0, 2, 3, 20, 12) == -1, "GM_Torus refuses a tube wider than its ring");
+    GS_MeshFree(&x[0]);
+    GS_MeshFree(&x[1]);
+
     expect(gm_union(&u[0], &c[0], &r[0]) == 0 && GM_Union(&u[1], &c[1], &r[1]) == 0 && same(&u[0], &u[1]), "GM_Union");
     expect(gm_subtract(&s[0], &c[0], &r[0]) == 0 && GM_Subtract(&s[1], &c[1], &r[1]) == 0 && same(&s[0], &s[1]),
            "GM_Subtract");
@@ -91,8 +109,8 @@ int main(void)
             expect(all[k]->n == 0 && all[k]->t == NULL, "GS_MeshFree");
         }
     }
-    expect(calls == 21, "every call went through the table");
-    if (calls != 21)
+    expect(calls == 29, "every call went through the table");
+    if (calls != 29)
         printf("calls: %d\n", calls);
     if (fails) {
         printf("%d failed\n", fails);

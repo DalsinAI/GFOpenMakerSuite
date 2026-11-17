@@ -52,3 +52,28 @@ int gm_stl_write(const gs_mesh *m, const char *path)
 {
     return GM_StlWrite(m, path);
 }
+
+int gm_sphere(gs_mesh *m, float x, float y, float z, float r, int seg, int rings)
+{
+    return GM_Sphere(m, x, y, z, r, seg, rings);
+}
+
+int gm_cone(gs_mesh *m, float x, float y, float z, float r, float h, int seg)
+{
+    return GM_Cone(m, x, y, z, r, h, seg);
+}
+
+int gm_torus(gs_mesh *m, float x, float y, float z, float ring, float tube, int seg, int tseg)
+{
+    return GM_Torus(m, x, y, z, ring, tube, seg, tseg);
+}
+
+int gm_wedge(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz)
+{
+    return GM_Wedge(m, x, y, z, sx, sy, sz);
+}
+
+int gm_slot(gs_mesh *m, float x, float y, float z, float sx, float sy, float sz, int seg)
+{
+    return GM_Slot(m, x, y, z, sx, sy, sz, seg);
+}

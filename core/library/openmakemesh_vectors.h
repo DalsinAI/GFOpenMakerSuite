@@ -63,7 +63,37 @@ static int LIB_GM_StlWrite(REG(a0, const gs_mesh *m), REG(a1, const char *path),
     return gm_stl_write(m, path);
 }
 
-#define OPENMAKEMESH_LAST_BIAS 84
+static int LIB_GM_Sphere(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG r), REG(d4, int seg), REG(d5, int rings), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_sphere(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(r), seg, rings);
+}
+
+static int LIB_GM_Cone(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG r), REG(d4, ULONG h), REG(d5, int seg), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_cone(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(r), om_lib_float(h), seg);
+}
+
+static int LIB_GM_Torus(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG ring), REG(d4, ULONG tube), REG(d5, int seg), REG(d6, int tseg), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_torus(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(ring), om_lib_float(tube), seg, tseg);
+}
+
+static int LIB_GM_Wedge(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG sx), REG(d4, ULONG sy), REG(d5, ULONG sz), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_wedge(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(sx), om_lib_float(sy), om_lib_float(sz));
+}
+
+static int LIB_GM_Slot(REG(a0, gs_mesh *m), REG(d0, ULONG x), REG(d1, ULONG y), REG(d2, ULONG z), REG(d3, ULONG sx), REG(d4, ULONG sy), REG(d5, ULONG sz), REG(d6, int seg), REG(a6, struct Library *base))
+{
+    (void)base;
+    return gm_slot(m, om_lib_float(x), om_lib_float(y), om_lib_float(z), om_lib_float(sx), om_lib_float(sy), om_lib_float(sz), seg);
+}
+
+#define OPENMAKEMESH_LAST_BIAS 114
 #define OPENMAKEMESH_VECTORS \
     (APTR)LIB_GS_StlLoad, \
     (APTR)LIB_GS_MeshFree, \
@@ -74,4 +104,9 @@ static int LIB_GM_StlWrite(REG(a0, const gs_mesh *m), REG(a1, const char *path),
     (APTR)LIB_GM_Subtract, \
     (APTR)LIB_GM_Intersect, \
     (APTR)LIB_GM_OpenEdges, \
-    (APTR)LIB_GM_StlWrite
+    (APTR)LIB_GM_StlWrite, \
+    (APTR)LIB_GM_Sphere, \
+    (APTR)LIB_GM_Cone, \
+    (APTR)LIB_GM_Torus, \
+    (APTR)LIB_GM_Wedge, \
+    (APTR)LIB_GM_Slot
