@@ -146,13 +146,15 @@ static void draw_pens(int x, int y, int w, int h)
     vw = w;
     vh = h;
     rebuild_shown();
-    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed_tint(&shown, &cam, tints, ntints, rgb, w, h)) {
+    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(&shown, &cam, rgb, w, h)) {
         free(rgb);
         return;
     }
     if (!has_slice && show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
-    /* Grey goes to the three greys, the walls' blue to the window's fourth
-     * pen, the Workbench blue. */
+    /* The pens keep the way-coloured picture, not the metals: four pens
+     * cannot hold six metals, and a dark metal's faces would go to the
+     * background's pen. Grey goes to the three greys, the walls' blue to
+     * the window's fourth pen, the Workbench blue. */
     at[0] = x;
     at[1] = y;
     omv_pens(rgb, w, h, put_run, at);
