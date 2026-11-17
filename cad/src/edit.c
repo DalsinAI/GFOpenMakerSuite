@@ -242,11 +242,11 @@ int ge_lay_face(gs_mesh *m, int face)
     return 0;
 }
 
-int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y)
+int ge_pick_at(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y, gs_v *at)
 {
     gs_frame f;
     int i, best = -1;
-    float bestz = -1e30f;
+    float bestz = -1e30f, b0 = 0.f, b1 = 0.f, b2 = 0.f;
     float px, py;
     if (!m || !cam || gs_view_frame_bed(m, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
     px = (float)x + 0.5f;
@@ -268,8 +268,50 @@ int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y)
         if (z <= bestz) continue;
         bestz = z;
         best = i;
+        b0 = w0, b1 = w1, b2 = w2;
+    }
+    /* The view is a parallel one, so the screen's weights are the face's. */
+    if (best >= 0 && at) {
+        const gs_tri *t = &m->t[best];
+        at->x = b0 * t->a.x + b1 * t->b.x + b2 * t->c.x;
+        at->y = b0 * t->a.y + b1 * t->b.y + b2 * t->c.y;
+        at->z = b0 * t->a.z + b1 * t->b.z + b2 * t->c.z;
     }
     return best;
+}
+
+int ge_pick(const gs_mesh *m, const gs_cam *cam, int w, int h, int x, int y)
+{
+    return ge_pick_at(m, cam, w, h, x, y, NULL);
+}
+
+int ge_project(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_v p, float *x, float *y)
+{
+    gs_frame f;
+    float z;
+    if (!m || !cam || gs_view_frame_bed(m, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    gs_view_map(&f, cam, p, x, y, &z);
+    return 0;
+}
+
+void ge_measure_line(char *buf, int len, gs_v a, gs_v b)
+{
+    float dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+    snprintf(buf, (size_t)len, "%.1f mm between the two points (X %.1f, Y %.1f, Z %.1f).",
+             (double)sqrtf(dx * dx + dy * dy + dz * dz), (double)fabsf(dx), (double)fabsf(dy), (double)fabsf(dz));
+}
+
+void ge_facts_line(char *buf, int len, const gs_mesh *m)
+{
+    gs_facts f;
+    float cm3;
+    if (!m || !m->n || gm_facts(m, &f)) {
+        snprintf(buf, (size_t)len, "No part to measure.");
+        return;
+    }
+    cm3 = f.volume / 1000.f;
+    snprintf(buf, (size_t)len, "%.*f cm3, %.1f g of PLA. %.1f x %.1f x %.1f mm, %d triangles.", cm3 >= 100.f ? 0 : 2,
+             (double)cm3, (double)(cm3 * 1.24f), (double)f.sx, (double)f.sy, (double)f.sz, f.tris);
 }
 
 void ge_scene_free(ge_scene *s)

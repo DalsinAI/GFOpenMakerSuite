@@ -180,6 +180,32 @@ static void draw_pens(int x, int y, int w, int h)
     free(rgb);
 }
 
+/* Measure's points, and the line between them once there are two. */
+static gs_v mark[2];
+static int marks;
+
+static void draw_marks(int x, int y, int w, int h)
+{
+    float px[2], py[2];
+    int i, in = 0;
+    struct RastPort *rp = win->RPort;
+    if (has_slice) return;
+    for (i = 0; i < marks; i++) {
+        if (ge_project(&shown, &cam, w, h, mark[i], &px[i], &py[i]) ||
+            px[i] < 2.f || py[i] < 2.f || px[i] > (float)(w - 3) || py[i] > (float)(h - 3)) continue;
+        in |= 1 << i;
+    }
+    SetAPen(rp, 3);
+    if (in == 3) {
+        Move(rp, x + (int)px[0], y + (int)py[0]);
+        Draw(rp, x + (int)px[1], y + (int)py[1]);
+    }
+    SetAPen(rp, 2);
+    for (i = 0; i < marks; i++) {
+        if (in & (1 << i)) RectFill(rp, x + (int)px[i] - 2, y + (int)py[i] - 2, x + (int)px[i] + 2, y + (int)py[i] + 2);
+    }
+}
+
 static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, int h)
 {
     (void)userdata;
@@ -187,9 +213,10 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     vw = w;
     vh = h;
     if (!draw_gpu(x, y, w, h)) draw_pens(x, y, w, h);
+    draw_marks(x, y, w, h);
 }
 
-enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE };
+enum { TOOL_ORBIT, TOOL_MOVE, TOOL_ROT, TOOL_SCALE, TOOL_MEASURE };
 
 /* Place's Size and At: the picked part's box and its bottom middle, in
  * tenths of a mm (the fields' one place). Setting them sends nothing. */
@@ -220,6 +247,7 @@ static const char *tool_label(void)
     if (tool == TOOL_MOVE) return "Move. Drag slides. Shift-drag lifts.";
     if (tool == TOOL_ROT) return "Rotate. Drag turns the part.";
     if (tool == TOOL_SCALE) return "Scale. Drag up grows it.";
+    if (tool == TOOL_MEASURE) return "Measure. Click two points on the part.";
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
@@ -254,7 +282,10 @@ static void refresh(olui *ui)
         olui_repaint(ui, olui_find(ui, "view"), NULL);
         return;
     }
-    snprintf(status, sizeof status, "%s, %d triangles%s. %s",
+    if (tool == TOOL_MEASURE && marks == 2) ge_measure_line(status, (int)sizeof status, mark[0], mark[1]);
+    else if (tool == TOOL_MEASURE && marks == 1) snprintf(status, sizeof status, "First point set. Click the second.");
+    else if (tool == TOOL_MEASURE) ge_facts_line(status, (int)sizeof status, work());
+    else snprintf(status, sizeof status, "%s, %d triangles%s. %s",
              (has_added && on_added) ? "added part" : "stock",
              work()->n,
              presented ? (on_chip ? ", chip" : ", OpenGPU") : "", tool_label());
@@ -276,6 +307,7 @@ static ge_scene scene_out(void)
 
 static void scene_in(const ge_scene *sc)
 {
+    marks = 0;
     hole = sc->stock;
     added = sc->added;
     has_added = sc->has_added;
@@ -292,6 +324,7 @@ static void drop_slice(void)
 static void remember(void)
 {
     drop_slice();
+    marks = 0;
     ge_scene sc = scene_out();
     if (hist && hole.n) ge_hist_push_scene(hist, &sc);
 }
@@ -399,15 +432,16 @@ static void on_undo(olui *ui, const olui_event *ev, void *userdata)
 /* The chosen tool's button is :selected, lit in the accent. */
 static void light_tool(olui *ui)
 {
-    static const char *const ids[] = { "orbit", "move", "rot", "scale" };
+    static const char *const ids[] = { "orbit", "move", "rot", "scale", "measure" };
     int i;
-    for (i = 0; i < 4; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
+    for (i = 0; i < 5; i++) olui_set_selected(ui, olui_find(ui, ids[i]), i == tool);
 }
 
 static void on_tool(olui *ui, const olui_event *ev, void *userdata)
 {
     (void)ev;
     tool = (int)(intptr_t)userdata;
+    marks = 0;
     light_tool(ui);
     refresh(ui);
 }
@@ -867,6 +901,7 @@ int main(int argc, char **argv)
     olui_on(ui, "move", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_MOVE);
     olui_on(ui, "rot", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_ROT);
     olui_on(ui, "scale", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_SCALE);
+    olui_on(ui, "measure", OLUI_CLICK, on_tool, (void *)(intptr_t)TOOL_MEASURE);
     olui_on(ui, "drop", OLUI_CLICK, on_drop, NULL);
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
@@ -951,7 +986,17 @@ int main(int argc, char **argv)
                     drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
                 }
             } else if (cls == IDCMP_MOUSEBUTTONS && code == SELECTUP) {
-                if (dragging && tool == TOOL_ORBIT && drag_moved < 4 &&
+                if (dragging && tool == TOOL_MEASURE && drag_moved < 4 && !has_slice &&
+                    in_view(ui, w, mx, my, &lx, &ly)) {
+                    gs_v p;
+                    rebuild_shown();
+                    if (ge_pick_at(&shown, &cam, vw, vh, lx, ly, &p) < 0) say(ui, "No part under the pointer.");
+                    else {
+                        if (marks == 2) marks = 0;
+                        mark[marks++] = p;
+                        refresh(ui);
+                    }
+                } else if (dragging && tool == TOOL_ORBIT && drag_moved < 4 &&
                     in_view(ui, w, mx, my, &lx, &ly)) {
                     int face = -1;
                     if (has_added) face = ge_pick(&added, &cam, vw, vh, lx, ly);
@@ -972,7 +1017,7 @@ int main(int argc, char **argv)
                 if (ady < 0) ady = -ady;
                 drag_moved += adx + ady;
                 drag_shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
-                if (tool == TOOL_ORBIT) {
+                if (tool == TOOL_ORBIT || tool == TOOL_MEASURE) {
                     if (drag_shift) gs_cam_pan(&cam, dx / 400.f, -dy / 400.f);
                     else gs_cam_orbit(&cam, dx * 0.01f, dy * 0.01f);
                     olui_repaint(ui, olui_find(ui, "view"), NULL);
