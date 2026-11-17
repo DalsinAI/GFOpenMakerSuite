@@ -17,9 +17,10 @@
  * 640 by 480 inside, to fit a 640 by 512 PAL screen with the window's
  * borders: the name and version are in the title bar, not a heading row,
  * and the groups are a row shorter where they can be. The side is two
- * tabs, Model (File to Place) and Print (Layers, and Slice with core/ui's
+ * tabs, Model (File to Place), Print (Layers, and Slice with core/ui's
  * print settings panel, omview_settings.h, put in "settings" by make.c),
- * as wide as that panel. Place's Size and At, a row for each axis, are the
+ * and Holes (the bench's bolt circle, hole row and counterbore, cut through
+ * the picked part about its middle), as wide as that panel. Place's Size and At, a row for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
 static const char gm_markup[] =
     "<row id=\"body\">"
@@ -55,6 +56,21 @@ static const char gm_markup[] =
     "<div id=\"settings\"></div>"
     "<row><button id=\"slice\">Slice</button><button id=\"gcode\">Save G-code</button></row>"
     "</fieldset>"
+    "</tab><tab title=\"Holes\">"
+    "<fieldset><legend>Drill</legend>"
+    "<row><label for=\"hd\">Drill</label><spinner id=\"hd\" min=\"0.5\" max=\"40.0\" step=\"0.1\" value=\"3.0\"><span class=\"unit\">mm</span></row>"
+    "<row><label for=\"hn\">Holes</label><spinner id=\"hn\" min=\"2\" max=\"12\" step=\"1\" value=\"4\"><span class=\"unit\"></span></row>"
+    "</fieldset>"
+    "<fieldset><legend>Pattern</legend>"
+    "<row><label for=\"hpcd\">PCD</label><spinner id=\"hpcd\" min=\"1.0\" max=\"180.0\" step=\"0.1\" value=\"16.0\"><span class=\"unit\">mm</span></row>"
+    "<row><label for=\"hpitch\">Pitch</label><spinner id=\"hpitch\" min=\"1.0\" max=\"80.0\" step=\"0.1\" value=\"8.0\"><span class=\"unit\">mm</span></row>"
+    "<row><button id=\"bolt\">Bolt circle</button><button id=\"row\">Hole row</button></row>"
+    "</fieldset>"
+    "<fieldset><legend>Counterbore</legend>"
+    "<row><label for=\"hcb\">Bore</label><spinner id=\"hcb\" min=\"1.0\" max=\"80.0\" step=\"0.1\" value=\"16.0\"><span class=\"unit\">mm</span></row>"
+    "<row><label for=\"hdeep\">Deep</label><spinner id=\"hdeep\" min=\"0.4\" max=\"40.0\" step=\"0.1\" value=\"4.0\"><span class=\"unit\">mm</span></row>"
+    "<row><button id=\"cbore\">Counterbore</button></row>"
+    "</fieldset>"
     "</tab></tabs>"
     "</column>"
     "<div id=\"view\"></div>"
@@ -79,6 +95,7 @@ static const char gm_css[] =
     "label{width:40px;color:#616161}"
     "select{flex:1}"
     "spinner{flex:1}"
+    "span.unit{width:24px;color:#616161}"
     "span.head{flex:1;color:#616161}"
     "slider{width:96px}"
     "#view{flex:1;border:1px solid #d0d0d0;background-color:#14161c}"
