@@ -13,7 +13,10 @@ each closed shape. Open paths are left out.
 The machine is the generic 300 mm Grbl mill in `machines/cnc/grbl` unless
 `DRIVER=` or `PROFILE=` name another. `machines/cnc/linuxcnc` is the same
 table for LinuxCNC, and its program ends with M2. Lengths are millimetres. Feed and
-plunge are millimetres a second, written as millimetres a minute.
+plunge are millimetres a second, written as millimetres a minute. `START=` and
+`END=` are lines of your own, after the machine's start and before its end.
+The window has no field for them. The port takes the same lines as `SET start`
+and `SET end`.
 
 The window is `src/amiga.c`, binary GFOpenCNC. Open an SVG or a DXF,
 pick Profile, Pocket or Drill, Preview the cut, and Save G-code for the

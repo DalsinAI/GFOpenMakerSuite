@@ -50,9 +50,9 @@ static float hold(float v, float lo, float hi)
 
 /* The window's spinner ranges. mode is not a number. */
 static const char *const keys[] = {"tool", "depth", "stepdown", "stepover", "feed", "plunge",
-                                   "safe", "rpm",   "mode",     "x",        "y",   NULL};
-static const float lo[] = {0.f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.f, 0.f, -10000.f, -10000.f};
-static const float hi[] = {40.f, 80.f, 40.f, 40.f, 200.f, 80.f, 80.f, 60000.f, 0.f, 10000.f, 10000.f};
+                                   "safe", "rpm",   "mode",     "x",        "y",   "start", "end", NULL};
+static const float lo[] = {0.f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.f, 0.f, -10000.f, -10000.f, 0.f, 0.f};
+static const float hi[] = {40.f, 80.f, 40.f, 40.f, 200.f, 80.f, 80.f, 60000.f, 0.f, 10000.f, 10000.f, 0.f, 0.f};
 
 static int key_of(const char *s)
 {
@@ -85,6 +85,14 @@ static void key_text(const cnc_opts *o, int k, char *buf, int n)
     const float *f;
     if (k == 8) {
         snprintf(buf, (size_t)n, "%s", cnc_mode_name(o->mode));
+        return;
+    }
+    if (k == 11) {
+        snprintf(buf, (size_t)n, "%s", o->start ? o->start : "");
+        return;
+    }
+    if (k == 12) {
+        snprintf(buf, (size_t)n, "%s", o->end ? o->end : "");
         return;
     }
     f = field((cnc_opts *)o, k);
@@ -233,11 +241,22 @@ static int cmd_hide(void *c, void *g0)
     return OMR_OK;
 }
 
+static void own_copy(char *dst, int n, const char *src)
+{
+    size_t k;
+    if (!dst || n < 1) return;
+    if (!src) src = "";
+    k = strlen(src);
+    if (k >= (size_t)n) k = (size_t)n - 1;
+    memcpy(dst, src, k);
+    dst[k] = 0;
+}
+
 static int cmd_get(void *c, void *g0)
 {
     oc_rexx *g = app(g0);
     const char *key = omr_arg(c, "KEY");
-    char buf[64], nbuf[16];
+    char buf[240], nbuf[16];
     int i, k;
     if (!g->opts) {
         omr_set_result(c, "no document");
@@ -274,7 +293,7 @@ static int cmd_set(void *c, void *g0)
 {
     oc_rexx *g = app(g0);
     const char *key = omr_arg(c, "KEY"), *value = omr_arg(c, "VALUE");
-    char err[160], buf[64];
+    char err[160], buf[240];
     int k;
     err[0] = 0;
     if (!g->opts) {
@@ -285,6 +304,16 @@ static int cmd_set(void *c, void *g0)
     if (k < 0) {
         omr_set_result(c, "unknown key");
         return OMR_ERROR;
+    }
+    if (k == 11 || k == 12) {
+        char *dst = (k == 11) ? g->start : g->end;
+        int n = (k == 11) ? (int)sizeof g->start : (int)sizeof g->end;
+        own_copy(dst, n, value);
+        if (k == 11) g->opts->start = dst[0] ? dst : NULL;
+        else g->opts->end = dst[0] ? dst : NULL;
+        g->dirty = 1;
+        omr_set_result(c, dst);
+        return OMR_OK;
     }
     if (set_key(g->opts, k, value, err, (int)sizeof err)) {
         omr_set_result(c, err[0] ? err : "that value was refused");

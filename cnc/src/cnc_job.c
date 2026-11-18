@@ -2,6 +2,7 @@
 #include "cnc_job.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,25 @@ static void say(char *err, int errlen, const char *why)
 static float pick(float v, float d)
 {
     return v > 0.f ? v : d;
+}
+
+/* size 0 is a caller from this build that did not set it. A shorter
+ * size keeps the fields it has; start and end stay unset. */
+static void take_opts(cnc_opts *u, const cnc_opts *o)
+{
+    int n;
+    cnc_defaults(u);
+    if (!o) return;
+    n = o->size;
+    if (n < (int)offsetof(cnc_opts, tool)) n = (int)sizeof *u;
+    if (n > (int)sizeof *u) n = (int)sizeof *u;
+    memcpy(u, o, (size_t)n);
+    u->size = (int)sizeof *u;
+}
+
+static int opts_have(const cnc_opts *o, size_t off, size_t sz)
+{
+    return o && o->size >= (int)(off + sz);
 }
 
 /* Closed shapes, moved by x, y. Open paths are left out: a mill tool
@@ -186,7 +206,7 @@ int cnc_path(gt_path *p, const gv_doc *d, const cnc_opts *o, char *err, int errl
     float z[64], radius, over, safe;
     int nz, i, rc = 0;
     cnc_defaults(&u);
-    if (o) memcpy(&u, o, sizeof u);
+    take_opts(&u, o);
     radius = u.tool > 0.f ? u.tool * 0.5f : 0.f;
     over = u.stepover > 0.f ? u.stepover : (u.tool > 0.f ? u.tool * 0.4f : 0.f);
     safe = pick(u.safe, 5.f);
@@ -276,6 +296,17 @@ static int emit(FILE *out, const char *s)
     return fputs(s, out) < 0 ? -1 : 0;
 }
 
+/* A line of the user's, with one newline. Empty is left out. */
+static int emit_line(FILE *out, const char *s)
+{
+    size_t n;
+    if (!s || !s[0]) return 0;
+    n = strlen(s);
+    if (fputs(s, out) < 0) return -1;
+    if (s[n - 1] != '\n' && fputc('\n', out) == EOF) return -1;
+    return 0;
+}
+
 static int write_moves(FILE *out, const gt_path *p, float feed, float plunge, gc_stats *st)
 {
     int i, f = 0, moves = 0;
@@ -327,7 +358,7 @@ int cnc_write(const char *drawing, const char *gcode, const om_machine *m, const
         return -1;
     }
     cnc_defaults(&u);
-    if (o) memcpy(&u, o, sizeof u);
+    take_opts(&u, o);
     gv_doc_init(&d);
     gt_init(&p);
     why[0] = 0;
@@ -379,12 +410,14 @@ int cnc_write(const char *drawing, const char *gcode, const om_machine *m, const
         rc = -1;
     }
     if (!rc && (emit(f, "; OpenMakeCNC\n") || emit(f, code))) rc = -1;
+    if (!rc && opts_have(&u, offsetof(cnc_opts, start), sizeof u.start) && emit_line(f, u.start)) rc = -1;
     if (!rc) {
         snprintf(line, sizeof line, "M3 S%.0f\n", (double)job.rpm);
         if (emit(f, line)) rc = -1;
     }
     if (!rc && write_moves(f, &p, pick(u.feed, 8.f), pick(u.plunge, 3.f), st)) rc = -1;
     if (!rc && emit(f, "M5\n")) rc = -1;
+    if (!rc && opts_have(&u, offsetof(cnc_opts, end), sizeof u.end) && emit_line(f, u.end)) rc = -1;
     if (!rc && om_code(m->end, 0.f, 0.f, code, (int)sizeof code)) {
         say(err, errlen, "The machine's end code is too long.");
         rc = -1;

@@ -184,6 +184,12 @@ static void on_preview(olui *ui, const olui_event *ev, void *userdata)
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
+static void take_lines(void)
+{
+    opts.start = rexx.start[0] ? rexx.start : NULL;
+    opts.end = rexx.end[0] ? rexx.end : NULL;
+}
+
 static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
 {
     om_machine m;
@@ -203,6 +209,7 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
     }
     if (!ask_file(ui, "Save G-code", 1, "#?.nc|#?.gcode", out, (int)sizeof out)) return;
     cnc_ui_read(ui, &opts);
+    take_lines();
     err[0] = 0;
     if (cnc_write(drawing, out, &m, &opts, &stats, err, (int)sizeof err)) {
         omv_say(ui, err[0] ? err : "Could not write there");
@@ -320,6 +327,7 @@ int main(int argc, char **argv)
             char why[160];
             snprintf(rexx.file, sizeof rexx.file, "%s", drawing);
             cnc_ui_read(ui, &opts);
+            take_lines();
             rexx.have_machine = chosen_mill(ui, &rexx.machine, why, (int)sizeof why) == 0;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);
             rexx_sync(ui);

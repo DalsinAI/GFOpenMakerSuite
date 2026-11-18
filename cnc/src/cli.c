@@ -2,6 +2,7 @@
  *   openmake-cnc in.svg|in.dxf out.gcode [DRIVER=] [PROFILE=]
  *       [mode=profile|pocket|drill] [tool=0] [depth=1] [stepdown=]
  *       [stepover=] [feed=8] [plunge=3] [safe=5] [rpm=10000] [x=0] [y=0]
+ *       [START=lines] [END=lines]
  * The machine is the generic 300 mm Grbl mill unless DRIVER or PROFILE
  * say otherwise. Lengths are millimetres, feed and plunge are mm/s.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -24,7 +25,8 @@ static int known_key(const char *s)
 {
     static const char *const keys[] = {"DRIVER", "PROFILE", "mode", "MODE", "tool", "TOOL", "depth", "DEPTH",
                                        "stepdown", "STEPDOWN", "stepover", "STEPOVER", "feed", "FEED", "plunge",
-                                       "PLUNGE", "safe", "SAFE", "rpm", "RPM", "x", "X", "y", "Y", NULL};
+                                       "PLUNGE", "safe", "SAFE", "rpm", "RPM", "x", "X", "y", "Y", "START", "END",
+                                       NULL};
     int i;
     const char *eq = strchr(s, '=');
     size_t n;
@@ -48,10 +50,12 @@ static void usage(void)
     fprintf(stderr, "usage: openmake-cnc in.svg|in.dxf out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                     "       [mode=profile|pocket|drill] [tool=0] [depth=1] [stepdown=1] [stepover=]\n"
                     "       [feed=8] [plunge=3] [safe=5] [rpm=10000] [x=0] [y=0]\n"
+                    "       [START=lines] [END=lines]\n"
                     "Profile follows the drawn edge, the tool outside it by its radius.\n"
                     "Pocket clears the inside. Drill plunges at each shape's centre.\n"
                     "Lengths are mm. Feed and plunge are mm/s. The machine is Generic Grbl Mill 300\n"
-                    "unless DRIVER or PROFILE say otherwise.\n");
+                    "unless DRIVER or PROFILE say otherwise. START and END are lines of your own,\n"
+                    "after the machine's start and before its end.\n");
 }
 
 int main(int argc, char **argv)
@@ -152,6 +156,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "y=%s: not a number\n", v);
         return 1;
     }
+    v = arg(argc, argv, "START");
+    if (v && v[0]) o.start = v;
+    v = arg(argc, argv, "END");
+    if (v && v[0]) o.end = v;
     err[0] = 0;
     if (cnc_write(argv[1], argv[2], &m, &o, &st, err, (int)sizeof err)) {
         fprintf(stderr, "%s\n", err[0] ? err : "Could not write that job.");
