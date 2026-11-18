@@ -249,7 +249,7 @@ Open in app, and the ARexx `OPENITEM` command, do the same thing:
 | cad | GFOpenMake | `GFOPENMAKE` |
 | print | GFOpenSlicer | `OPENMAKESLICER` |
 | laser | GFOpenBurn | `OPENMAKEBURN` |
-| cnc | GFOpenCNC | `GFOPENCNC`. Workshop still starts it with the file. The shared commands are on the port; a preview command is not |
+| cnc | GFOpenCNC | `GFOPENCNC`. Workshop still starts it with the file. The port has the shared commands and `PREVIEW` |
 | electronics | gfamigakicad | none in the first cut: the program is started with the file, and is not driven further |
 
 gfamigakicad is launched only; its repository is not touched, and no port

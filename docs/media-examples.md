@@ -13,7 +13,7 @@ examples/cad/            STL the editor and the slicer can open
 examples/print/          the same meshes, for a slice
 examples/laser/          SVG, DXF, Netpbm
 examples/electronics/    a KiCad project, and Gerbers beside it
-examples/cnc/            a short program, for later
+examples/cnc/            LinuxCNC's 3dtest.ngc
 ```
 
 GFOpenMake opens STL. GFOpenSlicer opens STL and writes G-code.
