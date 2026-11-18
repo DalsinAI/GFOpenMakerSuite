@@ -1619,12 +1619,26 @@ int main(int argc, char **argv)
             omr_cmd *cmd;
             char why[160];
             rexx.face = picked;
+            rexx.look = -1;
+            rexx.shade = shade_kind;
+            rexx.snap = snap_on;
             snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
             settings(ui, &rexx.set);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gm_rexx_verbs(), gm_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
             picked = rexx.face;
+            if (rexx.look >= 0 && rexx.look <= 3) {
+                if (rexx.look == 3) {
+                    rebuild_shown();
+                    gs_cam_frame(&cam, work()->n ? work() : &shown, vw, vh);
+                } else
+                    gs_cam_look(&cam, rexx.look);
+            }
+            if (rexx.shade >= 0 && rexx.shade <= 2) shade_kind = rexx.shade;
+            gs_view_shade(shade_kind);
+            snap_on = rexx.snap ? 1 : 0;
+            if (olui_find(ui, "snap")) olui_set_selected(ui, olui_find(ui, "snap"), snap_on);
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             refresh(ui);
