@@ -2,7 +2,7 @@
 
 16 November 2026. The browser bench in `cad/bench/` was ahead of `cad/src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
 
-17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, a dragged sketch, and the shelf. Top, front, side and frame are on the window. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. Slice lays the toolpath back on the solid, in the plate's frame. Still only on the bench: clay or wire instead of the shaded solid. The example files are in `examples/`, listed in `docs/media-examples.md`. Shelf puts one of `examples/cad/` on the bed.
+17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, a dragged sketch, and the shelf. Top, front, side and frame are on the window. The bench's keys are too: G move, R turn, S scale, F frame, M measure, I solo, Delete. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. Slice lays the toolpath back on the solid, in the plate's frame. Still only on the bench: clay or wire instead of the shaded solid. The example files are in `examples/`, listed in `docs/media-examples.md`. Shelf puts one of `examples/cad/` on the bed.
 
 ## What it is
 

@@ -1575,11 +1575,19 @@ int main(int argc, char **argv)
             ReplyMsg((struct Message *)m);
             if (r == OLUI_AMIGA_CLOSE) goto done;
             if (cls == IDCMP_VANILLAKEY && r != OLUI_AMIGA_USED) {
-                /* Amiga-Z, Amiga-Shift-Z and Amiga-Y, when no field took them */
+                /* Amiga-Z, Amiga-Shift-Z and Amiga-Y, and the bench's keys, when no field took them. */
                 int k = gm_command_key(code, (qual & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND)) != 0,
                                        (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0);
                 if (k == GM_KEY_LEAVE && tool == TOOL_SKETCH) set_sketch(ui, 0);
+                else if (k == GM_KEY_LEAVE && tool == TOOL_MEASURE) on_tool(ui, NULL, (void *)(intptr_t)TOOL_ORBIT);
                 else if (k == GM_KEY_PULL || k == GM_KEY_LEAVE) set_pull(ui, k == GM_KEY_PULL && tool != TOOL_PULL);
+                else if (k == GM_KEY_MOVE) on_tool(ui, NULL, (void *)(intptr_t)TOOL_MOVE);
+                else if (k == GM_KEY_ROT) on_tool(ui, NULL, (void *)(intptr_t)TOOL_ROT);
+                else if (k == GM_KEY_SCALE) on_tool(ui, NULL, (void *)(intptr_t)TOOL_SCALE);
+                else if (k == GM_KEY_MEASURE) on_tool(ui, NULL, (void *)(intptr_t)TOOL_MEASURE);
+                else if (k == GM_KEY_FRAME) on_look(ui, NULL, (void *)(intptr_t)3);
+                else if (k == GM_KEY_SOLO) on_arrange(ui, NULL, (void *)(intptr_t)AR_SOLO);
+                else if (k == GM_KEY_DELETE) on_part(ui, NULL, (void *)(intptr_t)PART_DELETE);
                 else if (k == GM_KEY_SECTION) {
                     section_on = !section_on;
                     olui_set_checked(ui, olui_find(ui, "sect"), section_on);
