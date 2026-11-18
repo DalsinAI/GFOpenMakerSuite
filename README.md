@@ -101,7 +101,8 @@ The solid editor is `cad/src/make.c`. It starts from a 20 mm cube with a
 hole, on a 220 mm plate. The window has the bench's move, turn, scale,
 place, extrude, pull, chamfer, arrange, one layer of walls, and the hole
 tools, including one drill, a 90 degree countersink, a washer and a
-split. Top, front and side turn the plate. Frame fits the picked part. Section hides the picture above a height, and the layer walls
+split. Top, front and side turn the plate. Frame fits the picked part.
+Metal, clay and wire are the picture. Section hides the picture above a height, and the layer walls
 follow that cut. Draw drags a footprint on the bed, and the solid is
 shown while the pointer moves: a block or a slot is the box between the
 two points, a round is centred on the first. Shelf, on Model, puts one
