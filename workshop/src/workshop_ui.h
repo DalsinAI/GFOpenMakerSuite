@@ -1,6 +1,6 @@
 /* GFOpenMakerWorkshop's window helpers: load the markup, fill the item
  * list and Recent, preview the picked item, and the Open in app hook
- * (starts the kind's program; ARexx is the next step).
+ * (starts the kind's program when its port is not already up).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef WORKSHOP_UI_H
 #define WORKSHOP_UI_H

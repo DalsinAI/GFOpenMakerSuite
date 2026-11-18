@@ -103,6 +103,7 @@ build() {
     # GFOpenWorkshop's window (workshop/src/amiga.c): one product's drawer,
     # core/ui's helpers and the pen-drawn preview of the picked item
     "$CC" $cf -Iworkshop/src -s -o "$dir/GFOpenWorkshop" workshop/src/amiga.c workshop/src/workshop_ui.c \
+        workshop/src/workshop_rexx.c core/src/rexx.c core/src/rexx_amiga.c \
         core/src/project.c core/src/vec.c core/src/dxf.c \
         core/ui/view_ui.c core/ui/window_amiga.c \
         $CORE "$OLUI" -lm

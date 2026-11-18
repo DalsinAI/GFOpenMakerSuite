@@ -22,8 +22,11 @@ an SVG or DXF as strokes, G-code as a toolpath; a KiCad file is listed
 and opened in gfamigakicad, never drawn or parsed. Launch starts
 the kind's program (`PROGDIR:` first, then the name) with the file on
 its command line. GFOpenMake, GFOpenSlicer, GFOpenBurn and GFOpenCNC
-open that file. That is a launch hook; ARexx (`OPENMAKEWORKSHOP.1` on
-openmakerexx.library) follows.
+open that file. That is a launch hook, used when the other app's port is
+not up. The window's own port is `OPENMAKEWORKSHOP.1`: `NEW`, `ADD`,
+`REMOVE`, `RENAME`, `ITEMS`, `OPENITEM`, `SEND` and `RECENT`, plus the
+shared commands. `OPENITEM` sends `OPEN FILE` when the other port is
+already up.
 
 A host render of the window (not an Amiga run):
 
