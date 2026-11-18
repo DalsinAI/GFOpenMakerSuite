@@ -11,17 +11,14 @@ as the fallback.
 | `core/` | Meshes and booleans, STL, the layer cut, the plate, the view and the OpenGPU batch | OpenMakeCore |
 | `cad/` | The solid editor, and its browser bench in `cad/bench/` | OpenMakeCad |
 | `slicer/` | STL to G-code for printers | OpenMakeSlicer |
-| `burn/` | A laser app: `openmake-burn` and the OpenMakeBurn window (SVG to Grbl G-code); the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
-| `cnc/` | A mill: `openmake-cnc` and the GFOpenCNC window write a profile, a pocket or a drill from an SVG or a DXF | OpenMakeCNC |
+| `burn/` | A laser app: `openmake-burn` and the OpenMakeBurn window (SVG, DXF or a Netpbm picture to Grbl G-code); the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
+| `cnc/` | A mill: `openmake-cnc` and the GFOpenCNC window write a profile, a pocket or a drill from an SVG or a DXF, for Grbl or a generic LinuxCNC machine | OpenMakeCNC |
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
-| `workshop/` | A project drawer for one product: CAD, print, laser, CNC and KiCad work together; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
+| `workshop/` | A project drawer for one product: CAD, print, laser and CNC, plus a KiCad project listed and opened in gfamigakicad; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
-The binaries keep their names (GFOpenSlicer, GFOpenMake). `make test` builds
-and runs every host test.
+The binaries are GFOpenSlicer, GFOpenMake, GFOpenBurn, GFOpenCNC and GFOpenWorkshop. Each reports 0.1.0. `make test` builds and runs every host test.
 
-GFOpenSlicer 0.1.0-rc1 slices an STL to G-code on AmigaOS 3.2. v0.2.0-rc1 adds the solid editor on OpenGPU, and the browser bench in `cad/bench/`. The window is
-GFOpenLayout. The same engine runs from the shell, and the host tests run it
-with no Amiga.
+Tags `v0.1.0-rc1` and `v0.2.0-rc1` are the slicer, then the solid editor on OpenGPU and the browser bench. No tag has been cut since. The same engine runs from the shell, and the host tests run it with no Amiga.
 
 ![The window, before a file is sliced](docs/window-empty.png)
 
@@ -114,11 +111,11 @@ of the examples in `examples/cad/` on the bed.
 
 ## Preview bench
 
-`cad/bench/` is the browser bench. It is ahead of `cad/src/make.c`. It is in this tree so that work is not only on one machine. To run it: `cd cad/bench && npm install && npm run dev`, then open http://127.0.0.1:5199. `npm run check` type-checks it and `npm run build` writes `cad/bench/dist/`; CI does both. The handover is [docs/HANDOVER.md](docs/HANDOVER.md).
+`cad/bench/` is the browser copy of the same workshop, not a list of tools the window lacks. The window has taken the bench's tools; [docs/HANDOVER.md](docs/HANDOVER.md) is that record, and `docs/bench.md` is the 9 November note. To run the bench: `cd cad/bench && npm install && npm run dev`, then open http://127.0.0.1:5199. `npm run check` type-checks it and `npm run build` writes `cad/bench/dist/`; CI does both.
 
 Add drops a block or a round on a 220 mm bed. On stands that shape on the selected part and joins it. Cut takes the height off the top. Place uses the W, D and H fields. A round uses W as the diameter. Keyway places a slot. Dragging still draws the footprint. Pull and Chamfer move the face you clicked. A washer, a slot, a line and a ring are there. Drill bores one hole. Bolt circle bores several of that diameter on a pitch circle, and Row bores them in a line. Counterbore adds a wider shallow step to the drill. Countersink is a 90° cone on that drill. Split cuts the selected part on the section, or at mid-height. Join, cut, intersect and drill stop at 2,500 triangles.
 
-Layers draw the walls of the selected part at one height. The segments are not joined, and there is no infill and no G-code. The window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
+On the bench, layers draw the walls of the selected part at one height. Those segments are not joined, and that view has no infill and no G-code. The slicer joins walls. The Amiga window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
 
 The meshes in `cad/bench/library/` are the same shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. They can still be opened.
 
@@ -130,7 +127,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-The laser window has no field for your own start and end lines. The port takes them as `SET start` and `SET end`. The mill window has none either. `openmake-cnc` takes `START=` and `END=`, and `GFOPENCNC.1` takes `SET start` and `SET end`.
+The laser window has no field for your own start and end lines, or for `invert` and `width`. The port takes them as `SET start`, `SET end`, `SET invert` and `SET width`. The mill window has no start or end field either. `openmake-cnc` takes `START=` and `END=`, and `GFOPENCNC.1` takes `SET start` and `SET end`.
 
 ## Building
 
@@ -140,8 +137,7 @@ The host check:
 make test
 ```
 
-The Amiga programs, GFOpenSlicer (`slicer/src/amiga.c`) and GFOpenMake
-(`cad/src/make.c`), and the core tests have their own recipe, `build-amiga.sh`. It builds
+The Amiga programs are GFOpenMake (`cad/src/make.c`), GFOpenSlicer (`slicer/src/amiga.c`), GFOpenBurn (`burn/src/amiga.c`), GFOpenCNC (`cnc/src/amiga.c`) and GFOpenWorkshop (`workshop/src/amiga.c`), plus the core tests. `build-amiga.sh` builds
 them twice, into `build-amiga/fpu` (68040/68060 or a 68881/68882, `-mhard-float`)
 and `build-amiga/soft` (no FPU: `-msoft-float` with the SDK's
 `m68k-soft-m68040.specs`). It fails if the soft build holds any FPU instruction
