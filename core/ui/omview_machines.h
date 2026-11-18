@@ -41,4 +41,8 @@ int omv_machines_fill(olui *ui, const char *id, const omv_machines *l, const cha
 /* The machine the select id has chosen, or -1. */
 int omv_machines_chosen(olui *ui, const char *id, const omv_machines *l);
 
+/* Select the machine named name, if the list has it. 1 if the select
+ * moved to it, 0 if it was already chosen or the name is not listed. */
+int omv_machines_show(olui *ui, const char *id, const omv_machines *l, const char *name);
+
 #endif

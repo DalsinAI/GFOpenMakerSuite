@@ -400,6 +400,13 @@ int main(int argc, char **argv)
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
             show_own(ui);
+            if (rexx.have_machine && omv_machines_show(ui, "machine", &printers, rexx.machine.name)) {
+                gs_settings held;
+                char note[160];
+                note[0] = 0;
+                omv_settings_fit(ui, &rexx.machine, &held, note, (int)sizeof note);
+                if (note[0]) omv_say(ui, note);
+            }
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), stl_path);
