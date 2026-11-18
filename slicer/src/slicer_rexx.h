@@ -31,6 +31,7 @@ typedef struct os_rexx {
     int layer_no; /* 1-based; the picture is layers 1 to this */
     int fresh;    /* 1: this message sliced; the window shows the top layer */
     int look;     /* -1: leave the camera. 0 top, 1 front, 2 side, 3 frame */
+    int home;     /* 1: the window homes the camera, as Open */
 } os_rexx;
 
 #define OS_REXX_PORT "OPENMAKESLICER"

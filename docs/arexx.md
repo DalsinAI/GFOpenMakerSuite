@@ -565,7 +565,8 @@ there is no part.
 
 ## OpenMakeSlicer (port `OPENMAKESLICER.1`)
 
-The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes
+The slicer window. `OPEN` and `LOAD` both open an STL, and home the view,
+as the window's Open. That is not `LOOK` frame, which fits the part. `SAVE` writes
 G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
 `stem.MOVES`, `stem.TIME`, `stem.FILAMENT` and `stem.ROUGH` (`1` when the
 time is short, the window's "over"). The layer bar is `stem.PICTURE`
@@ -587,7 +588,7 @@ stays the print settings.
 Template: `LOAD FILE/A`
 
 Opens an STL, as `OPEN`. The part is repaired and set on the bed, as the
-window.
+window, and the view is homed. `LOOK` frame still fits the part.
 
 ### PROFILE
 

@@ -121,8 +121,9 @@ int main(void)
     expect(run(&g, "SLICE", &io) == 0 && io.rc == OMR_ERROR, "SLICE with no part");
 
     expect(write_cube("build/rexx-slicer.stl") == 0, "wrote a 20 mm cube");
-    expect(run(&g, "OPEN FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part && g.dirty == 0,
-           "OPEN stl");
+    expect(run(&g, "OPEN FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part && g.dirty == 0 &&
+               g.home == 1 && g.look == -1,
+           "OPEN stl, and homes the view");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.LOADED") &&
                strcmp(omr_host_var("ST.LOADED"), "1") == 0 && omr_host_var("ST.SLICED") &&
                strcmp(omr_host_var("ST.SLICED"), "0") == 0 && omr_host_var("ST.MOVES") &&
@@ -230,7 +231,8 @@ int main(void)
                file_has("build/rexx-slicer.gcode", "M117 done"),
            "SAVE wrote the cut and the user's lines");
 
-    expect(run(&g, "OPEN FILE no-such.stl", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
+    g.home = 0;
+    expect(run(&g, "OPEN FILE no-such.stl", &io) == 0 && io.rc == OMR_ERROR && g.home == 0, "OPEN missing file");
     g.dirty = 1;
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && g.quit == 0, "QUIT refuses a dirty document");
     expect(run(&g, "QUIT FORCE", &io) == 0 && io.rc == OMR_OK && g.quit == 1, "QUIT FORCE");
