@@ -1039,6 +1039,42 @@ static int cmd_material(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The picker's list. DIR defaults to the same drawer the window scans.
+ * It does not load a profile and it does not mark the job dirty. */
+static int cmd_materials(void *c, void *g0)
+{
+    gb_rexx *g = app(g0);
+    const char *dir = omr_arg(c, "DIR");
+    burn_materials lib;
+    char nbuf[16];
+    int i;
+    (void)g;
+#if defined(AMIGA) || defined(__amigaos__)
+    if (!dir || !dir[0]) dir = "PROGDIR:materials/laser";
+#else
+    if (!dir || !dir[0]) dir = "materials/laser";
+#endif
+    burn_materials_init(&lib);
+    if (burn_materials_scan(&lib, dir)) {
+        burn_materials_free(&lib);
+        omr_set_result(c, "out of memory");
+        return OMR_ERROR;
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    stem_put(c, NULL, "0", nbuf);
+    for (i = 0; i < lib.n; i++) {
+        char tail[24];
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, NULL, nbuf, lib.at[i].name);
+        snprintf(tail, sizeof tail, "%d.PATH", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].path);
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    omr_set_result(c, nbuf);
+    burn_materials_free(&lib);
+    return OMR_OK;
+}
+
 static int cmd_laser(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
@@ -1314,6 +1350,7 @@ static const omr_verb verbs[] = {
      "one layer's row, as the list", cmd_layer},
     {sizeof(omr_verb), "ORDER", "INDEX/N/A STEP/N/A", "move a layer up or down, as Up and Dn", cmd_order},
     {sizeof(omr_verb), "MATERIAL", "FILE/A", "Load a materials profile", cmd_material},
+    {sizeof(omr_verb), "MATERIALS", "DIR/K STEM/K", "the materials the picker lists", cmd_materials},
     {sizeof(omr_verb), "MACHINE", "DRIVER/K PROFILE/K", "Pick the laser from a driver and profile", cmd_machine},
     {sizeof(omr_verb), "LASER", "POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K",
      "The job's default power, speed and passes", cmd_laser},
