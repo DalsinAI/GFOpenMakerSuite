@@ -212,7 +212,7 @@ static int cmd_hide(void *c, void *g0)
 
 static const char *const job_keys[] = {"power",  "speed",    "travel", "passes",   "constant",
                                        "s100",   "mode",     "interval", "cuts_last", "start", "end",
-                                       "invert", "width", "x", "y", "rot", NULL};
+                                       "invert", "width", "x", "y", "rot", "kerf", "tabs", "tabw", NULL};
 
 static int key_of(const char *s)
 {
@@ -275,6 +275,15 @@ static void key_value(const burn_opts *o, int k, char *buf, int len)
         break;
     case 15:
         snprintf(buf, (size_t)len, "%g", (double)o->rot);
+        break;
+    case 16:
+        snprintf(buf, (size_t)len, "%g", (double)o->kerf);
+        break;
+    case 17:
+        snprintf(buf, (size_t)len, "%d", o->tabs);
+        break;
+    case 18:
+        snprintf(buf, (size_t)len, "%g", (double)o->tabw);
         break;
     default:
         break;
@@ -359,6 +368,30 @@ static int set_key(burn_opts *o, int k, const char *value, char *err, int errlen
         else if (k == 13) o->x = hold(f, -10000.f, 10000.f);
         else o->y = hold(f, -10000.f, 10000.f);
         return 0;
+    case 16:
+        f = (float)strtod(value, &end);
+        if (!end || end == value || f < 0.f) {
+            snprintf(err, (size_t)errlen, "kerf is 0 or more, in mm");
+            return -1;
+        }
+        o->kerf = hold(f, 0.f, 20.f);
+        return 0;
+    case 17:
+        n = (int)strtol(value, &end, 10);
+        if (!end || end == value || n < 0) {
+            snprintf(err, (size_t)errlen, "tabs is a whole number, 0 to 32");
+            return -1;
+        }
+        o->tabs = n > 32 ? 32 : n;
+        return 0;
+    case 18:
+        f = (float)strtod(value, &end);
+        if (!end || end == value || f < 0.f) {
+            snprintf(err, (size_t)errlen, "tab width is 0 or more, in mm");
+            return -1;
+        }
+        o->tabw = hold(f, 0.f, 20.f);
+        return 0;
     default:
         snprintf(err, (size_t)errlen, "unknown key");
         return -1;
@@ -376,9 +409,10 @@ static void own_copy(char *dst, int n, const char *src)
     dst[k] = 0;
 }
 
-/* The window keeps power, speed, passes, mode and gap on the layer rows.
- * A job SET has to write those rows or the next rebuild throws it away.
- * mask bits: 1 power, 2 speed, 4 passes, 8 mode, 16 gap. */
+/* The window keeps power, speed, passes, mode, gap, kerf and tabs on the
+ * layer rows. A job SET has to write those rows or the next rebuild throws
+ * it away. mask bits: 1 power, 2 speed, 4 passes, 8 mode, 16 gap, 32 kerf,
+ * 64 tabs, 128 tab width. */
 static void layers_job(gb_rexx *g, unsigned mask)
 {
     int i, n;
@@ -406,6 +440,18 @@ static void layers_job(gb_rexx *g, unsigned mask)
         if (mask & 16u) {
             L->interval = g->opts->interval;
             L->set |= BURN_SET_INTERVAL;
+        }
+        if (mask & 32u) {
+            L->kerf = g->opts->kerf;
+            L->set |= BURN_SET_KERF;
+        }
+        if (mask & 64u) {
+            L->tabs = g->opts->tabs;
+            L->set |= BURN_SET_TABS;
+        }
+        if (mask & 128u) {
+            L->tabw = g->opts->tabw;
+            L->set |= BURN_SET_TABW;
         }
     }
 }
@@ -493,6 +539,9 @@ static int cmd_set(void *c, void *g0)
     if (k == 3) layers_job(g, 4u);
     if (k == 6) layers_job(g, 8u);
     if (k == 7) layers_job(g, 16u);
+    if (k == 16) layers_job(g, 32u);
+    if (k == 17) layers_job(g, 64u);
+    if (k == 18) layers_job(g, 128u);
     dirty(g);
     key_value(g->opts, k, buf, (int)sizeof buf);
     omr_set_result(c, buf);

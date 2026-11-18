@@ -141,6 +141,30 @@ int main(void)
         burn_job_from_layers(&opts);
         expect(opts.power == 70.f, "a rebuild keeps the port's power from the layer row");
     }
+    expect(run(&g, "SET KEY kerf VALUE 0.2", &io) == 0 && io.rc == OMR_OK && opts.kerf == 0.2f && store[0].kerf == 0.2f,
+           "SET kerf writes the layer row");
+    expect(run(&g, "SET KEY tabs VALUE 4", &io) == 0 && io.rc == OMR_OK && opts.tabs == 4 && store[0].tabs == 4,
+           "SET tabs writes the layer row");
+    expect(run(&g, "SET KEY tabw VALUE 1.5", &io) == 0 && io.rc == OMR_OK && opts.tabw == 1.5f && store[0].tabw == 1.5f,
+           "SET tab width writes the layer row");
+    expect(run(&g, "SET KEY tabs VALUE -1", &io) == 0 && io.rc == OMR_ERROR, "a negative tab count is refused");
+    expect(run(&g, "SET KEY tabs VALUE 40", &io) == 0 && io.rc == OMR_OK && opts.tabs == 32, "tabs are held to 32");
+    {
+        burn_layer row = store[0];
+        int n = opts.nlayer;
+        burn_defaults(&opts);
+        opts.layer = store;
+        opts.nlayer = n;
+        store[0] = row;
+        burn_job_from_layers(&opts);
+        expect(opts.kerf == 0.2f && opts.tabs == 32 && opts.tabw == 1.5f && opts.power == 70.f,
+               "a rebuild keeps kerf, tabs and the tab width from the layer row");
+    }
+    expect(run(&g, "SET KEY kerf VALUE 0", &io) == 0 && io.rc == OMR_OK && opts.kerf == 0.f && store[0].kerf == 0.f,
+           "kerf back to none");
+    expect(run(&g, "SET KEY tabs VALUE 0", &io) == 0 && io.rc == OMR_OK && opts.tabs == 0 && store[0].tabs == 0,
+           "tabs back to none");
+    expect(run(&g, "SET KEY tabw VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.tabw == 1.f, "tab width back to 1");
     expect(run(&g, "LAYER INDEX 9 POWER 10", &io) == 0 && io.rc == OMR_ERROR, "LAYER missing");
 
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW");

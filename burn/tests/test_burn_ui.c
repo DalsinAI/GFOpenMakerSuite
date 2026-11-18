@@ -187,6 +187,11 @@ int main(void)
                (store[1].set & BURN_SET_TABS) && (store[1].set & BURN_SET_TABW) && o.power == 80.f &&
                o.speed == 20.f && o.mode == BURN_FILL && o.interval == 0.1f,
            "the list is read back, including M3, fill, kerf and tabs");
+    olui_set_number(ui, olui_find(ui, "layer-0-kerf"), 20); /* 0.20 */
+    olui_set_number(ui, olui_find(ui, "layer-0-tabs"), 4);
+    olui_set_number(ui, olui_find(ui, "layer-0-tabw"), 150); /* 1.50 */
+    burn_ui_read(ui, &o, store, 8);
+    expect(o.kerf == 0.2f && o.tabs == 4 && o.tabw == 1.5f, "the first row's kerf and tabs become the job");
     olui_set_number(ui, olui_find(ui, "place-x"), 50);   /* 5.0 with one decimal */
     olui_set_number(ui, olui_find(ui, "place-y"), -25);  /* -2.5 */
     olui_set_number(ui, olui_find(ui, "place-rot"), 90);

@@ -28,7 +28,7 @@ int burn_ui_move(olui *ui, const gv_doc *d, burn_opts *o, burn_layer *store, int
 
 /* The window's layer settings, into store (up to cap) and o->layer.
  * constant, cuts_last, X, Y and rotation come from their fields. The
- * first row's power, speed, passes, mode and gap become the job's. */
+ * first row's power, speed, passes, mode, gap, kerf and tabs become the job's. */
 void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap);
 
 /* Write o's X, Y and rotation into the place fields, so a port SET

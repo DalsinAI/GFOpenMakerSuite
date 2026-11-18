@@ -305,6 +305,9 @@ void burn_job_from_layers(burn_opts *o)
     if (L->set & BURN_SET_PASSES) o->passes = passes_of(L->passes);
     if (L->set & BURN_SET_MODE) o->mode = L->mode;
     if (L->set & BURN_SET_INTERVAL) o->interval = interval_of(L->interval);
+    if (L->set & BURN_SET_KERF) o->kerf = L->kerf > 0.f ? L->kerf : 0.f;
+    if (L->set & BURN_SET_TABS) o->tabs = L->tabs > 0 ? L->tabs : 0;
+    if (L->set & BURN_SET_TABW) o->tabw = L->tabw > 0.f ? L->tabw : 1.f;
 }
 
 static int grow_speed(float **spd, int *cap, int need)
