@@ -155,6 +155,17 @@ int main(void)
            "SAVE wrote the cut and the user's lines");
     expect(run(&g, "FRAME FILE build/rexx-frame.gcode", &io) == 0 && io.rc == OMR_OK, "FRAME");
     expect(gcode_has_move("build/rexx-frame.gcode"), "FRAME wrote moves");
+    expect(run(&g, "SET KEY x VALUE 5", &io) == 0 && io.rc == OMR_OK && opts.x == 5.f, "SET x");
+    expect(run(&g, "SET KEY y VALUE 5", &io) == 0 && io.rc == OMR_OK && opts.y == 5.f, "SET y");
+    expect(run(&g, "SET KEY rot VALUE 90", &io) == 0 && io.rc == OMR_OK && opts.rot == 90.f, "SET rot");
+    expect(run(&g, "SET KEY x VALUE no", &io) == 0 && io.rc == OMR_ERROR, "x wants a number");
+    expect(run(&g, "SET KEY x VALUE 20000", &io) == 0 && io.rc == OMR_OK && opts.x == 10000.f, "x is held to 10000");
+    expect(run(&g, "SET KEY x VALUE 5", &io) == 0 && io.rc == OMR_OK, "x back to 5");
+    expect(run(&g, "SET KEY rot VALUE 0", &io) == 0 && io.rc == OMR_OK, "rot back to 0");
+    expect(run(&g, "SAVE FILE build/rexx-place.gcode", &io) == 0 && io.rc == OMR_OK, "SAVE the moved square");
+    expect(file_has("build/rexx-place.gcode", "X5") && file_has("build/rexx-place.gcode", "X15") &&
+               file_has("build/rexx-place.gcode", "Y5") && file_has("build/rexx-place.gcode", "Y15"),
+           "the port's X and Y move the cut");
 
     expect(run(&g, "OPEN FILE burn/tests/data/two-rects.svg", &io) == 0 && io.rc == OMR_OK && doc.nlayer >= 2,
            "OPEN two-rects");

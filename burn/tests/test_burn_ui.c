@@ -191,6 +191,12 @@ int main(void)
     olui_set_number(ui, olui_find(ui, "place-rot"), 90);
     burn_ui_read(ui, &o, store, 8);
     expect(o.x == 5.f && o.y == -2.5f && o.rot == 90.f, "X, Y and Rot are read back");
+    o.x = 1.f;
+    o.y = 2.f;
+    o.rot = 45.f;
+    burn_ui_place(ui, &o);
+    burn_ui_read(ui, &o, store, 8);
+    expect(o.x == 1.f && o.y == 2.f && o.rot == 45.f, "the place fields take a port move");
     olui_select_set(ui, olui_find(ui, "layer-1-mode"), 2);
     burn_ui_read(ui, &o, store, 8);
     expect(store[1].mode == BURN_OFFSET, "Offset in the list is read as offset fill");
