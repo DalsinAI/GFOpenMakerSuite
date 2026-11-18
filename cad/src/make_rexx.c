@@ -941,6 +941,12 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "ST", "PICKED", nbuf);
     snprintf(nbuf, sizeof nbuf, "%d", g->face);
     stem_put(c, "ST", "FACE", nbuf);
+    {
+        int shown = (ps && at >= 0) ? gs_parts_shown(ps, at) : 0;
+        int colour = (ps && at >= 0) ? gs_parts_colour(ps, at) : -1;
+        stem_put(c, "ST", "SHOWN", shown ? "1" : "0");
+        stem_put(c, "ST", "COLOUR", (colour >= 0 && colour < GS_PARTS_COLOURS) ? metal_names[colour] : "");
+    }
     return OMR_OK;
 }
 
