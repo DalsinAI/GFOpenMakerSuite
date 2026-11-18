@@ -222,6 +222,19 @@ int main(void)
                    (strstr(buf, "on the bed") || strstr(buf, "already flat")),
                "LAY the largest face");
     }
+    {
+        int at;
+        expect(run(&g, "SELECT PART 1", &io) == 0 && io.rc == OMR_OK, "SELECT a part to rename");
+        at = gs_parts_picked(ps);
+        expect(run(&g, "RENAME NAME Bracket", &io) == 0 && io.rc == OMR_OK && !strcmp(gs_parts_name(ps, at), "Bracket"),
+               "RENAME");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && strcmp(gs_parts_name(ps, at), "Bracket") != 0,
+               "UNDO the rename");
+        expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && !gs_parts_shown(ps, at), "SHOW hides it");
+        expect(run(&g, "SHOW", &io) == 0 && io.rc == OMR_OK && gs_parts_shown(ps, at), "SHOW again toggles it on");
+        expect(run(&g, "COLOUR NAME teal", &io) == 0 && io.rc == OMR_OK && gs_parts_colour(ps, at) == 4, "COLOUR teal");
+        expect(run(&g, "COLOUR NAME plum", &io) == 0 && io.rc == OMR_ERROR, "COLOUR refuses an unknown metal");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);
