@@ -309,6 +309,22 @@ int burn_ui_materials_chosen(olui *ui, const char *id, const burn_materials *l)
     return i - 1;
 }
 
+int burn_ui_materials_show(olui *ui, const char *id, const burn_materials *l, const char *name)
+{
+    olui_el *sel;
+    int i;
+    if (!ui || !id || !l || !name || !name[0]) return 0;
+    sel = olui_find(ui, id);
+    if (!sel) return 0;
+    for (i = 0; i < l->n; i++) {
+        if (strcmp(l->at[i].name, name) != 0) continue;
+        if (olui_select_index(sel) == i + 1) return 0;
+        olui_select_set(ui, sel, i + 1);
+        return 1;
+    }
+    return 0;
+}
+
 void burn_ui_material(olui *ui, burn_opts *o, const burn_material *m)
 {
     int i, n;

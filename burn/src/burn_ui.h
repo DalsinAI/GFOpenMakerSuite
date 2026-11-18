@@ -41,6 +41,10 @@ int burn_ui_materials_fill(olui *ui, const char *id, const burn_materials *l);
 /* The chosen profile, or -1 when "None" (or there is no list). */
 int burn_ui_materials_chosen(olui *ui, const char *id, const burn_materials *l);
 
+/* Select that profile by name. 1 if the list moved, 0 if it already
+ * showed that name, the name is empty, or it is not in the list. */
+int burn_ui_materials_show(olui *ui, const char *id, const burn_materials *l, const char *name);
+
 /* Put a profile's settings into every layer row that is on the list, and
  * into o's job-wide defaults. */
 void burn_ui_material(olui *ui, burn_opts *o, const burn_material *m);

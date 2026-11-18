@@ -483,6 +483,7 @@ int main(int argc, char **argv)
             svg_path[sizeof svg_path - 1] = 0;
             rexx_sync(ui);
             if (rexx.have_machine) omv_machines_show(ui, "machine", &lasers, rexx.machine.name);
+            if (rexx.material[0]) burn_ui_materials_show(ui, "material", &stocks, rexx.material);
             if (rexx.quit) goto done;
         }
         if (!(got & mask)) continue;

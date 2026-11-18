@@ -146,6 +146,7 @@ int main(void)
            "STATUS, not dirty");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
                omr_host_var("ST.MACHINE") && !strcmp(omr_host_var("ST.MACHINE"), g.machine.name) &&
+               omr_host_var("ST.MATERIAL") && !strcmp(omr_host_var("ST.MATERIAL"), "") &&
                omr_host_var("ST.X") && !strcmp(omr_host_var("ST.X"), "0") && omr_host_var("ST.Y") &&
                !strcmp(omr_host_var("ST.Y"), "0") && omr_host_var("ST.ROT") && !strcmp(omr_host_var("ST.ROT"), "0"),
            "STATUS names the laser loaded with the port");
@@ -197,7 +198,15 @@ int main(void)
                omr_host_var("ST.KIND") && strstr(omr_host_var("ST.KIND"), "SVG") && omr_host_var("ST.LAYERS") &&
                atoi(omr_host_var("ST.LAYERS")) >= 1,
            "STATUS KIND SVG");
-    expect(run(&g, "MATERIAL FILE materials/laser/card.om", &io) == 0 && io.rc == OMR_OK && g.dirty == 1, "MATERIAL");
+    expect(run(&g, "MATERIAL FILE materials/laser/card.om", &io) == 0 && io.rc == OMR_OK && g.dirty == 1 &&
+               !strcmp(buf, "Card") && !strcmp(g.material, "Card") && opts.power == 40.f && opts.speed == 40.f,
+           "MATERIAL");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.MATERIAL") &&
+               !strcmp(omr_host_var("ST.MATERIAL"), "Card"),
+           "STATUS names the material");
+    expect(run(&g, "MATERIAL FILE materials/laser/no-such.om", &io) == 0 && io.rc == OMR_ERROR &&
+               !strcmp(g.material, "Card"),
+           "a missing material leaves the name");
     expect(run(&g, "MODE NAME line", &io) == 0 && io.rc == OMR_OK, "MODE line");
     expect(run(&g, "LAYER INDEX 1 POWER 90", &io) == 0 && io.rc == OMR_OK && opts.nlayer >= 1 && store[0].power == 90.f,
            "LAYER INDEX 1");
@@ -361,6 +370,11 @@ int main(void)
            "the port keeps invert, width and the lines after the window rebuilds the job");
     expect(run(&g, "SAVE FILE build/rexx-bars.gcode", &io) == 0 && io.rc == OMR_OK, "SAVE the picture");
     expect(file_has("build/rexx-bars.gcode", "X16"), "invert and a 16 mm width reach the far edge");
+    expect(run(&g, "LAYER INDEX 1 POWER 10", &io) == 0 && io.rc == OMR_OK && store[0].power == 10.f, "a picture layer");
+    expect(run(&g, "MATERIAL FILE materials/laser/card.om", &io) == 0 && io.rc == OMR_OK && opts.power == 40.f &&
+               opts.speed == 40.f && store[0].power == 40.f && store[0].speed == 40.f &&
+               (store[0].set & BURN_SET_POWER) && (store[0].set & BURN_SET_SPEED),
+           "MATERIAL writes that profile onto the layer row");
 
     expect(run(&g, "OPEN FILE no-such.svg", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
     expect(run(&g, "SET KEY travel VALUE 200", &io) == 0 && io.rc == OMR_OK && opts.travel == 200.f && g.have_travel,
