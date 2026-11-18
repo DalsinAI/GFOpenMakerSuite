@@ -337,6 +337,32 @@ static int cmd_add(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The Add buttons. It does not add an item and it does not need a project. */
+static int cmd_kinds(void *c, void *g0)
+{
+    static const char *const keys[] = {"cad", "print", "laser", "cnc", "electronics"};
+    gw_rexx *g = app(g0);
+    char nbuf[16], tail[24];
+    int i, n = (int)(sizeof keys / sizeof keys[0]);
+    (void)g;
+    snprintf(nbuf, sizeof nbuf, "%d", n);
+    stem_put(c, "0", nbuf);
+    for (i = 0; i < n; i++) {
+        const char *port = gpr_kind_port(keys[i]);
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, nbuf, gpr_kind_group(keys[i]));
+        snprintf(tail, sizeof tail, "%d.KIND", i + 1);
+        stem_put(c, tail, keys[i]);
+        snprintf(tail, sizeof tail, "%d.APP", i + 1);
+        stem_put(c, tail, gpr_kind_app(keys[i]) ? gpr_kind_app(keys[i]) : "");
+        snprintf(tail, sizeof tail, "%d.PORT", i + 1);
+        stem_put(c, tail, port ? port : "");
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", n);
+    omr_set_result(c, nbuf);
+    return OMR_OK;
+}
+
 static int cmd_remove(void *c, void *g0)
 {
     gw_rexx *g = app(g0);
@@ -628,6 +654,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the project, whether it is dirty, how many items", cmd_status},
     {sizeof(omr_verb), "NEW", "PATH/A NAME/K", "Create a project drawer and open it", cmd_new},
     {sizeof(omr_verb), "ADD", "KIND/A FILE/A NAME/K FROM/N/K", "Add an item", cmd_add},
+    {sizeof(omr_verb), "KINDS", "STEM/K", "the kinds the Add buttons show", cmd_kinds},
     {sizeof(omr_verb), "REMOVE", "ITEM/A", "Drop an item from the manifest", cmd_remove},
     {sizeof(omr_verb), "RENAME", "ITEM/A NAME/A", "Rename an item in the manifest", cmd_rename},
     {sizeof(omr_verb), "ITEMS", "KIND/K STEM/K VAR/K", "List the items", cmd_items},

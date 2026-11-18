@@ -100,6 +100,18 @@ int main(void)
                !strcmp(omr_host_var("ST.PATH"), ""),
            "STATUS has no project to name");
     expect(run(&g, "ADD KIND laser FILE x NAME Plate", &io) == 0 && io.rc == OMR_ERROR, "ADD with no project");
+    expect(run(&g, "KINDS STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "5") && !w.have && !w.project.dirty &&
+               omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "5") && omr_host_var("ST.1") &&
+               !strcmp(omr_host_var("ST.1"), "CAD") && omr_host_var("ST.1.KIND") &&
+               !strcmp(omr_host_var("ST.1.KIND"), "cad") && omr_host_var("ST.1.APP") &&
+               !strcmp(omr_host_var("ST.1.APP"), "GFOpenMake") && omr_host_var("ST.1.PORT") &&
+               !strcmp(omr_host_var("ST.1.PORT"), "GFOPENMAKE") && omr_host_var("ST.2") &&
+               !strcmp(omr_host_var("ST.2"), "Print") && omr_host_var("ST.5") &&
+               !strcmp(omr_host_var("ST.5"), "Electronics") && omr_host_var("ST.5.KIND") &&
+               !strcmp(omr_host_var("ST.5.KIND"), "electronics") && omr_host_var("ST.5.APP") &&
+               !strcmp(omr_host_var("ST.5.APP"), "gfamigakicad") && omr_host_var("ST.5.PORT") &&
+               !strcmp(omr_host_var("ST.5.PORT"), ""),
+           "KINDS names the Add buttons");
     expect(run(&g, "PICK ITEM 1", &io) == 0 && io.rc == OMR_ERROR, "PICK with no project");
     expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2 && !strcmp(buf, "Side."),
            "LOOK side");
