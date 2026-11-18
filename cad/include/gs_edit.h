@@ -227,4 +227,10 @@ int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float
 int ge_footprint(int kind, float x0, float y0, float x1, float y1, float *cx, float *cy, float *w, float *d, char *line,
                  int len);
 
+/* The solid a drag would place, not joined and not cut, so the picture can
+ * show it while the pointer moves. Same checks as ge_extrude_at. part is
+ * not changed. 0, or -1 with why. */
+int ge_sketch_ghost(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
+                    char *line, int len);
+
 #endif

@@ -586,14 +586,10 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
     return 0;
 }
 
-int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
-                  char *line, int len)
+/* The footprint and the height, shared by the placed solid and the ghost. */
+static int extrude_ok(const gs_mesh *part, int kind, int op, float w, float d, float h, char *line, int len)
 {
-    static const char *const names[3] = {"block", "round", "slot"};
-    gs_mesh tool, r;
-    char foot[32];
-    int rc;
-    if (kind < GM_RECT || kind > GM_SLOT || op < GM_ON_BED || op > GM_FROM_TOP || !out) {
+    if (kind < GM_RECT || kind > GM_SLOT || op < GM_ON_BED || op > GM_FROM_TOP) {
         snprintf(line, (size_t)len, "There is no such extrude.");
         return -1;
     }
@@ -609,6 +605,21 @@ int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float
         snprintf(line, (size_t)len, "There is no part to stand it on or cut.");
         return -1;
     }
+    return 0;
+}
+
+int ge_extrude_at(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
+                  char *line, int len)
+{
+    static const char *const names[3] = {"block", "round", "slot"};
+    gs_mesh tool, r;
+    char foot[32];
+    int rc;
+    if (!out) {
+        snprintf(line, (size_t)len, "There is no such extrude.");
+        return -1;
+    }
+    if (extrude_ok(part, kind, op, w, d, h, line, len)) return -1;
     memset(&tool, 0, sizeof tool);
     memset(&r, 0, sizeof r);
     if (gm_extrude(&tool, part, kind, op, x, y, w, d, h)) {
@@ -694,6 +705,28 @@ int ge_footprint(int kind, float x0, float y0, float x1, float y1, float *cx, fl
         snprintf(line, (size_t)len, "That footprint is under 1 mm. Drag a larger one.");
         return -1;
     }
+    return 0;
+}
+
+/* The solid a drag would place, not joined and not cut. The picture shows
+ * it while the pointer moves. part is not changed. 0, or -1 with why. */
+int ge_sketch_ghost(const gs_mesh *part, int kind, int op, float x, float y, float w, float d, float h, gs_mesh *out,
+                    char *line, int len)
+{
+    gs_mesh tool;
+    if (!out) {
+        snprintf(line, (size_t)len, "There is no such extrude.");
+        return -1;
+    }
+    if (extrude_ok(part, kind, op, w, d, h, line, len)) return -1;
+    memset(&tool, 0, sizeof tool);
+    if (gm_extrude(&tool, part, kind, op, x, y, w, d, h) || !tool.n) {
+        gs_mesh_free(&tool);
+        snprintf(line, (size_t)len, "The footprint did not build.");
+        return -1;
+    }
+    gs_mesh_free(out);
+    *out = tool;
     return 0;
 }
 

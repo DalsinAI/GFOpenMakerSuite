@@ -31,7 +31,7 @@
  * picked part's top, or cut down from it; Face: the picked face pulled
  * by a distance, chamfered, or dragged; and Section: hide what is above
  * a height, or split the part there into two. Draw drags that footprint
- * on the bed) and Print (Layers, and Slice
+ * on the bed, and the solid is shown while the pointer moves) and Print (Layers, and Slice
  * with core/ui's print settings panel, omview_settings.h, put in
  * "settings" by make.c), as wide as that panel. Place's Size and At, a row
  * for each axis, are the
