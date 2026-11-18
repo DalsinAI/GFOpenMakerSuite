@@ -55,8 +55,8 @@ $(BUILD)/test_make_rexx: cad/tests/test_make_rexx.c cad/src/make_rexx.c cad/src/
 	    cad/tests/test_make_rexx.c cad/src/make_rexx.c cad/src/edit.c core/src/rexx.c $(PLAN) \
 	    core/src/gcode.c core/src/settings.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c -lm
 
-$(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h core/tests/data/nasa-wrench.stl | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h cad/include/gs_edit.h core/tests/data/nasa-wrench.stl | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # GFOpenMake's window, laid out by GFOpenLayout (LAYOUT, built with make there).
 $(BUILD)/test_make_ui: cad/tests/test_make_ui.c cad/src/make_ui.h core/ui/settings_ui.c core/src/settings.c core/src/parts.c | $(BUILD)

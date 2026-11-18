@@ -113,10 +113,22 @@ static void rebuild_shown(void)
 static int section_on;
 static float section_z = 10.f;
 static gs_mesh section_mesh;
+static gs_mesh layer_mesh; /* the part below the section, for the layer walls only */
 static gs_mesh sketch_ghost; /* the footprint while the pointer moves, not a part */
 static int sketch_live;
 static int sketch_op = GM_ON_BED; /* what a drag does: Add, On top or Cut */
 static gs_mesh view_mesh; /* shown, with the ghost after it, for the picture only */
+
+/* The picture is clipped. The layer walls use the same cut, so a wall is
+ * not drawn in the part of the solid the section is hiding. The ghost is
+ * not part of that cut. */
+static const gs_mesh *layer_of(void)
+{
+    if (!section_on) return &shown;
+    gs_mesh_free(&layer_mesh);
+    if (ge_clip_below(&layer_mesh, &shown, section_z)) return &shown;
+    return &layer_mesh;
+}
 
 static void sketch_clear(void)
 {
@@ -301,15 +313,20 @@ static const char *tool_label(void)
     return "Orbit. Drag turns the view. A click picks a face.";
 }
 
-/* Cuts the shown layer again, after the part or the height changed. */
+/* Cuts the shown layer again, after the part or the height changed.
+ * With Section on, only the solid below the plane is cut. layers_mesh is
+ * that solid, so the status line and the slider count the same layers. */
+static const gs_mesh *layers_mesh;
+
 static void recut(void)
 {
     int n;
     rebuild_shown();
-    n = gl_layers(&shown, layer_h);
+    layers_mesh = layer_of();
+    n = gl_layers(layers_mesh, layer_h);
     if (layer_no > n) layer_no = n;
     if (layer_no < 1) layer_no = 1;
-    if (show_layer) gl_cut(&shown, layer_h, layer_no, &walls);
+    if (show_layer) gl_cut(layers_mesh, layer_h, layer_no, &walls);
     else gl_walls_free(&walls);
 }
 
@@ -347,7 +364,7 @@ static void refresh(olui *ui)
         return;
     }
     if (show_layer) {
-        gl_status(status, (int)sizeof status, &shown, layer_h, layer_no, &walls);
+        gl_status(status, (int)sizeof status, layers_mesh ? layers_mesh : &shown, layer_h, layer_no, &walls);
         say(ui, status);
         face_line(ui);
         olui_repaint(ui, olui_find(ui, "view"), NULL);
@@ -644,10 +661,11 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
-/* The slider is 1 to 100 along the part's layers; Prev and Next step one. */
+/* The slider is 1 to 100 along the layers that are drawn. With Section
+ * on, that is the solid below the plane, not the hidden part above it. */
 static void slider_to_layer(olui *ui)
 {
-    int n = gl_layers(&shown, layer_h);
+    int n = gl_layers(layers_mesh ? layers_mesh : &shown, layer_h);
     olui_set_slider(ui, olui_find(ui, "layer"), omv_slider_of(layer_no, n));
 }
 
@@ -691,8 +709,10 @@ static void on_step(olui *ui, const olui_event *ev, void *userdata)
 
 static void on_slide(olui *ui, const olui_event *ev, void *userdata)
 {
-    int n = gl_layers(&shown, layer_h);
+    int n;
     (void)userdata;
+    rebuild_shown();
+    n = gl_layers(layer_of(), layer_h);
     layer_no = omv_layer_of(ev->index, n);
     if (!show_layer) olui_set_checked(ui, olui_find(ui, "show"), show_layer = 1);
     refresh(ui);
@@ -1628,6 +1648,7 @@ done:
     gs_mesh_free(&none);
     gs_mesh_free(&pull_base);
     gs_mesh_free(&section_mesh);
+    gs_mesh_free(&layer_mesh);
     gs_mesh_free(&sketch_ghost);
     gs_mesh_free(&view_mesh);
     gl_walls_free(&walls);
