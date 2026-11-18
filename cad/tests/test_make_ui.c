@@ -36,12 +36,13 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
  * from PARTS_BUTTONS on, then the Print tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
     "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay", "shelf",
+    "vtop", "vfront", "vside", "vframe",
     "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
     "dup", "linex", "liney", "ring", "mirror", "turn", "stack", "solo",
     "prev", "next", "slice", "gcode"
 };
-#define PARTS_BUTTONS 13
-#define PRINT_BUTTONS 33
+#define PARTS_BUTTONS 17
+#define PRINT_BUTTONS 37
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice

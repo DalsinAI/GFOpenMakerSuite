@@ -45,6 +45,23 @@ void gs_cam_zoom(gs_cam *c, float factor)
     if (c->dist > 6.f) c->dist = 6.f;
 }
 
+void gs_cam_look(gs_cam *c, int which)
+{
+    if (!c) return;
+    c->panx = c->pany = 0.f;
+    c->dist = 1.f;
+    if (which == 0) {
+        c->yaw = 0.f;
+        c->pitch = 1.4f; /* as steep as a drag can tilt: the turntable stops here */
+    } else if (which == 1) {
+        c->yaw = 3.14159265f; /* from -Y, Z up the picture */
+        c->pitch = 0.f;
+    } else {
+        c->yaw = 1.5707963f; /* from +X */
+        c->pitch = 0.f;
+    }
+}
+
 int gs_view_on_gpu(void)
 {
     return 0;
@@ -68,6 +85,66 @@ static v3 xform(gs_v p, const gs_cam *c, gs_v o)
     r.y = z2;
     r.z = y2;
     return r;
+}
+
+void gs_cam_frame(gs_cam *c, const gs_mesh *m, int w, int h)
+{
+    gs_v origin, p;
+    float minx, miny, maxx, maxy, px0, py0, px1, py1, bedx, bedy, partx, party, dist;
+    int i, n, a, b, k;
+    if (!c || !m || m->n < 1 || !m->t || w < 4 || h < 4) return;
+    (void)w;
+    (void)h;
+    origin.x = GS_BED * 0.5f;
+    origin.y = GS_BED * 0.5f;
+    origin.z = 0.f;
+    minx = miny = 1e30f;
+    maxx = maxy = -1e30f;
+    for (a = 0; a < 2; a++) {
+        for (b = 0; b < 2; b++) {
+            for (k = 0; k < 2; k++) {
+                v3 r;
+                p.x = a ? GS_BED : 0.f;
+                p.y = b ? GS_BED : 0.f;
+                p.z = k ? GS_BED : 0.f;
+                r = xform(p, c, origin);
+                if (r.x < minx) minx = r.x;
+                if (r.y < miny) miny = r.y;
+                if (r.x > maxx) maxx = r.x;
+                if (r.y > maxy) maxy = r.y;
+            }
+        }
+    }
+    px0 = py0 = 1e30f;
+    px1 = py1 = -1e30f;
+    for (i = 0; i < m->n; i++) {
+        gs_v q[3];
+        q[0] = m->t[i].a;
+        q[1] = m->t[i].b;
+        q[2] = m->t[i].c;
+        for (n = 0; n < 3; n++) {
+            v3 r = xform(q[n], c, origin);
+            if (r.x < px0) px0 = r.x;
+            if (r.y < py0) py0 = r.y;
+            if (r.x > px1) px1 = r.x;
+            if (r.y > py1) py1 = r.y;
+        }
+    }
+    bedx = maxx - minx;
+    bedy = maxy - miny;
+    partx = px1 - px0;
+    party = py1 - py0;
+    if (bedx < 0.5f) bedx = 0.5f;
+    if (bedy < 0.5f) bedy = 0.5f;
+    if (partx < 0.5f) partx = 0.5f;
+    if (party < 0.5f) party = 0.5f;
+    dist = bedx / partx;
+    if (bedy / party < dist) dist = bedy / party;
+    if (dist < 0.25f) dist = 0.25f;
+    if (dist > 6.f) dist = 6.f;
+    c->dist = dist;
+    c->panx = ((minx + maxx) * 0.5f - (px0 + px1) * 0.5f) / bedx;
+    c->pany = ((miny + maxy) * 0.5f - (py0 + py1) * 0.5f) / bedy;
 }
 
 static void put_rgb(unsigned char *rgb, int w, int h, int x, int y, int r, int g, int b)

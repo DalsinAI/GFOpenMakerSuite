@@ -73,6 +73,7 @@ static const char gm_markup_a[] =
     "<fieldset><legend>Tool</legend>"
     "<row><button id=\"orbit\">Orbit</button><button id=\"move\">Move</button></row>"
     "<row><button id=\"rot\">Rotate</button><button id=\"scale\">Scale</button><button id=\"measure\">Measure</button></row>"
+    "<row><button id=\"vtop\">Top</button><button id=\"vfront\">Front</button><button id=\"vside\">Side</button><button id=\"vframe\">Frame</button></row>"
     "</fieldset>"
     "<fieldset><legend>Place</legend>"
     "<row><button id=\"drop\">Drop</button><button id=\"centre\">Centre</button><button id=\"lay\">Lay flat</button></row>"

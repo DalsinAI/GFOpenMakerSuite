@@ -669,6 +669,22 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+/* Top, front, side, or frame the picked part. The turntable stays Z up. */
+static void on_look(olui *ui, const olui_event *ev, void *userdata)
+{
+    int which = (int)(intptr_t)userdata;
+    (void)ev;
+    if (which == 3) {
+        rebuild_shown();
+        gs_cam_frame(&cam, work()->n ? work() : &shown, vw, vh);
+        say(ui, "Framed.");
+    } else {
+        gs_cam_look(&cam, which);
+        say(ui, which == 0 ? "Top." : which == 1 ? "Front." : "Side.");
+    }
+    olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
+
 static void take_added(olui *ui, gs_mesh box, const char *name);
 
 /* File's Shelf: the chosen example, on the bed, as the bench's library. */
@@ -1418,6 +1434,10 @@ int main(int argc, char **argv)
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
     olui_on(ui, "shelf", OLUI_CLICK, on_shelf, NULL);
+    olui_on(ui, "vtop", OLUI_CLICK, on_look, (void *)(intptr_t)0);
+    olui_on(ui, "vfront", OLUI_CLICK, on_look, (void *)(intptr_t)1);
+    olui_on(ui, "vside", OLUI_CLICK, on_look, (void *)(intptr_t)2);
+    olui_on(ui, "vframe", OLUI_CLICK, on_look, (void *)(intptr_t)3);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
