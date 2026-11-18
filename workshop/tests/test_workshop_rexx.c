@@ -92,6 +92,11 @@ int main(void)
     expect(run(&g, "HELP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENITEM") && strstr(buf, "SEND"),
            "HELP lists OPENITEM and SEND");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEWORKSHOP.1"), "STATUS with no project");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.NAME") &&
+               !strcmp(omr_host_var("ST.NAME"), "") && omr_host_var("ST.PICKED") &&
+               !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") &&
+               !strcmp(omr_host_var("ST.ITEM"), ""),
+           "STATUS has no project to name");
     expect(run(&g, "ADD KIND laser FILE x NAME Plate", &io) == 0 && io.rc == OMR_ERROR, "ADD with no project");
 
     cwd = getcwd(NULL, 0);
@@ -139,10 +144,18 @@ int main(void)
     expect(run(&g, "RENAME ITEM Plate NAME Front", &io) == 0 && io.rc == OMR_OK && !strcmp(w.project.items[0].name, "Front"),
            "RENAME");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.ITEMS") &&
-               !strcmp(omr_host_var("ST.ITEMS"), "2") && omr_host_var("ST.DIRTY") && !strcmp(omr_host_var("ST.DIRTY"), "1"),
+               !strcmp(omr_host_var("ST.ITEMS"), "2") && omr_host_var("ST.DIRTY") && !strcmp(omr_host_var("ST.DIRTY"), "1") &&
+               omr_host_var("ST.NAME") && !strcmp(omr_host_var("ST.NAME"), "Shelf") && omr_host_var("ST.PICKED") &&
+               !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") && !strcmp(omr_host_var("ST.ITEM"), ""),
            "STATUS ITEMS");
 
     expect(run(&g, "OPENITEM ITEM Front", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN"), "OPENITEM launches");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICKED") &&
+               !strcmp(omr_host_var("ST.PICKED"), "1") && omr_host_var("ST.ITEM") &&
+               !strcmp(omr_host_var("ST.ITEM"), "Front") && omr_host_var("ST.KIND") &&
+               !strcmp(omr_host_var("ST.KIND"), "laser") && omr_host_var("ST.FROM") &&
+               !strcmp(omr_host_var("ST.FROM"), ""),
+           "STATUS names the item the window is showing");
     launch = workshop_launch_last(&w);
     expect(launch && strstr(launch, "GFOpenBurn") && strstr(launch, "rect-10mm.svg"), "the launch hook has the file");
 
@@ -181,6 +194,24 @@ int main(void)
     expect(run(&g, "OPEN FILE build/ws-rexx-proj", &io) == 0 && io.rc == OMR_OK && w.have && w.project.n == 1 &&
                !strcmp(w.project.name, "Shelf"),
            "OPEN the project again");
+    {
+        FILE *f = fopen("build/ws-rexx-copy.svg", "w");
+        char line[700];
+        expect(f != NULL, "a second drawing");
+        if (f) {
+            fputs("<svg></svg>\n", f);
+            fclose(f);
+        }
+        snprintf(line, sizeof line, "ADD KIND laser FILE %s/build/ws-rexx-copy.svg NAME Copy FROM 1", cwd ? cwd : ".");
+        expect(run(&g, line, &io) == 0 && io.rc == OMR_OK && w.project.n == 2 && w.project.items[1].from == 1,
+               "ADD a copy from the first item");
+    }
+    w.picked = 1;
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICKED") &&
+               !strcmp(omr_host_var("ST.PICKED"), "2") && omr_host_var("ST.ITEM") &&
+               !strcmp(omr_host_var("ST.ITEM"), "Copy") && omr_host_var("ST.FROM") &&
+               !strcmp(omr_host_var("ST.FROM"), "1"),
+           "STATUS says the row was made from another");
 
     workshop_free(&w);
     free(cwd);
