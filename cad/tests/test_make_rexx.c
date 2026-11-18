@@ -77,7 +77,7 @@ int main(void)
     {
         int dirty = g.dirty, back = ge_steps_back(steps);
         expect(run(&g, "SLICE", &io) == 0 && io.rc == OMR_OK && g.sliced == 1 && g.slice_layers > 0 &&
-                   g.slice_moves > 0 && strstr(buf, "layers"),
+                   g.slice_moves > 0 && g.slice_tasks >= 1 && g.slice_tasks <= 64 && strstr(buf, "layers"),
                "SLICE");
         expect(g.dirty == dirty && ge_steps_back(steps) == back, "SLICE is not an undo step");
     }

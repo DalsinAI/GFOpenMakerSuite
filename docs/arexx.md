@@ -469,14 +469,16 @@ or it is not a printer.
 Template: `GCODE FILE/A`
 
 Slices the shown parts with the current print settings and printer, and
-writes G-code to `FILE`, as the window's Save G-code.
+writes G-code to `FILE`, as the window's Save G-code. The layers are
+made on one task a core, held from 1 to 64, the same as `SLICE`.
 
 ### SLICE
 
 Template: `SLICE`
 
 Slices the shown parts with the current print settings, as the window's
-Slice button. `RESULT` is the layers, the moves, the time and the
+Slice button. The layers are made on one task a core, held from 1 to 64.
+`RESULT` is the layers, the moves, the time and the
 filament. The window shows that toolpath. It does not write a file, and
 it does not change the part, so it is not an undo step. A new layer
 height from `SET` is the height the picture is cut at, held to 0.08 mm

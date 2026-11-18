@@ -1360,8 +1360,8 @@ static long to_file(const char *t, long n, void *ud)
     return (long)fwrite(t, 1, (size_t)n, (FILE *)ud);
 }
 
-/* The part as a printer's toolpath, at the Layers height, on as many
- * tasks as there are cores (gs_par: exec tasks here). */
+/* The part as a printer's toolpath, at the Layers height, on one task a
+ * core, held to 64 (gs_par: exec tasks here). The port's SLICE does this too. */
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
 {
     gp_opts o;
@@ -1371,7 +1371,7 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     gs_settings s;
     om_machine m;
     char why[160];
-    int have;
+    int have, tasks;
     (void)ev;
     (void)userdata;
     rebuild_shown();
@@ -1382,7 +1382,10 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     gs_settings_more(&s, &x);
     drop_slice();
     say(ui, "Slicing...");
-    if (gp_part_par_more(&sliced, &shown, &o, &x, gs_par_cores()) || !sliced.n) {
+    tasks = gs_par_cores();
+    if (tasks < 1) tasks = 1;
+    if (tasks > 64) tasks = 64;
+    if (gp_part_par_more(&sliced, &shown, &o, &x, tasks) || !sliced.n) {
         drop_slice();
         say(ui, "That did not slice: out of memory, or nothing to slice");
         return;
