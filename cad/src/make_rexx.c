@@ -8,6 +8,7 @@
 #include "gs_model.h"
 #include "gs_par.h"
 #include "gs_plan.h"
+#include "omview_machines.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -1665,6 +1666,44 @@ static int cmd_printer(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The picker's list. DIR is the machines drawer the window scans.
+ * It does not load a printer and it does not mark the part dirty. */
+static int cmd_printers(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    const char *dir = omr_arg(c, "DIR");
+    omv_machines lib;
+    char nbuf[16];
+    int i;
+    (void)g;
+#if defined(AMIGA) || defined(__amigaos__)
+    if (!dir || !dir[0]) dir = "PROGDIR:machines";
+#else
+    if (!dir || !dir[0]) dir = "machines";
+#endif
+    memset(&lib, 0, sizeof lib);
+    if (omv_machines_scan(&lib, dir, "printer") < 0) {
+        omv_machines_free(&lib);
+        omr_set_result(c, "out of memory");
+        return OMR_ERROR;
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    stem_put(c, NULL, "0", nbuf);
+    for (i = 0; i < lib.n; i++) {
+        char tail[24];
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, NULL, nbuf, lib.at[i].name);
+        snprintf(tail, sizeof tail, "%d.DRIVER", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].driver);
+        snprintf(tail, sizeof tail, "%d.PROFILE", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].profile);
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    omr_set_result(c, nbuf);
+    omv_machines_free(&lib);
+    return OMR_OK;
+}
+
 /* The Slice button: the shown parts as a toolpath. It does not write a file. */
 static int cmd_slice(void *c, void *g0)
 {
@@ -1980,6 +2019,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "CHAMFER", "MM/A FACE/N/K", "chamfer a face's edges", cmd_chamfer},
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "pick the printer from a driver and profile", cmd_printer},
+    {sizeof(omr_verb), "PRINTERS", "DIR/K STEM/K", "the printers the picker lists", cmd_printers},
     {sizeof(omr_verb), "GCODE", "FILE/A", "slice the shown parts and write G-code", cmd_gcode},
     {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "slice the shown parts for the view", cmd_slice},
     {sizeof(omr_verb), "MEASURE", "X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K", "the distance between two points",

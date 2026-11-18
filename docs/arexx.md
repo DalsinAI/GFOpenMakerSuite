@@ -512,6 +512,18 @@ is refused. When that printer is in the window's list, the list shows
 it and the settings are held to it. RC 10 if the file cannot be read,
 or it is not a printer.
 
+### PRINTERS
+
+Template: `PRINTERS DIR/K STEM/K`
+
+Names the printers the window's list shows. `DIR` is the machines drawer
+(`machines` on the host, `PROGDIR:machines` on the Amiga), the same root
+the window scans. `RESULT` is how many. `STEM`, when given, has `stem.0`
+(that count), `stem.1` onwards the names, `stem.1.DRIVER` and
+`stem.1.PROFILE` the two files `PRINTER` takes. It does not load one, and
+it does not change the part. A missing drawer is `0`. Out of memory is
+RC 10.
+
 ### GCODE
 
 Template: `GCODE FILE/A`

@@ -89,6 +89,19 @@ int main(void)
            "SET pattern grid");
     expect(run(&g, "SET KEY no-such VALUE 1", &io) == 0 && io.rc == OMR_ERROR, "SET unknown key");
     expect(run(&g, "SET KEY around VALUE none", &io) == 0 && io.rc == OMR_OK, "SET around none");
+    {
+        int dirty = g.dirty;
+        expect(run(&g, "PRINTERS STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "5") && g.dirty == dirty &&
+                   omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "5") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "Generic Marlin 220") && omr_host_var("ST.1.DRIVER") &&
+                   strstr(omr_host_var("ST.1.DRIVER"), "marlin/driver.om") && omr_host_var("ST.1.PROFILE") &&
+                   strstr(omr_host_var("ST.1.PROFILE"), "generic-220.om") && omr_host_var("ST.5") &&
+                   !strcmp(omr_host_var("ST.5"), "Voron 2.4 300"),
+               "PRINTERS names the picker");
+        expect(run(&g, "PRINTERS DIR machines/no-such", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "0") &&
+                   g.dirty == dirty,
+               "PRINTERS of a missing drawer is none");
+    }
     expect(run(&g, "PRINTER", &io) == 0 && io.rc == OMR_ERROR, "PRINTER needs a file");
     expect(run(&g, "PRINTER DRIVER machines/laser/grbl/driver.om PROFILE machines/laser/grbl/profiles/generic-diode-400.om",
                &io) == 0 &&
