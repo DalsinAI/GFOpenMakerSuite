@@ -183,6 +183,17 @@ int main(void)
         expect(run(&g, "LAYERS INDEX no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 1, "LAYERS index wants a number");
         expect(g.dirty == dirty, "LAYERS does not dirty");
     }
+    {
+        int dirty = g.dirty;
+        expect(run(&g, "LOOK NAME top", &io) == 0 && io.rc == OMR_OK && g.look == 0 && strstr(buf, "Top"), "LOOK top");
+        expect(run(&g, "LOOK NAME front", &io) == 0 && io.rc == OMR_OK && g.look == 1 && strstr(buf, "Front"),
+               "LOOK front");
+        expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2, "LOOK side");
+        expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && strstr(buf, "Framed"),
+               "LOOK frame");
+        expect(run(&g, "LOOK NAME under", &io) == 0 && io.rc == OMR_ERROR && g.look == 3, "LOOK refuses an unknown view");
+        expect(g.dirty == dirty, "LOOK does not dirty");
+    }
     expect(run(&g, "STATS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.TIME") &&
                omr_host_var("ST.FILAMENT"),
            "STATS");

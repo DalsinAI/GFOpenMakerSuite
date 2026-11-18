@@ -487,6 +487,29 @@ static int cmd_layers(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const look_names[] = {"top", "front", "side", "frame"};
+static const char *const look_said[] = {"Top.", "Front.", "Side.", "Framed."};
+
+/* Top, front, side, or frame. The picture changes. The part does not. */
+static int cmd_look(void *c, void *g0)
+{
+    os_rexx *g = app(g0);
+    const char *name = omr_arg(c, "NAME");
+    int which, i;
+    which = -1;
+    if (name) {
+        for (i = 0; i < 4; i++)
+            if (eqi(name, look_names[i])) which = i;
+    }
+    if (which < 0) {
+        omr_set_result(c, "NAME is top, front, side or frame");
+        return OMR_ERROR;
+    }
+    g->look = which;
+    omr_set_result(c, look_said[which]);
+    return OMR_OK;
+}
+
 static int cmd_slice(void *c, void *g0)
 {
     os_rexx *g = app(g0);
@@ -534,6 +557,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "Pick the machine from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "Slice the loaded part", cmd_slice},
     {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K", "show layers 1 to a layer", cmd_layers},
+    {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
     {sizeof(omr_verb), "STATS", "STEM/K VAR/K", "The last slice's figures", cmd_stats},
 };
 
@@ -545,6 +569,7 @@ void os_rexx_init(os_rexx *g)
     gs_settings_default(&g->set);
     g->tasks = 1;
     g->layer_no = 1;
+    g->look = -1;
 }
 
 const omr_verb *os_rexx_verbs(void) { return verbs; }

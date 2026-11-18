@@ -49,6 +49,7 @@ static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift;
 static int show_layer, layer_no = 1;
+static int vw = 640, vh = 320;
 static omv_gpu gpu;
 
 /* ARexx: the port OPENMAKESLICER.1, and the command table in slicer_rexx.c. */
@@ -155,6 +156,8 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     int at[2], rc;
     (void)userdata;
     (void)el;
+    if (w > 4) vw = w;
+    if (h > 4) vh = h;
     if (draw_gpu(x, y, w, h)) return;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
@@ -425,6 +428,7 @@ int main(int argc, char **argv)
             rexx.layers = show_layer ? 1 : 0;
             rexx.layer_no = layer_no < 1 ? 1 : layer_no;
             rexx.fresh = 0;
+            rexx.look = -1;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
             show_own(ui);
@@ -439,6 +443,18 @@ int main(int argc, char **argv)
             stl_path[sizeof stl_path - 1] = 0;
             if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), stl_path);
             apply_layers(ui);
+            if (rexx.look >= 0 && rexx.look <= 3) {
+                if (rexx.look == 3) {
+                    gs_mesh none;
+                    const gs_mesh *part;
+                    if (job.have_part) part = &job.part;
+                    else {
+                        memset(&none, 0, sizeof none);
+                        part = &none;
+                    }
+                    gs_cam_frame(&cam, part, vw, vh);
+                } else gs_cam_look(&cam, rexx.look);
+            }
             refresh(ui);
             if (rexx.quit) goto done;
         }

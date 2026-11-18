@@ -570,6 +570,14 @@ a higher number is that slice's last layer. `ON` is `1` or `0` (any other
 number is on). A slice leaves the window on the top layer. RC 10 if `ON`
 or `INDEX` is not a number.
 
+### LOOK
+
+Template: `LOOK NAME/A`
+
+Turns the view. `NAME` is `top`, `front`, `side` or `frame`. The window
+has no button for it. The picture changes. The part does not, and the
+document is not marked dirty. RC 10 if the name is not one of those.
+
 ## OpenMakeBurn (port `OPENMAKEBURN.1`)
 
 The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture. `SAVE`
