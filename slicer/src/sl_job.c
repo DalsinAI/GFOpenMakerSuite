@@ -69,6 +69,7 @@ int sl_slice(sl_job *j, const gs_settings *s, const om_machine *m, int tasks, ch
     j->set.layer_h = gl_height(s->layer_h);
     gs_settings_opts(&j->set, &o, &g);
     gs_settings_more(&j->set, &x);
+    x.support = j->support ? 1 : 0;
     layers = gp_layers(&j->part, &o);
     if (tasks > layers) tasks = layers; /* as gp_part_par does */
     if (tasks < 1) tasks = 1;

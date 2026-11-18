@@ -29,6 +29,10 @@ typedef struct {
     int top, bottom;    /* solid layers at the top and the bottom, 0 to 8; -1: gp_opts' skins */
     int skirt;          /* loops round the part on the first layer, apart from it */
     float gap;          /* mm between the part and its brim or skirt */
+    int support;        /* 0: none. Not 0: one wall under an overhang steeper than
+                         * 45 degrees, from the bed up to it. Drawn as a brim line,
+                         * so a new kind does not grow gc_opts. A sliver thinner
+                         * than the line is left out. */
 } gp_more;
 
 /* As gp_opts alone: lines, its skins top and bottom, no skirt, no gap. */

@@ -67,6 +67,95 @@ static int ring(gt_path *p, const gl_loops *in, float d, int kind, int outer, fl
     return rc ? -1 : 0;
 }
 
+/* src's closed loops onto dst. flip reverses them, so a solid becomes a hole. */
+static int add_loops(gl_loops *dst, const gl_loops *src, int flip)
+{
+    int i, k;
+    if (!src) return 0;
+    for (i = 0; i < src->n; i++) {
+        const gl_loop *s = &src->l[i];
+        gl_loop *nl, *d;
+        float *xy;
+        if (!s->closed || s->n < 3 || !s->xy) continue;
+        nl = (gl_loop *)realloc(dst->l, (size_t)(dst->n + 1) * sizeof *nl);
+        if (!nl) return -1;
+        dst->l = nl;
+        d = &dst->l[dst->n];
+        memset(d, 0, sizeof *d);
+        xy = (float *)malloc((size_t)s->n * 2 * sizeof *xy);
+        if (!xy) return -1;
+        for (k = 0; k < s->n; k++) {
+            int f = flip ? s->n - 1 - k : k;
+            xy[k * 2] = s->xy[f * 2];
+            xy[k * 2 + 1] = s->xy[f * 2 + 1];
+        }
+        d->xy = xy;
+        d->n = s->n;
+        d->closed = 1;
+        dst->n++;
+    }
+    return 0;
+}
+
+/* What of layer k the layer under it does not hold at 45 degrees: further
+ * out than one layer height. Empty when k is held. */
+static int overhang(const gs_mesh *m, float h, int k, gl_loops *out)
+{
+    gl_loops upper, lower, grown, bag;
+    int rc;
+    memset(&upper, 0, sizeof upper);
+    memset(&lower, 0, sizeof lower);
+    memset(&grown, 0, sizeof grown);
+    memset(&bag, 0, sizeof bag);
+    memset(out, 0, sizeof *out);
+    rc = loops(m, h, k, &upper);
+    if (rc > 0) rc = 0;
+    if (!rc && upper.n) rc = loops(m, h, k - 1, &lower);
+    if (rc > 0) rc = 0;
+    if (!rc && upper.n) rc = gl_inset(&lower, -h, &grown);
+    if (!rc && upper.n) rc = add_loops(&bag, &upper, 0) || add_loops(&bag, &grown, 1) || gl_union(&bag, out);
+    gl_loops_free(&upper);
+    gl_loops_free(&lower);
+    gl_loops_free(&grown);
+    gl_loops_free(&bag);
+    if (rc) gl_loops_free(out);
+    return rc ? -1 : 0;
+}
+
+/* One wall at this layer under every overhang above it that the part here
+ * does not already hold. The wall is a brim line: gc_opts has a speed for
+ * each kind, and a new kind would change that struct. */
+static int support_wall(gt_path *p, const gs_mesh *m, float h, float w, int n, float z, const gl_loops *part)
+{
+    int layers = gl_layers(m, h), k, rc = 0;
+    gl_loops acc, one, bag, merged, need;
+    memset(&acc, 0, sizeof acc);
+    memset(&need, 0, sizeof need);
+    for (k = n + 1; k <= layers && !rc; k++) {
+        memset(&one, 0, sizeof one);
+        rc = overhang(m, h, k, &one);
+        if (!rc && one.n) {
+            memset(&bag, 0, sizeof bag);
+            memset(&merged, 0, sizeof merged);
+            rc = add_loops(&bag, &acc, 0) || add_loops(&bag, &one, 0) || gl_union(&bag, &merged);
+            gl_loops_free(&bag);
+            gl_loops_free(&acc);
+            acc = merged;
+            if (rc) memset(&acc, 0, sizeof acc);
+        }
+        gl_loops_free(&one);
+    }
+    if (!rc && acc.n) {
+        memset(&bag, 0, sizeof bag);
+        rc = add_loops(&bag, &acc, 0) || add_loops(&bag, part, 1) || gl_union(&bag, &need);
+        gl_loops_free(&bag);
+        if (!rc && need.n) rc = ring(p, &need, w * 0.5f, GT_BRIM, 1, z, w);
+    }
+    gl_loops_free(&acc);
+    gl_loops_free(&need);
+    return rc ? -1 : 0;
+}
+
 int gp_layer(gt_path *p, const gs_mesh *m, const gp_opts *o, int n)
 {
     return gp_layer_more(p, m, o, NULL, n);
@@ -105,6 +194,7 @@ int gp_layer_more(gt_path *p, const gs_mesh *m, const gp_opts *o, const gp_more 
     if (!rc) rc = gl_inset(&L, w * (float)walls, &region);
     if (!rc && x.pattern == GP_GRID) rc = gt_fill_grid(p, &region, solid, ns, z, w, every, n & 1);
     else if (!rc) rc = gt_fill(p, &region, solid, ns, z, w, every, n & 1);
+    if (!rc && x.support) rc = support_wall(p, m, h, w, n, z, &L);
     for (i = 0; i < ns; i++) gl_loops_free(&near[i]);
     gl_loops_free(&region);
     gl_loops_free(&L);

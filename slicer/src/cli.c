@@ -4,13 +4,14 @@
  *       [SETTINGS=settings/standard] [key=value ...] [TASKS=cores]
  *       [LAYER=0.2] [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=n]
  *       [SKIRT=n] [FILAMENT=1.75] [HOTEND=200] [BED=60]
- *       [START=lines] [END=lines]
+ *       [START=lines] [END=lines] [SUPPORT=0]
  * The printer is the generic Marlin one (machines/printer/marlin) unless
  * DRIVER or PROFILE say otherwise. The print settings: a profile, the
  * older names over it, key=value over those (sl_args.h). openmake-slice
  * is the same with a picture as well. START and END are the user's own
  * lines, after the machine's start and before its end. They do not
- * replace the heat, the home, or M84.
+ * replace the heat, the home, or M84. SUPPORT=1 adds one wall under an
+ * overhang steeper than 45 degrees, from the bed up to it.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs.h"
 #include "gs_layer.h"
@@ -53,9 +54,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
                         "       [SETTINGS=settings/standard] [key=value ...] [TASKS=cores]\n"
                         "       [LAYER=0.2] [INFILL=20] [LINE=0.4] [WALLS=2] [SKINS=3] [BRIM=n] [SKIRT=n]\n"
-                        "       [FILAMENT=1.75] [HOTEND=200] [BED=60] [START=lines] [END=lines]\n"
+                        "       [FILAMENT=1.75] [HOTEND=200] [BED=60] [START=lines] [END=lines] [SUPPORT=0]\n"
                         "key: a settings profile's, as layer-height=0.16 pattern=grid around=brim\n"
-                        "START and END: your own lines, after the machine's start and before its end\n");
+                        "START and END: your own lines, after the machine's start and before its end\n"
+                        "SUPPORT=1: one wall under an overhang steeper than 45 degrees, from the bed up\n");
         return 1;
     }
     if (!driver) driver = "machines/printer/marlin/driver.om";
@@ -74,6 +76,9 @@ int main(int argc, char **argv)
     }
     sl_init(&j);
     sl_own(&j, arg(argc, argv, "START"), arg(argc, argv, "END"));
+    whole(argc, argv, "SUPPORT", &j.support);
+    if (j.support < 0) j.support = 0;
+    if (j.support > 1) j.support = 1;
     if (sl_load(&j, argv[1], m.area[0], m.area[1], err, (int)sizeof err) ||
         sl_slice(&j, &set, &m, tasks, err, (int)sizeof err) || sl_write(&j, argv[2], &m, err, (int)sizeof err))
         fprintf(stderr, "GFOpenSlicer: %s\n", err);

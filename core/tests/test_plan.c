@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int fails;
@@ -215,6 +216,74 @@ int main(void)
         }
         gt_free(&all);
         gs_mesh_free(&wrench);
+    }
+
+    {
+        /* A 20 mm base, 2 mm tall, and a slab on it from x 10 to 30: 10 mm of
+         * that slab hangs past the base. Support is one wall under the hang. */
+        gs_mesh base, slab, ledge;
+        gp_opts so;
+        gp_more x, old;
+        gt_path p;
+        int i, past;
+        float len;
+        memset(&base, 0, sizeof base);
+        memset(&slab, 0, sizeof slab);
+        memset(&ledge, 0, sizeof ledge);
+        expect(gm_cube(&base, 0, 0, 0, 20, 20, 2) == 0 && gm_cube(&slab, 10, 5, 2, 20, 10, 2) == 0, "the base and the slab");
+        ledge = base;
+        base.t = NULL;
+        ledge.t = (gs_tri *)realloc(ledge.t, (size_t)(ledge.n + slab.n) * sizeof *ledge.t);
+        expect(ledge.t != NULL, "room for both");
+        if (ledge.t) {
+            memcpy(ledge.t + ledge.n, slab.t, (size_t)slab.n * sizeof *slab.t);
+            ledge.n += slab.n;
+            ledge.max.x = 30.f;
+            ledge.max.z = 4.f;
+        }
+        gp_defaults(&so);
+        so.layer_h = 0.4f;
+        so.brim = 0;
+        so.walls = 1;
+        so.skins = 0;
+        so.infill = 0.f;
+        gp_more_defaults(&x);
+        x.support = 1;
+        gt_init(&p);
+        expect(gp_layer_more(&p, &ledge, &so, &x, 1) == 0, "the first layer, with support");
+        len = gt_length(&p, GT_BRIM);
+        past = 1;
+        for (i = 0; i < p.n; i++)
+            if (p.m[i].kind == GT_BRIM) {
+                if (p.m[i].x < 20.f || p.m[i].x > 30.f || p.m[i].y < 4.f || p.m[i].y > 16.f) past = 0;
+            }
+        expect(len > 30.f && len < 50.f && past, "one wall under the hang, not under the base");
+        printf("support: %.1f mm under the ledge\n", len);
+        gt_free(&p);
+        gt_init(&p);
+        expect(gp_layer_more(&p, &ledge, &so, &x, 5) == 0 && gt_length(&p, GT_BRIM) > 30.f, "still there on the last base layer");
+        gt_free(&p);
+        gt_init(&p);
+        expect(gp_layer_more(&p, &ledge, &so, &x, 6) == 0 && gt_length(&p, GT_BRIM) == 0.f, "the slab holds itself: no wall in it");
+        gt_free(&p);
+        x.support = 0;
+        gt_init(&p);
+        expect(gp_layer_more(&p, &ledge, &so, &x, 1) == 0 && gt_length(&p, GT_BRIM) == 0.f, "support left off: no wall");
+        gt_free(&p);
+        gp_more_defaults(&old);
+        old.size = (int)offsetof(gp_more, support);
+        old.support = 1;
+        gt_init(&p);
+        expect(gp_layer_more(&p, &ledge, &so, &old, 1) == 0 && gt_length(&p, GT_BRIM) == 0.f,
+               "a gp_more cut short of support: none");
+        gt_free(&p);
+        x.support = 1;
+        gt_init(&p);
+        expect(gp_layer_more(&p, &box, &so, &x, 10) == 0 && gt_length(&p, GT_BRIM) == 0.f, "a cube overhangs nothing");
+        gt_free(&p);
+        gs_mesh_free(&ledge);
+        gs_mesh_free(&slab);
+        gs_mesh_free(&base);
     }
 
     gs_mesh_free(&box);

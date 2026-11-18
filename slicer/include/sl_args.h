@@ -6,7 +6,7 @@
  *                   the older names, over the profile
  *   key=value       one setting by its profile key (layer-height=0.16,
  *                   pattern=grid, around=brim ...), over all of those
- * Words in capitals that are not settings (DRIVER, TASKS, START, END ...) are left
+ * Words in capitals that are not settings (DRIVER, TASKS, START, END, SUPPORT ...) are left
  * for the command; a lower-case word that is not a setting is an error.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef SL_ARGS_H

@@ -4,12 +4,13 @@
  *   openmake-slice in.stl out.gcode DRIVER=driver.om PROFILE=profile.om
  *       [SETTINGS=settings/standard] [key=value ...] [LAYER=0.2] [LINE=0.4]
  *       [WALLS=2] [SKINS=3] [INFILL=20] [BRIM=n] [SKIRT=n] [FILAMENT=1.75]
- *       [HOTEND=200] [BED=60] [TASKS=cores] [START=lines] [END=lines]
+ *       [HOTEND=200] [BED=60] [TASKS=cores] [START=lines] [END=lines] [SUPPORT=0]
  *       [PREVIEW=picture.ppm] [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part]
  * The print settings: a profile, the older names over it, key=value over
  * those (sl_args.h). START and END are the user's own lines, after the
  * machine's start and before its end. They do not replace the heat, the
- * home, or M84.
+ * home, or M84. SUPPORT=1 adds one wall under an overhang steeper than
+ * 45 degrees, from the bed up to it.
  * TASKS: the layers made on that many tasks at once (gp_part_par); the
  * G-code is the same on any number. By default one a core (gs_par_cores).
  * PREVIEW also draws the toolpath (gt_paint) to a PPM picture: ZOOM times
@@ -83,8 +84,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: openmake-slice in.stl out.gcode DRIVER=driver.om [PROFILE=profile.om]\n"
                         "       [SETTINGS=settings/standard] [key=value ...] [LAYER=0.2] [LINE=0.4] [WALLS=2]\n"
                         "       [SKINS=3] [INFILL=20] [BRIM=n] [SKIRT=n] [FILAMENT=1.75] [HOTEND=200] [BED=60]\n"
-                        "       [TASKS=cores] [START=lines] [END=lines] [PREVIEW=out.ppm] [SIZE=800x600] [ZOOM=1]\n"
-                        "       [UPTO=0] [VIEW=part|plate]\n");
+                        "       [TASKS=cores] [START=lines] [END=lines] [SUPPORT=0] [PREVIEW=out.ppm]\n"
+                        "       [SIZE=800x600] [ZOOM=1] [UPTO=0] [VIEW=part|plate]\n");
         return 2;
     }
     if (sl_args(&set, argc, argv, 3, err, (int)sizeof err)) {
@@ -102,6 +103,9 @@ int main(int argc, char **argv)
     }
     sl_init(&j);
     sl_own(&j, arg(argc, argv, "START"), arg(argc, argv, "END"));
+    whole(argc, argv, "SUPPORT", &j.support);
+    if (j.support < 0) j.support = 0;
+    if (j.support > 1) j.support = 1;
     if (sl_load(&j, argv[1], m.area[0], m.area[1], err, (int)sizeof err)) {
         fprintf(stderr, "openmake-slice: %s: %s\n", argv[1], err);
         return 1;
