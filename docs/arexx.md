@@ -750,7 +750,7 @@ no button for it. The picture changes. The cut does not.
 The project window. `OPEN` and `SAVE` are the project drawer (or its
 `project.om`). `SAVE` writes that project; a different `FILE` is refused.
 `GET` and `SET` are `name` and `notes`. `STATUS` also has `stem.ITEMS`,
-`stem.NAME` (the project), `stem.PICKED` (1-based, or 0), `stem.ITEM`,
+`stem.NAME` (the project), `stem.NOTES` (the notes field), `stem.PICKED` (1-based, or 0), `stem.ITEM`,
 `stem.KIND`, `stem.PATH` and `stem.FROM` (the row the window is showing,
 its file, and the item it was made from, or empty).
 

@@ -93,7 +93,8 @@ int main(void)
            "HELP lists OPENITEM and SEND");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEWORKSHOP.1"), "STATUS with no project");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.NAME") &&
-               !strcmp(omr_host_var("ST.NAME"), "") && omr_host_var("ST.PICKED") &&
+               !strcmp(omr_host_var("ST.NAME"), "") && omr_host_var("ST.NOTES") &&
+               !strcmp(omr_host_var("ST.NOTES"), "") && omr_host_var("ST.PICKED") &&
                !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") &&
                !strcmp(omr_host_var("ST.ITEM"), "") && omr_host_var("ST.PATH") &&
                !strcmp(omr_host_var("ST.PATH"), ""),
@@ -146,7 +147,8 @@ int main(void)
            "RENAME");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.ITEMS") &&
                !strcmp(omr_host_var("ST.ITEMS"), "2") && omr_host_var("ST.DIRTY") && !strcmp(omr_host_var("ST.DIRTY"), "1") &&
-               omr_host_var("ST.NAME") && !strcmp(omr_host_var("ST.NAME"), "Shelf") && omr_host_var("ST.PICKED") &&
+               omr_host_var("ST.NAME") && !strcmp(omr_host_var("ST.NAME"), "Shelf") && omr_host_var("ST.NOTES") &&
+               !strcmp(omr_host_var("ST.NOTES"), "A shelf bracket") && omr_host_var("ST.PICKED") &&
                !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") && !strcmp(omr_host_var("ST.ITEM"), "") &&
                omr_host_var("ST.PATH") && !strcmp(omr_host_var("ST.PATH"), ""),
            "STATUS ITEMS");
