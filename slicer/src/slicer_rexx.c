@@ -455,7 +455,7 @@ static int cmd_printer(void *c, void *g0)
 static int cmd_layers(void *c, void *g0)
 {
     os_rexx *g = app(g0);
-    int on, n, has_on, has_n, cap;
+    int on, n, step, has_on, has_n, has_step, cap;
     char buf[64];
     has_on = whole_arg(c, "ON", &on);
     if (has_on < 0) {
@@ -467,6 +467,11 @@ static int cmd_layers(void *c, void *g0)
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
+    has_step = whole_arg(c, "STEP", &step);
+    if (has_step < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
     cap = 1000000;
     if (g->job && g->job->sliced && g->job->path.nlayers > 0) cap = g->job->path.nlayers;
     if (has_n > 0) {
@@ -474,8 +479,16 @@ static int cmd_layers(void *c, void *g0)
         if (n > cap) n = cap;
         g->layer_no = n;
     } else if (g->layer_no < 1) g->layer_no = 1;
+    if (has_step > 0) {
+        if (step > cap) step = cap;
+        if (step < -cap) step = -cap;
+        n = g->layer_no + step;
+        if (n < 1) n = 1;
+        if (n > cap) n = cap;
+        g->layer_no = n;
+    }
     if (has_on > 0) g->layers = on ? 1 : 0;
-    else if (has_n > 0) g->layers = 1;
+    else if (has_n > 0 || has_step > 0) g->layers = 1;
     else g->layers = !g->layers;
     g->fresh = 0;
     if (!g->layers) {
@@ -556,7 +569,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PROFILE", "FILE/A", "Load a print-settings profile", cmd_profile},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "Pick the machine from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "Slice the loaded part", cmd_slice},
-    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K", "show layers 1 to a layer", cmd_layers},
+    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K STEP/N/K", "show layers 1 to a layer", cmd_layers},
     {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
     {sizeof(omr_verb), "STATS", "STEM/K VAR/K", "The last slice's figures", cmd_stats},
 };

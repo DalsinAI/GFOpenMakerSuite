@@ -173,14 +173,19 @@ int main(void)
         expect(run(&g, "LAYERS INDEX 4", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 4 &&
                    strstr(buf, "Layers 1 to 4"),
                "LAYERS index");
+        expect(run(&g, "LAYERS STEP 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 5 && g.layers == 1, "LAYERS next");
+        expect(run(&g, "LAYERS STEP -1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 4, "LAYERS prev");
         expect(run(&g, "LAYERS INDEX 1000000", &io) == 0 && io.rc == OMR_OK && g.layer_no == n && g.layers == 1,
                "LAYERS holds at the last layer");
+        expect(run(&g, "LAYERS STEP 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == n, "LAYERS step holds at the last");
         expect(run(&g, "LAYERS INDEX 0", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1 && g.layers == 1,
                "LAYERS index 0 is 1");
+        expect(run(&g, "LAYERS STEP -3", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1, "LAYERS step holds at 1");
         expect(run(&g, "LAYERS ON 0", &io) == 0 && io.rc == OMR_OK && g.layers == 0 && strstr(buf, "hidden"),
                "LAYERS hides the picture");
         expect(run(&g, "LAYERS ON no", &io) == 0 && io.rc == OMR_ERROR && g.layers == 0, "LAYERS wants a number");
         expect(run(&g, "LAYERS INDEX no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 1, "LAYERS index wants a number");
+        expect(run(&g, "LAYERS STEP no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 1, "LAYERS step wants a number");
         expect(g.dirty == dirty, "LAYERS does not dirty");
     }
     {

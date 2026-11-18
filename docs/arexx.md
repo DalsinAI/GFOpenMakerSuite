@@ -562,16 +562,17 @@ been sliced yet.
 
 ### LAYERS
 
-Template: `LAYERS ON/N/K INDEX/N/K`
+Template: `LAYERS ON/N/K INDEX/N/K STEP/N/K`
 
 The layer bar: show layers 1 to a layer of the last slice. It does not
 change the part, and it does not mark the document dirty. With neither
-`ON` nor `INDEX`, it toggles, as the Show layers checkbox. `INDEX` is
-how far to draw, 1 for the first layer, and turns the picture on, as
-the slider, Prev and Next. A number below 1 is 1. Once there is a slice,
-a higher number is that slice's last layer. `ON` is `1` or `0` (any other
-number is on). A slice leaves the window on the top layer. RC 10 if `ON`
-or `INDEX` is not a number.
+`ON` nor `INDEX` nor `STEP`, it toggles, as the Show layers checkbox.
+`INDEX` is how far to draw, 1 for the first layer, and turns the picture
+on, as the slider. `STEP` moves that many layers, as Prev and Next, and
+turns the picture on. A number below 1 is 1. Once there is a slice, a
+higher number is that slice's last layer. `ON` is `1` or `0` (any other
+number is on). A slice leaves the window on the top layer. RC 10 if
+`ON`, `INDEX` or `STEP` is not a number.
 
 ### LOOK
 
