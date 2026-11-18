@@ -90,5 +90,9 @@ int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, 
 /* The same, framed to the part (what the moves lay down) over a plain
  * background instead of the plate, for a close look. */
 int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h);
+/* The moves drawn onto a picture that already holds the solid, in that
+ * solid's plate frame. The lines are laid on; the picture is not cleared.
+ * 0, or -1. */
+int gt_paint_on(const gt_path *p, const gs_mesh *solid, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h);
 
 #endif

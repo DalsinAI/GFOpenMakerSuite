@@ -158,13 +158,10 @@ int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, 
     return n;
 }
 
-int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)
+static int toolpath_verts(const gt_path *p, const gs_cam *cam, const gs_frame *f, int upto, int bias, uint32_t *verts, int cap)
 {
-    gs_frame f;
     float was[3], at[3], top = 0.f;
-    int i, n = 0, end;
-    if (!p || !verts || !cam || gt_frame(p, cam, part, w, h, &f)) return -1;
-    end = gt_end(p, upto);
+    int i, n = 0, end = gt_end(p, upto);
     for (i = 0; i < end; i++)
         if (p->m[i].z > top) top = p->m[i].z;
     for (i = 0; i < end; i++) {
@@ -173,14 +170,18 @@ int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int
         v.x = m->x;
         v.y = m->y;
         v.z = m->z;
-        gs_view_map(&f, cam, v, &at[0], &at[1], &at[2]);
+        gs_view_map(f, cam, v, &at[0], &at[1], &at[2]);
         if (i && m->kind != GT_TRAVEL) {
             unsigned long c = gt_shade(m->kind, m->z, top);
             uint32_t colour = argb((int)(c >> 16) & 255, (int)(c >> 8) & 255, (int)c & 255);
-            uint32_t za = depth_of(&f, was[2]), zb = depth_of(&f, at[2]);
+            uint32_t za = depth_of(f, was[2]), zb = depth_of(f, at[2]);
             float dx = at[0] - was[0], dy = at[1] - was[1], len = sqrtf(dx * dx + dy * dy), nx = 1.f, ny = 0.f;
             uint32_t *q = verts + n * 6;
             if (n + 6 > cap) return -1;
+            if (bias > 0) {
+                if (za < 0xFFFFFFFFu - (uint32_t)bias) za += (uint32_t)bias;
+                if (zb < 0xFFFFFFFFu - (uint32_t)bias) zb += (uint32_t)bias;
+            }
             if (len >= 1e-3f) {
                 nx = -dy / len;
                 ny = dx / len;
@@ -197,6 +198,28 @@ int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int
         memcpy(was, at, sizeof at);
     }
     return n;
+}
+
+int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap)
+{
+    gs_frame f;
+    if (!p || !verts || !cam || gt_frame(p, cam, part, w, h, &f)) return -1;
+    return toolpath_verts(p, cam, &f, upto, 0, verts, cap);
+}
+
+int gs_gpu_toolpath_on(const gt_path *p, const gs_mesh *solid, const gs_cam *cam, int upto, int w, int h, uint32_t *verts,
+                       int cap)
+{
+    gs_mesh none;
+    gs_frame f;
+    if (!p || !verts || !cam) return -1;
+    if (!solid) {
+        memset(&none, 0, sizeof none);
+        solid = &none;
+    }
+    if (gs_view_frame_bed(solid, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    /* 0x1000 nearer than the face under the line. A face in front is much nearer than that. */
+    return toolpath_verts(p, cam, &f, upto, 0x1000, verts, cap);
 }
 
 static int put(uint32_t *s, int *n, int cap, uint32_t w)

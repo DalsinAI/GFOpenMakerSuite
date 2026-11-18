@@ -134,6 +134,23 @@ static void toolpath_case(void)
     printf("toolpath batch: %d vertices; covers %d of the CPU's %d pixels; %d of %d the top's skin\n", n, both, drawn, top, lit);
     expect(both > drawn * 95 / 100, "the batch covers what the CPU draws");
     expect(top > lit / 4, "the top in front, as on the CPU");
+    {
+        float lo = 1e30f, hi = -1e30f, lo2 = 1e30f, hi2 = -1e30f;
+        int k, n2;
+        for (k = 0; k < n; k++) {
+            float x = (float)(int32_t)v[k * 6] / 65536.f;
+            if (x < lo) lo = x;
+            if (x > hi) hi = x;
+        }
+        n2 = gs_gpu_toolpath_on(&p, &box, &cam, 0, W, H, v, cap);
+        expect(n2 == n, "on the solid: the same moves, in the plate's frame");
+        for (k = 0; k < n2; k++) {
+            float x = (float)(int32_t)v[k * 6] / 65536.f;
+            if (x < lo2) lo2 = x;
+            if (x > hi2) hi2 = x;
+        }
+        expect(n2 > 0 && hi2 - lo2 < (hi - lo) * 0.5f, "on the solid it is not the close-up");
+    }
     free(v);
     gt_free(&p);
     gs_mesh_free(&box);

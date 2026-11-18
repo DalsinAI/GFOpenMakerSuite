@@ -126,8 +126,8 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 ## Not in this release
 
 Support, and start or end G-code of your own. A skirt can still be a
-rectangle rather than the outline. The view shows the solid and one
-layer's walls. It does not yet lay a sliced toolpath back onto the model.
+rectangle rather than the outline. Slice lays the toolpath back on the
+solid, in the plate's frame. The slicer's own view is still the close-up.
 
 ## Building
 

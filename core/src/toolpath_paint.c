@@ -96,12 +96,35 @@ int gt_frame(const gt_path *p, const gs_cam *cam, int part, int w, int h, gs_fra
 }
 
 /* part: framed to the moves over a plain background, else the plate. */
+static int strokes(const gt_path *p, const gs_cam *cam, const gs_frame *f, int end, unsigned char *rgb, int w, int h)
+{
+    float *zb, top = 0.f, at[3], was[3];
+    int i;
+    zb = (float *)malloc((size_t)w * (size_t)h * sizeof *zb);
+    if (!zb) return -1;
+    for (i = 0; i < end; i++)
+        if (p->m[i].z > top) top = p->m[i].z;
+    for (i = 0; i < w * h; i++) zb[i] = -1e30f;
+    for (i = 0; i < end; i++) {
+        const gt_move *m = &p->m[i];
+        gs_v v;
+        v.x = m->x;
+        v.y = m->y;
+        v.z = m->z;
+        gs_view_map(f, cam, v, &at[0], &at[1], &at[2]);
+        if (i && m->kind != GT_TRAVEL) line(rgb, zb, w, h, was, at, gt_shade(m->kind, m->z, top));
+        memcpy(was, at, sizeof at);
+    }
+    free(zb);
+    return 0;
+}
+
 static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h, int part)
 {
     gs_mesh none;
     gs_cam home;
     gs_frame f;
-    float *zb, top = 0.f, at[3], was[3], lo[3], hi[3];
+    float lo[3], hi[3];
     int i, end = gt_end(p, upto);
     if (!rgb || w < 4 || h < 4) return -1;
     if (!cam) {
@@ -116,23 +139,7 @@ static int paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *r
             rgb[i + 1] = 22;
             rgb[i + 2] = 28;
         }
-    for (i = 0; i < end; i++)
-        if (p->m[i].z > top) top = p->m[i].z;
-    zb = (float *)malloc((size_t)w * (size_t)h * sizeof *zb);
-    if (!zb) return -1;
-    for (i = 0; i < w * h; i++) zb[i] = -1e30f;
-    for (i = 0; i < end; i++) {
-        const gt_move *m = &p->m[i];
-        gs_v v;
-        v.x = m->x;
-        v.y = m->y;
-        v.z = m->z;
-        gs_view_map(&f, cam, v, &at[0], &at[1], &at[2]);
-        if (i && m->kind != GT_TRAVEL) line(rgb, zb, w, h, was, at, gt_shade(m->kind, m->z, top));
-        memcpy(was, at, sizeof at);
-    }
-    free(zb);
-    return 0;
+    return strokes(p, cam, &f, end, rgb, w, h);
 }
 
 int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
@@ -143,4 +150,23 @@ int gt_paint(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, 
 int gt_paint_part(const gt_path *p, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
 {
     return paint(p, cam, upto, rgb, w, h, 1);
+}
+
+int gt_paint_on(const gt_path *p, const gs_mesh *solid, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
+{
+    gs_mesh none;
+    gs_cam home;
+    gs_frame f;
+    if (!p || !rgb || w < 4 || h < 4) return -1;
+    if (!cam) {
+        gs_cam_home(&home);
+        cam = &home;
+    }
+    if (!solid) {
+        memset(&none, 0, sizeof none);
+        solid = &none;
+    }
+    /* The solid's frame, the plate, so a line lands on the face it was cut from. */
+    if (gs_view_frame_bed(solid, cam, w, h, 0.f, 0.f, GS_BED, GS_BED, &f)) return -1;
+    return strokes(p, cam, &f, gt_end(p, upto), rgb, w, h);
 }
