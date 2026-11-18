@@ -499,6 +499,63 @@ static int cmd_colour(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const look_names[] = {"top", "front", "side", "frame"};
+static const char *const look_said[] = {"Top.", "Front.", "Side.", "Framed."};
+static const char *const shade_names[] = {"metal", "clay", "wire"};
+static const char *const shade_said[] = {"Metal.", "Clay.", "Wire."};
+
+static int word_of(const char *s, const char *const *names, int n)
+{
+    int i;
+    if (!s) return -1;
+    for (i = 0; i < n; i++)
+        if (eqi(s, names[i])) return i;
+    return -1;
+}
+
+/* Top, front, side, or frame. The picture changes. The part does not. */
+static int cmd_look(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    int which = word_of(omr_arg(c, "NAME"), look_names, 4);
+    if (which < 0) {
+        omr_set_result(c, "NAME is top, front, side or frame");
+        return OMR_ERROR;
+    }
+    g->look = which;
+    omr_set_result(c, look_said[which]);
+    return OMR_OK;
+}
+
+static int cmd_shade(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    int which = word_of(omr_arg(c, "NAME"), shade_names, 3);
+    if (which < 0) {
+        omr_set_result(c, "NAME is metal, clay or wire");
+        return OMR_ERROR;
+    }
+    g->shade = which;
+    omr_set_result(c, shade_said[which]);
+    return OMR_OK;
+}
+
+static int cmd_snap(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    int on, has;
+    has = arg_i(c, "ON", &on);
+    if (has < 0) {
+        omr_set_result(c, "use 0 or 1");
+        return OMR_ERROR;
+    }
+    if (has <= 0) on = !g->snap;
+    else on = on ? 1 : 0;
+    g->snap = on;
+    omr_set_result(c, on ? "Snap is 1 mm, 15 degrees, and steps of 0.1 scale." : "Snap is off.");
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1432,6 +1489,9 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "RENAME", "NAME/A", "rename the picked part", cmd_rename},
     {sizeof(omr_verb), "SHOW", "ON/N/K", "show or hide the picked part", cmd_show},
     {sizeof(omr_verb), "COLOUR", "NAME/K INDEX/N/K", "the picked part's metal", cmd_colour},
+    {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
+    {sizeof(omr_verb), "SHADE", "NAME/A", "metal, clay or wire", cmd_shade},
+    {sizeof(omr_verb), "SNAP", "ON/N/K", "snap moves to 1 mm, 15 degrees and 0.1 scale", cmd_snap},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},
@@ -1474,6 +1534,7 @@ void gm_rexx_init(gm_rexx *g)
     memset(g, 0, sizeof *g);
     g->size = (int)sizeof *g;
     g->face = -1;
+    g->look = -1;
     g->version = "GFOpenMake 0.1.0";
     gs_settings_default(&g->set);
 }

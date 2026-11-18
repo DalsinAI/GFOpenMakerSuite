@@ -253,6 +253,16 @@ the part toggles, as the window's Hide button. `COLOUR` is one of
 6 in that order. Each is an undo step. RC 10 if there is no part, or
 the name or metal is refused.
 
+### LOOK / SHADE / SNAP
+
+Templates: `LOOK NAME/A`, `SHADE NAME/A`, `SNAP ON/N/K`
+
+`LOOK` is Top, Front, Side or Frame. `NAME` is `top`, `front`, `side`
+or `frame`. `SHADE` is `metal`, `clay` or `wire`. `SNAP` is the Snap
+button: without `ON` it toggles, and `ON` is `1` or `0` (any other number
+is on). None of these changes the part, so none is an undo step. RC 10
+if the name is not one of those, or `ON` is not a number.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`

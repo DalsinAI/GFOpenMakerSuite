@@ -235,6 +235,14 @@ int main(void)
         expect(run(&g, "COLOUR NAME teal", &io) == 0 && io.rc == OMR_OK && gs_parts_colour(ps, at) == 4, "COLOUR teal");
         expect(run(&g, "COLOUR NAME plum", &io) == 0 && io.rc == OMR_ERROR, "COLOUR refuses an unknown metal");
     }
+    expect(run(&g, "LOOK NAME top", &io) == 0 && io.rc == OMR_OK && g.look == 0 && strstr(buf, "Top"), "LOOK top");
+    expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && strstr(buf, "Framed"), "LOOK frame");
+    expect(run(&g, "LOOK NAME under", &io) == 0 && io.rc == OMR_ERROR && g.look == 3, "LOOK refuses an unknown view");
+    expect(run(&g, "SHADE NAME clay", &io) == 0 && io.rc == OMR_OK && g.shade == 1 && strstr(buf, "Clay"), "SHADE clay");
+    expect(run(&g, "SHADE NAME plum", &io) == 0 && io.rc == OMR_ERROR && g.shade == 1, "SHADE refuses an unknown picture");
+    expect(run(&g, "SNAP", &io) == 0 && io.rc == OMR_OK && g.snap == 1 && strstr(buf, "1 mm"), "SNAP turns on");
+    expect(run(&g, "SNAP ON 0", &io) == 0 && io.rc == OMR_OK && g.snap == 0 && strstr(buf, "off"), "SNAP off");
+    expect(run(&g, "SNAP ON no", &io) == 0 && io.rc == OMR_ERROR && g.snap == 0, "SNAP wants a number");
 
     gs_parts_free(ps);
     ge_steps_free(steps);
