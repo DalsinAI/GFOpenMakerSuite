@@ -162,7 +162,7 @@ static int add_slot(omr_cmd *cmd, const char *spec)
         if (na <= 0 || na >= OMR_KEY || (int)strlen(eq + 1) >= OMR_KEY) return -1;
         memcpy(sl->key, left, (size_t)na);
         sl->key[na] = 0;
-        snprintf(sl->alias, sizeof sl->alias, "%s", eq + 1);
+        memcpy(sl->alias, eq + 1, strlen(eq + 1) + 1);
     } else {
         if (nkey >= OMR_KEY) return -1;
         memcpy(sl->key, left, (size_t)nkey);

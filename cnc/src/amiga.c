@@ -1,11 +1,12 @@
 /* OpenMakeCNC on the Amiga. The window is GFOpenLayout (markup.h): Open
  * asks for an SVG or a DXF, Preview builds the cut, and Save G-code writes
  * it for the mill picked. A file named at launch is opened the way Open
- * opens one: the name is shown, and Preview builds the cut. The view is
- * the toolpath, drawn with the pens (core/ui). The window is resizable,
- * 640 by 480 inside at the least.
+ * opens one: the name is shown, and Preview builds the cut. The port is
+ * GFOPENCNC.1. The view is the toolpath, drawn with the pens (core/ui).
+ * The window is resizable, 640 by 480 inside at the least.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "cnc_job.h"
+#include "cnc_rexx.h"
 #include "cnc_ui.h"
 #include "markup.h"
 #include "omview_machines.h"
@@ -42,6 +43,47 @@ static cnc_opts opts;
 static omv_machines mills;
 static gs_cam cam;
 static int dragging, drag_x, drag_y, drag_shift;
+static oc_rexx rexx;
+static omr_port *rexx_port;
+
+static void rexx_activate(void *w)
+{
+    WindowToFront((struct Window *)w);
+    ActivateWindow((struct Window *)w);
+}
+
+static void rexx_hide(void *w) { WindowToBack((struct Window *)w); }
+
+static void set_num(olui *ui, const char *id, float v)
+{
+    olui_el *el = olui_find(ui, id);
+    int dec, scale = 1;
+    if (!el) return;
+    dec = olui_number_decimals(el);
+    while (dec-- > 0) scale *= 10;
+    olui_set_number(ui, el, (int)(v < 0.f ? v * (float)scale - 0.5f : v * (float)scale + 0.5f));
+}
+
+/* The fields follow the cut ARexx just changed, and the path follows the
+ * file it opened. */
+static void rexx_sync(olui *ui)
+{
+    snprintf(drawing, sizeof drawing, "%s", rexx.file);
+    if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), drawing);
+    cnc_ui_kind(ui, drawing);
+    cnc_ui_mode(ui, opts.mode);
+    set_num(ui, "tool", opts.tool);
+    set_num(ui, "depth", opts.depth);
+    set_num(ui, "stepdown", opts.stepdown);
+    set_num(ui, "stepover", opts.stepover);
+    set_num(ui, "feed", opts.feed);
+    set_num(ui, "plunge", opts.plunge);
+    set_num(ui, "safe", opts.safe);
+    set_num(ui, "rpm", opts.rpm);
+    set_num(ui, "x", opts.x);
+    set_num(ui, "y", opts.y);
+    olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
 
 static void path_join(char *path, int n, const char *drawer, const char *file)
 {
@@ -252,9 +294,38 @@ int main(int argc, char **argv)
         if (got < 0) omv_say(ui, "The file name is too long");
         else if (got) open_drawing(ui, path);
     }
+    oc_rexx_init(&rexx);
+    rexx.doc = &doc;
+    rexx.have_doc = &have_doc;
+    rexx.path = &path;
+    rexx.have_path = &have_path;
+    rexx.opts = &opts;
+    rexx.version = version;
+    rexx.activate = rexx_activate;
+    rexx.hide = rexx_hide;
+    rexx.win = w;
+    rexx.ui = ui;
+    snprintf(rexx.file, sizeof rexx.file, "%s", drawing);
+    rexx_port = omr_open(OC_REXX_PORT, "GFOpenCNC 0.1.0");
+    if (rexx_port) {
+        rexx.port_name = omr_name(rexx_port);
+        omr_attach(rexx_port, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);
+    }
     for (;;) {
         int r;
-        WaitPort(w->UserPort);
+        ULONG mask = 1UL << w->UserPort->mp_SigBit, got, rmask = omr_mask(rexx_port);
+        got = Wait(mask | rmask);
+        if (rmask && (got & rmask)) {
+            omr_cmd *cmd;
+            char why[160];
+            snprintf(rexx.file, sizeof rexx.file, "%s", drawing);
+            cnc_ui_read(ui, &opts);
+            rexx.have_machine = chosen_mill(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);
+            rexx_sync(ui);
+            if (rexx.quit) goto done;
+        }
+        if (!(got & mask)) continue;
         while ((msg = (struct IntuiMessage *)GetMsg(w->UserPort))) {
             WORD mx = msg->MouseX, my = msg->MouseY;
             ULONG cls = msg->Class;
@@ -287,6 +358,7 @@ int main(int argc, char **argv)
         olui_amiga_draw(a);
     }
 done:
+    omr_close(rexx_port);
     if (a) olui_amiga_free(a);
     CloseWindow(w);
     olui_free(ui);

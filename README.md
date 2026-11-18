@@ -130,7 +130,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-A window field for start, end and support. `START=`, `END=` and `SUPPORT=1` are on the shell. The mill's window is GFOpenCNC, and it has no ARexx port.
+A window field for start, end and support. `START=`, `END=` and `SUPPORT=1` are on the shell.
 
 ## Building
 

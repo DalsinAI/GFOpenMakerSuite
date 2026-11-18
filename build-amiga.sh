@@ -95,7 +95,8 @@ build() {
         machines/src/machine.c $CORE "$OLUI" -lm
     # OpenMakeCNC's window (cnc/src/amiga.c): SVG or DXF to Grbl mill G-code,
     # core/ui's helpers, the mill picker and the pen-drawn toolpath
-    "$CC" $cf -Icnc/include -Icnc/src -s -o "$dir/GFOpenCNC" cnc/src/amiga.c cnc/src/cnc_job.c cnc/src/cnc_ui.c \
+    "$CC" $cf -Icnc/include -Icnc/src -s -o "$dir/GFOpenCNC" cnc/src/amiga.c cnc/src/cnc_job.c cnc/src/cnc_ui.c cnc/src/cnc_rexx.c \
+        core/src/rexx.c core/src/rexx_amiga.c \
         core/src/vec.c core/src/dxf.c core/src/toolpath.c core/src/loops.c core/src/inset.c core/src/union.c \
         core/src/toolpath_paint.c core/ui/view_ui.c core/ui/window_amiga.c core/ui/machines_ui.c \
         machines/src/machine.c $CORE "$OLUI" -lm

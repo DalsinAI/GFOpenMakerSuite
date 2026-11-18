@@ -347,6 +347,7 @@ const char *gpr_kind_port(const char *kind)
     if (!strcmp(k, "cad")) return "GFOPENMAKE";
     if (!strcmp(k, "print")) return "OPENMAKESLICER";
     if (!strcmp(k, "laser")) return "OPENMAKEBURN";
+    if (!strcmp(k, "cnc")) return "GFOPENCNC";
     return NULL;
 }
 
