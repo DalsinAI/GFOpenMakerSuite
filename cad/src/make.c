@@ -1622,6 +1622,8 @@ int main(int argc, char **argv)
             rexx.look = -1;
             rexx.shade = shade_kind;
             rexx.snap = snap_on;
+            rexx.section = section_on;
+            rexx.section_z = section_z;
             snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
             settings(ui, &rexx.set);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
@@ -1639,6 +1641,11 @@ int main(int argc, char **argv)
             gs_view_shade(shade_kind);
             snap_on = rexx.snap ? 1 : 0;
             if (olui_find(ui, "snap")) olui_set_selected(ui, olui_find(ui, "snap"), snap_on);
+            section_on = rexx.section ? 1 : 0;
+            section_z = rexx.section_z;
+            if (olui_find(ui, "sect")) olui_set_checked(ui, olui_find(ui, "sect"), section_on);
+            if (olui_find(ui, "sectz"))
+                olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + (section_z < 0.f ? -0.5f : 0.5f)));
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             refresh(ui);

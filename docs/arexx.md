@@ -263,6 +263,16 @@ button: without `ON` it toggles, and `ON` is `1` or `0` (any other number
 is on). None of these changes the part, so none is an undo step. RC 10
 if the name is not one of those, or `ON` is not a number.
 
+### SECTION
+
+Template: `SECTION ON/N/K Z/K`
+
+Hides the picture above a height. It does not cut the part; Split does
+that. With neither `ON` nor `Z`, it toggles, as the section key. `Z` is
+the height in millimetres, held to 0 to 220 and to a tenth, and turns
+the section on, as the height field. `ON` is `1` or `0`. RC 10 if `ON`
+or `Z` is not a number.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`
