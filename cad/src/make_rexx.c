@@ -949,6 +949,21 @@ static int cmd_status(void *c, void *g0)
         stem_put(c, "ST", "COLOUR", (colour >= 0 && colour < GS_PARTS_COLOURS) ? metal_names[colour] : "");
         stem_put(c, "ST", "NAME", name ? name : "");
     }
+    {
+        char sbuf[32];
+        snprintf(sbuf, sizeof sbuf, "%d", g->sliced ? 1 : 0);
+        stem_put(c, "ST", "SLICED", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", g->sliced ? g->slice_layers : 0);
+        stem_put(c, "ST", "LAYERS", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", g->sliced ? g->slice_moves : 0);
+        stem_put(c, "ST", "MOVES", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%.3f", g->sliced ? (double)g->slice_seconds : 0.0);
+        stem_put(c, "ST", "SECONDS", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%.3f", g->sliced ? (double)g->slice_filament : 0.0);
+        stem_put(c, "ST", "FILAMENT", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", (g->sliced && (g->slice_how & GC_FELL_BACK)) ? 1 : 0);
+        stem_put(c, "ST", "ROUGH", sbuf);
+    }
     return OMR_OK;
 }
 

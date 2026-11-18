@@ -199,7 +199,10 @@ The solid editor. `OPEN` and `SAVE` are STLs. `STATUS` also has
 `stem.PARTS`, `stem.PICKED` (1-based, or 0), `stem.FACE` (the picked
 face, or -1), `stem.SHOWN` (`1` or `0`), `stem.COLOUR` (the picked
 part's metal, or empty) and `stem.NAME` (the picked part's name, or
-empty). It does not change the part.
+empty). After `SLICE`, it also has `stem.SLICED` (`1` or `0`),
+`stem.LAYERS`, `stem.MOVES`, `stem.SECONDS`, `stem.FILAMENT` and
+`stem.ROUGH` (`1` when that time is short, the window's "over"). Before
+a slice those are `0`. It does not change the part.
 
 ### ADD
 
