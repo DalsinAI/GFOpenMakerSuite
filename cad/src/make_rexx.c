@@ -294,6 +294,105 @@ static int cmd_extrude(void *c, void *g0)
     return OMR_OK;
 }
 
+static int bed_begin(void *c, gm_rexx *g, gs_mesh **m)
+{
+    *m = picked(g);
+    if (!*m || !(*m)->n) {
+        omr_set_result(c, "no part");
+        return -1;
+    }
+    remember(g);
+    return 0;
+}
+
+/* Drop, Centre and Lay, as the window's bed buttons. */
+static int cmd_drop(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_mesh *m;
+    if (bed_begin(c, g, &m)) return OMR_ERROR;
+    ge_drop(m);
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, "On the bed.");
+    return OMR_OK;
+}
+
+static int cmd_centre(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_mesh *m;
+    if (bed_begin(c, g, &m)) return OMR_ERROR;
+    ge_centre(m);
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, "Centred on the bed.");
+    return OMR_OK;
+}
+
+static int cmd_lay(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_mesh *m;
+    gs_v was_min, was_max;
+    int face, has;
+    float d;
+    has = arg_i(c, "FACE", &face);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    m = picked(g);
+    if (!m || !m->n) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    if (has <= 0) face = g->face >= 0 ? g->face : ge_largest_face(m);
+    if (face < 0) {
+        omr_set_result(c, "No face to lay");
+        return OMR_ERROR;
+    }
+    was_min = m->min;
+    was_max = m->max;
+    remember(g);
+    if (ge_lay_face(m, face)) {
+        forget(g);
+        omr_set_result(c, "That face will not lie flat");
+        return OMR_ERROR;
+    }
+    d = m->min.x - was_min.x;
+    if (d < 0.f) d = -d;
+    if (d < 0.001f) {
+        d = m->min.y - was_min.y;
+        if (d < 0.f) d = -d;
+    }
+    if (d < 0.001f) {
+        d = m->min.z - was_min.z;
+        if (d < 0.f) d = -d;
+    }
+    if (d < 0.001f) {
+        d = m->max.x - was_max.x;
+        if (d < 0.f) d = -d;
+    }
+    if (d < 0.001f) {
+        d = m->max.y - was_max.y;
+        if (d < 0.f) d = -d;
+    }
+    if (d < 0.001f) {
+        d = m->max.z - was_max.z;
+        if (d < 0.f) d = -d;
+    }
+    if (d < 0.001f) {
+        forget(g);
+        omr_set_result(c, "That face is already flat on the bed");
+        return OMR_OK;
+    }
+    g->face = face;
+    changed(g);
+    omr_set_result(c, "That face is on the bed.");
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1221,6 +1320,9 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "OPEN", "FILE/A", "open an STL as a new part", cmd_open},
     {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K", "put a shelf example on the bed", cmd_shelf},
     {sizeof(omr_verb), "EXTRUDE", "KIND/A OP/K W/K D/K H/K", "add, join or cut a block, round or slot", cmd_extrude},
+    {sizeof(omr_verb), "DROP", "", "drop the picked part onto the bed", cmd_drop},
+    {sizeof(omr_verb), "CENTRE", "", "centre the picked part on the bed", cmd_centre},
+    {sizeof(omr_verb), "LAY", "FACE/N/K", "lay a face of the picked part on the bed", cmd_lay},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},

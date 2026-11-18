@@ -204,6 +204,24 @@ int main(void)
         expect(size[2] > 4.f, "the part is still there, and taller than the boss alone");
         expect(run(&g, "EXTRUDE KIND potato", &io) == 0 && io.rc == OMR_ERROR, "EXTRUDE refuses an unknown kind");
     }
+    {
+        float pos[3], size[3];
+        expect(run(&g, "SELECT PART 1", &io) == 0 && io.rc == OMR_OK, "SELECT a part to set on the bed");
+        expect(run(&g, "PLACE Z 12", &io) == 0 && io.rc == OMR_OK, "lift it 12 mm");
+        expect(run(&g, "DROP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "On the bed"), "DROP");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(pos[2] > -0.05f && pos[2] < 0.05f, "DROP sits the part on the bed");
+        expect(run(&g, "PLACE X 40 Y 40", &io) == 0 && io.rc == OMR_OK, "move it off the middle");
+        expect(run(&g, "CENTRE", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Centred"), "CENTRE");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(pos[0] > GS_BED * 0.5f - 0.5f && pos[0] < GS_BED * 0.5f + 0.5f && pos[1] > GS_BED * 0.5f - 0.5f &&
+                   pos[1] < GS_BED * 0.5f + 0.5f,
+               "CENTRE puts it in the middle of the bed");
+        expect(run(&g, "LAY FACE 9999", &io) == 0 && io.rc == OMR_ERROR, "LAY refuses a face that is not there");
+        expect(run(&g, "LAY", &io) == 0 && (io.rc == OMR_OK) &&
+                   (strstr(buf, "on the bed") || strstr(buf, "already flat")),
+               "LAY the largest face");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);

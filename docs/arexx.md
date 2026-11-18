@@ -231,6 +231,17 @@ depth off the top). `W`, `D` and `H` are millimetres; the defaults are
 `RESULT` says what was done. RC 10 if the size is out of range, there
 is no part to join or cut, or the solid does not build.
 
+### DROP / CENTRE / LAY
+
+Templates: `DROP`, `CENTRE`, `LAY FACE/N/K`
+
+`DROP` sits the picked part on the bed. `CENTRE` moves it to the middle
+of the bed in X and Y, and leaves its height. `LAY` turns the part so
+a face lies on the bed. `FACE` is that face's index; without it, the
+picked face is used, or the largest face. `RESULT` says what happened.
+A face that is already flat is not an undo step. RC 10 if there is no
+part, or the face will not lie flat.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`
