@@ -33,6 +33,8 @@ typedef struct gm_rexx {
     int look;  /* -1: leave the camera. 0 top, 1 front, 2 side, 3 frame */
     int shade; /* 0 metal, 1 clay, 2 wire */
     int snap;  /* 0 off, 1 on */
+    int section; /* 0 off, 1: hide the picture above section_z */
+    float section_z;
 } gm_rexx;
 
 #define GM_REXX_PORT "GFOPENMAKE"

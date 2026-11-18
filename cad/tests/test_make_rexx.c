@@ -243,6 +243,16 @@ int main(void)
     expect(run(&g, "SNAP", &io) == 0 && io.rc == OMR_OK && g.snap == 1 && strstr(buf, "1 mm"), "SNAP turns on");
     expect(run(&g, "SNAP ON 0", &io) == 0 && io.rc == OMR_OK && g.snap == 0 && strstr(buf, "off"), "SNAP off");
     expect(run(&g, "SNAP ON no", &io) == 0 && io.rc == OMR_ERROR && g.snap == 0, "SNAP wants a number");
+    expect(run(&g, "SECTION", &io) == 0 && io.rc == OMR_OK && g.section == 1 && strstr(buf, "Section at 0.0"),
+           "SECTION turns on");
+    expect(run(&g, "SECTION Z 12.34", &io) == 0 && io.rc == OMR_OK && g.section == 1 && g.section_z > 12.2f &&
+               g.section_z < 12.4f && strstr(buf, "12.3"),
+           "SECTION at 12.3 mm");
+    expect(run(&g, "SECTION Z 400", &io) == 0 && io.rc == OMR_OK && g.section_z == 220.f, "SECTION holds at 220 mm");
+    expect(run(&g, "SECTION Z -4", &io) == 0 && io.rc == OMR_OK && g.section_z == 0.f && g.section == 1,
+           "SECTION holds at 0 mm");
+    expect(run(&g, "SECTION ON 0", &io) == 0 && io.rc == OMR_OK && g.section == 0 && strstr(buf, "off"), "SECTION off");
+    expect(run(&g, "SECTION Z no", &io) == 0 && io.rc == OMR_ERROR && g.section == 0, "SECTION wants a number");
 
     gs_parts_free(ps);
     ge_steps_free(steps);

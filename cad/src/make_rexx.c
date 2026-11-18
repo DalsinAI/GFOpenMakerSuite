@@ -556,6 +556,41 @@ static int cmd_snap(void *c, void *g0)
     return OMR_OK;
 }
 
+/* Section hides the picture above Z. It does not cut the part. */
+static int cmd_section(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    int on, has_on;
+    float z;
+    int has_z;
+    char buf[96];
+    has_on = arg_i(c, "ON", &on);
+    if (has_on < 0) {
+        omr_set_result(c, "use 0 or 1");
+        return OMR_ERROR;
+    }
+    has_z = arg_f(c, "Z", &z);
+    if (has_z < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (has_z > 0) {
+        if (z < 0.f) z = 0.f;
+        if (z > 220.f) z = 220.f;
+        g->section_z = (float)(long)(z * 10.f + 0.5f) / 10.f;
+    }
+    if (has_on > 0) g->section = on ? 1 : 0;
+    else if (has_z > 0) g->section = 1;
+    else g->section = !g->section;
+    if (!g->section) {
+        omr_set_result(c, "Section is off.");
+        return OMR_OK;
+    }
+    snprintf(buf, sizeof buf, "Section at %.1f mm. Everything above the plane is hidden.", (double)g->section_z);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1492,6 +1527,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
     {sizeof(omr_verb), "SHADE", "NAME/A", "metal, clay or wire", cmd_shade},
     {sizeof(omr_verb), "SNAP", "ON/N/K", "snap moves to 1 mm, 15 degrees and 0.1 scale", cmd_snap},
+    {sizeof(omr_verb), "SECTION", "ON/N/K Z/K", "hide the picture above a height", cmd_section},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},
