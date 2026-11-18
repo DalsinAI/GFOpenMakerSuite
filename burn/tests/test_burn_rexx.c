@@ -197,8 +197,8 @@ int main(void)
     expect(run(&g, "SET KEY constant VALUE 0", &io) == 0 && io.rc == OMR_OK && opts.constant == 0, "SET constant 0");
 
     expect(run(&g, "OPEN FILE core/tests/data/rect-10mm.svg", &io) == 0 && io.rc == OMR_OK && have_doc &&
-               g.dirty == 0 && doc.n >= 1,
-           "OPEN svg");
+               g.dirty == 0 && doc.n >= 1 && g.look == 3,
+           "OPEN svg, and homes the view");
     {
         int dirty = g.dirty, n = opts.nlayer;
         expect(doc.nlayer >= 1 && run(&g, "LAYER INDEX 1", &io) == 0 && io.rc == OMR_OK &&
@@ -389,7 +389,8 @@ int main(void)
                (store[0].set & BURN_SET_POWER) && (store[0].set & BURN_SET_SPEED),
            "MATERIAL writes that profile onto the layer row");
 
-    expect(run(&g, "OPEN FILE no-such.svg", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
+    expect(g.look == 3 && run(&g, "OPEN FILE no-such.svg", &io) == 0 && io.rc == OMR_ERROR && g.look == 3,
+           "OPEN missing file leaves the view");
     expect(run(&g, "SET KEY travel VALUE 200", &io) == 0 && io.rc == OMR_OK && opts.travel == 200.f && g.have_travel,
            "SET travel");
     expect(run(&g, "SET KEY s100 VALUE 500", &io) == 0 && io.rc == OMR_OK && opts.s100 == 500.f && g.have_s100,
@@ -401,7 +402,7 @@ int main(void)
            "a rebuild keeps travel, S at 100%, and the start line");
     {
         int dirty = g.dirty;
-        expect(g.look == -1, "the view is left alone until LOOK");
+        expect(g.look == 3, "OPEN homes the view, as the window");
         expect(run(&g, "LOOK NAME top", &io) == 0 && io.rc == OMR_OK && g.look == 0 && strstr(buf, "Top"), "LOOK top");
         expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2, "LOOK side");
         expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && strstr(buf, "Framed"),
