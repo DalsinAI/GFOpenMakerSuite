@@ -3,8 +3,9 @@
  * tasks as there are cores (sl_job.h: gp_part_par, exec tasks here), the
  * slider shows it a layer at a time, and Save G-code writes it for the
  * printer picked (core/ui's machine picker), once the printer says it can.
- * The view is drawn by OpenGPU when gfopengpu.library can (core/ui's
- * omview_scene.h and omview_gpu.h, as GFOpenMake), with the pens when not.
+ * The view is the part on the plate. Once sliced, the toolpath is laid on
+ * that solid, in the same frame. OpenGPU draws it when gfopengpu.library
+ * can, and the pens when not.
  * The status line, the numbers, the pen drawer and the resizable window
  * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -12,9 +13,9 @@
 #include "gs_layer.h"
 #include "gs_par.h"
 #include "markup.h"
+#include "gs_gpu.h"
 #include "omview_gpu.h"
 #include "omview_machines.h"
-#include "omview_scene.h"
 #include "omview_settings.h"
 #include "omview_ui.h"
 #include "omview_window.h"
@@ -93,38 +94,57 @@ static void put_run(void *ud, int x, int y, int n, int pen)
     RectFill(win->RPort, at[0] + x, at[1] + y, at[0] + x + n - 1, at[1] + y);
 }
 
-/* The view on OpenGPU: 1, or 0 when it cannot (no library, no room,
- * nothing to draw) and the pens draw it. */
+/* The view on OpenGPU: the part on the plate, and the toolpath on it once
+ * sliced. 1, or 0 when it cannot and the pens draw the same picture. */
 static int draw_gpu(int x, int y, int w, int h)
 {
+    gs_mesh none;
     const gs_mesh *part = job.have_part ? &job.part : NULL;
-    const gt_path *path = job.sliced ? &job.path : NULL;
-    int need = omv_scene_need(part, path), n;
-    if (!gpu.on || need <= 0 || !omv_gpu_size(&gpu, w, h) || !omv_gpu_room(&gpu, need)) return 0;
-    n = omv_scene(part, path, &cam, show_layer ? layer_no : 0, gpu.grid, w, h, gpu.verts, gpu.vert_cap, gpu.stream,
-                  gpu.stream_cap, (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
-                  (uint32_t)(uintptr_t)gpu.depth);
-    return n > 0 && omv_gpu_show(&gpu, n, win->RPort, x, y);
+    int nv = 0, nw, need = 0;
+    if (job.have_part) need += job.part.n * 3;
+    if (job.sliced) need += job.path.n * 6 + 6;
+    if (!part) {
+        memset(&none, 0, sizeof none);
+        part = &none;
+    }
+    if (!gpu.on || need < 3 || !omv_gpu_size(&gpu, w, h) || !omv_gpu_room(&gpu, need)) return 0;
+    if (job.have_part) {
+        nv = gs_gpu_vertices_plate(&job.part, &cam, w, h, gpu.verts, gpu.vert_cap);
+        if (nv < 0) nv = 0;
+    }
+    if (job.sliced && nv + 6 <= gpu.vert_cap) {
+        int nt = gs_gpu_toolpath_on(&job.path, part, &cam, show_layer ? layer_no : 0, w, h, gpu.verts + nv * 6,
+                                    gpu.vert_cap - nv);
+        if (nt > 0) nv += nt;
+    }
+    if (nv < 3) return 0;
+    nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
+                             (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, part, &cam, gpu.grid, 1);
+    return nw > 0 && omv_gpu_show(&gpu, nw, win->RPort, x, y);
 }
 
-/* The toolpath once sliced (layers 1 to the slider's with Show), the part
- * before: by OpenGPU when it can, else drawn by the CPU drawer and put down
- * with the pens a run at a time. Drag turns it, Shift-drag pans. */
+/* The part on the plate, and once sliced the toolpath laid on it (layers
+ * 1 to the slider's with Show). The pens draw it when OpenGPU cannot.
+ * Drag turns it, Shift-drag pans. */
 static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, int h)
 {
+    gs_mesh none;
+    const gs_mesh *part;
     unsigned char *rgb;
-    int at[2], rc = -1;
+    int at[2], rc;
     (void)userdata;
     (void)el;
     if (draw_gpu(x, y, w, h)) return;
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
-    if (job.sliced) rc = gt_paint_part(&job.path, &cam, show_layer ? layer_no : 0, rgb, w, h);
-    else if (job.have_part) rc = gs_view_solid(&job.part, &cam, rgb, w, h);
+    if (job.have_part) part = &job.part;
     else {
-        memset(rgb, 0x14, (size_t)w * (size_t)h * 3);
-        rc = 0;
+        memset(&none, 0, sizeof none);
+        part = &none;
     }
+    rc = gs_view_bed(part, &cam, rgb, w, h);
+    if (!rc && job.sliced) rc = gt_paint_on(&job.path, part, &cam, show_layer ? layer_no : 0, rgb, w, h);
     if (!rc) {
         at[0] = x;
         at[1] = y;

@@ -29,14 +29,14 @@ with no Amiga.
 
 Open asks for a file. Slice reads the fields and writes G-code next to the
 STL, with `.gcode` in place of `.stl`. The list is one row a layer. The pane
-is the solid, the way Cura and OctoPrint show a model: three faces of it,
-shaded. Drag turns it. Shift-drag pans. `gs_cam_zoom` zooms.
+is the solid on the plate. Once sliced, the toolpath is laid on that solid,
+in the plate's frame. Drag turns it. Shift-drag pans. `gs_cam_zoom` zooms.
 
-The triangles are one scene. The slicer window still paints that scene with
-the CPU drawer. The editor submits the same triangles to
-`gfopengpu.library` as `OGPU_OP_TRIANGLES`, with a Z32 depth, on a retained
-surface, when the library is open. The pen drawer is only the fallback.
-We already have OpenGPU. This tree does not grow a second GPU.
+The slicer submits that picture to `gfopengpu.library` as
+`OGPU_OP_TRIANGLES`, with a Z32 depth, on a retained surface, when the
+library is open. The editor submits the same kind of batch. The pen drawer
+is only the fallback. We already have OpenGPU. This tree does not grow a
+second GPU.
 
 From the shell:
 
@@ -130,8 +130,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-A window field for support. `SUPPORT=1` on the shell is a wall and a sparse fill under an overhang, from the bed up. The mill's window is GFOpenCNC. Slice lays the toolpath back on the
-solid, in the plate's frame. The slicer's own view is still the close-up.
+A window field for start, end and support. `START=`, `END=` and `SUPPORT=1` are on the shell. The mill's window is GFOpenCNC, and it has no ARexx port.
 
 ## Building
 

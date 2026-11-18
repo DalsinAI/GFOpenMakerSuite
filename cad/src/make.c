@@ -181,8 +181,7 @@ static int draw_gpu(int x, int y, int w, int h)
     vm = view_of();
     {
         /* The solid, and when there is a slice its moves in the same frame,
-         * so the lines sit on the part. The close-up of the toolpath alone
-         * is the slicer's view, not this one. */
+         * so the lines sit on the part. The slicer's view is that picture. */
         int nt = section_on ? 0 : ntints;
         int extra = (sketch_live ? sketch_ghost.n * 3 : 0);
         if (has_slice) extra += sliced.n * 6 + 6;
