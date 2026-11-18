@@ -57,6 +57,21 @@ int main(void)
     expect(run(&g, "HELP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "ADD") && strstr(buf, "OPEN"), "HELP lists ADD");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOPENMAKE.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
+               !strcmp(omr_host_var("ST.SHOWN"), "1") && omr_host_var("ST.COLOUR") &&
+               !strcmp(omr_host_var("ST.COLOUR"), "brass"),
+           "STATUS says the part is shown, in brass");
+    expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Hidden"), "SHOW hides it");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
+               !strcmp(omr_host_var("ST.SHOWN"), "0"),
+           "STATUS says it is hidden");
+    expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK, "UNDO the hide");
+    expect(run(&g, "COLOUR NAME steel", &io) == 0 && io.rc == OMR_OK, "COLOUR steel");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.COLOUR") &&
+               !strcmp(omr_host_var("ST.COLOUR"), "steel") && omr_host_var("ST.SHOWN") &&
+               !strcmp(omr_host_var("ST.SHOWN"), "1"),
+           "STATUS says the metal");
+    expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK, "UNDO the metal");
     expect(run(&g, "GET KEY layer-height", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0.2") == 0, "GET layer-height");
     expect(run(&g, "SET KEY layer-height VALUE 0.3", &io) == 0 && io.rc == OMR_OK, "SET layer-height");
     expect(run(&g, "GET KEY layer-height", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0.3") == 0, "GET after SET");
