@@ -267,6 +267,7 @@ static int cmd_status(void *c, void *g0)
         stem_put(c, "PICKED", nbuf);
         stem_put(c, "ITEM", it ? it->name : "");
         stem_put(c, "KIND", it ? it->kind : "");
+        stem_put(c, "PATH", it ? it->file : "");
         if (it && it->from > 0) snprintf(nbuf, sizeof nbuf, "%d", it->from);
         else nbuf[0] = 0;
         stem_put(c, "FROM", nbuf);
