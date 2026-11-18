@@ -59,8 +59,9 @@ int main(void)
            "STATUS, not dirty");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
                !strcmp(omr_host_var("ST.SHOWN"), "1") && omr_host_var("ST.COLOUR") &&
-               !strcmp(omr_host_var("ST.COLOUR"), "brass"),
-           "STATUS says the part is shown, in brass");
+               !strcmp(omr_host_var("ST.COLOUR"), "brass") && omr_host_var("ST.NAME") &&
+               !strcmp(omr_host_var("ST.NAME"), "Box"),
+           "STATUS says the part is shown, in brass, named Box");
     expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Hidden"), "SHOW hides it");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
                !strcmp(omr_host_var("ST.SHOWN"), "0"),
@@ -297,6 +298,9 @@ int main(void)
         at = gs_parts_picked(ps);
         expect(run(&g, "RENAME NAME Bracket", &io) == 0 && io.rc == OMR_OK && !strcmp(gs_parts_name(ps, at), "Bracket"),
                "RENAME");
+        expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.NAME") &&
+                   !strcmp(omr_host_var("ST.NAME"), "Bracket"),
+               "STATUS says the new name");
         expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && strcmp(gs_parts_name(ps, at), "Bracket") != 0,
                "UNDO the rename");
         expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && !gs_parts_shown(ps, at), "SHOW hides it");
