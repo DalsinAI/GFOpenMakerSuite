@@ -1638,6 +1638,8 @@ int main(int argc, char **argv)
             rexx.snap = snap_on;
             rexx.section = section_on;
             rexx.section_z = section_z;
+            rexx.layers = show_layer ? 1 : 0;
+            rexx.layer_no = layer_no < 1 ? 1 : layer_no;
             snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
             settings(ui, &rexx.set);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
@@ -1662,6 +1664,8 @@ int main(int argc, char **argv)
             if (olui_find(ui, "snap")) olui_set_selected(ui, olui_find(ui, "snap"), snap_on);
             section_on = rexx.section ? 1 : 0;
             section_z = rexx.section_z;
+            show_layer = rexx.layers ? 1 : 0;
+            if (rexx.layer_no >= 1) layer_no = rexx.layer_no;
             if (olui_find(ui, "sect")) olui_set_checked(ui, olui_find(ui, "sect"), section_on);
             if (olui_find(ui, "sectz"))
                 olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + (section_z < 0.f ? -0.5f : 0.5f)));
@@ -1669,6 +1673,8 @@ int main(int argc, char **argv)
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             refresh(ui);
+            if (olui_find(ui, "show")) olui_set_checked(ui, olui_find(ui, "show"), show_layer);
+            slider_to_layer(ui);
             if (rexx.quit) goto done;
         }
         if (!(got & mask)) continue;
