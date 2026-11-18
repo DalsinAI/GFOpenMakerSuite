@@ -974,6 +974,7 @@ static int cmd_status(void *c, void *g0)
         stem_put(c, "ST", "PICTURE", sbuf);
         snprintf(sbuf, sizeof sbuf, "%d", g->layer_no < 1 ? 1 : g->layer_no);
         stem_put(c, "ST", "LAYER", sbuf);
+        stem_put(c, "ST", "PRINTER", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
     }
     return OMR_OK;
 }

@@ -68,7 +68,8 @@ int main(void)
                !strcmp(omr_host_var("ST.SNAP"), "0") && omr_host_var("ST.SECTION") &&
                !strcmp(omr_host_var("ST.SECTION"), "0") && omr_host_var("ST.PICTURE") &&
                !strcmp(omr_host_var("ST.PICTURE"), "0") && omr_host_var("ST.LAYER") &&
-               !strcmp(omr_host_var("ST.LAYER"), "1"),
+               !strcmp(omr_host_var("ST.LAYER"), "1") && omr_host_var("ST.PRINTER") &&
+               !strcmp(omr_host_var("ST.PRINTER"), ""),
            "STATUS says the part is shown, in brass, named Box");
     expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Hidden"), "SHOW hides it");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
@@ -97,6 +98,9 @@ int main(void)
                &io) == 0 &&
                io.rc == OMR_OK && g.have_machine && g.machine.family == OM_PRINTER && buf[0],
            "PRINTER Marlin");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
+               omr_host_var("ST.PRINTER") && !strcmp(omr_host_var("ST.PRINTER"), g.machine.name),
+           "STATUS names the printer");
     expect(run(&g, "GCODE FILE build/rexx-box.gcode", &io) == 0 && io.rc == OMR_OK, "GCODE");
     {
         int dirty = g.dirty, back = ge_steps_back(steps);

@@ -206,7 +206,7 @@ a slice those are `0`. The picture's buttons are `stem.SHADE` (`metal`,
 `clay` or `wire`), `stem.SNAP` and `stem.SECTION` (`1` or `0`),
 `stem.SECTIONZ` (that height, in millimetres), `stem.PICTURE` (`1` when
 the layer walls are shown) and `stem.LAYER` (the layer the slider shows).
-It does not change the part.
+`stem.PRINTER` is the printer's name, or empty. It does not change the part.
 
 ### ADD
 
