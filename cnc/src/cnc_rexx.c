@@ -222,6 +222,13 @@ static int cmd_save(void *c, void *g0)
     if (strlen(file) < sizeof g->save_file) snprintf(g->save_file, sizeof g->save_file, "%s", file);
     g->dirty = 0;
     omr_set_result(c, file);
+    {
+        char nbuf[32];
+        snprintf(nbuf, sizeof nbuf, "%d", st.moves);
+        stem_put(c, "MOVES", nbuf);
+        snprintf(nbuf, sizeof nbuf, "%.3f", (double)st.seconds);
+        stem_put(c, "SECONDS", nbuf);
+    }
     return OMR_OK;
 }
 
@@ -469,7 +476,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty document", cmd_quit},
     {sizeof(omr_verb), "OPEN", "FILE/A", "Open an SVG or a DXF", cmd_open},
-    {sizeof(omr_verb), "SAVE", "FILE/K", "Write mill G-code for the mill picked", cmd_save},
+    {sizeof(omr_verb), "SAVE", "FILE/K STEM/K VAR/K", "Write mill G-code for the mill picked", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "Bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "Send the window to the back", cmd_hide},
     {sizeof(omr_verb), "GET", "KEY/K STEM/K VAR/K", "Read a cut setting", cmd_get},

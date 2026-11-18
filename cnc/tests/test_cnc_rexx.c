@@ -137,9 +137,10 @@ int main(void)
         opts.mode = CNC_PROFILE;
         opts.tool = 0.f;
         g.dirty = 1;
-        expect(run(&g, "SAVE FILE build/cnc-rexx.nc", &io) == 0 && io.rc == OMR_OK && !g.dirty &&
-                   gcode_has("build/cnc-rexx.nc", "G1"),
-               "SAVE writes a cut");
+        expect(run(&g, "SAVE FILE build/cnc-rexx.nc STEM ST", &io) == 0 && io.rc == OMR_OK && !g.dirty &&
+                   strstr(buf, "cnc-rexx.nc") && gcode_has("build/cnc-rexx.nc", "G1") && omr_host_var("ST.MOVES") &&
+                   atoi(omr_host_var("ST.MOVES")) > 0 && omr_host_var("ST.SECONDS"),
+               "SAVE writes a cut, and the window's figures");
         expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK && strstr(buf, "M117 hello"),
                "SET start");
         expect(run(&g, "SET KEY end VALUE \"M300 S10\"", &io) == 0 && io.rc == OMR_OK && strstr(buf, "M300"),

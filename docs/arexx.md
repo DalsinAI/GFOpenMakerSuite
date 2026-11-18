@@ -703,7 +703,9 @@ RC 10 if the name is not one of those.
 ## GFOpenCNC (port `GFOPENCNC.1`)
 
 The shared commands. `OPEN` loads an SVG or a DXF. `SAVE` writes mill
-G-code for the mill picked, and is RC 10 when none is picked. `PREVIEW`
+G-code for the mill picked, and is RC 10 when none is picked. `RESULT`
+is the file. `STEM` has `stem.MOVES` and `stem.SECONDS`, the figures the
+window shows after Save. `PREVIEW`
 plans the cut the window shows. With no `FILE`, `RESULT` is the window's
 line: the mill (or `No mill`), the mode, the moves and 0 s. With `FILE` it
 also writes a PPM of that picture, and `RESULT` is that file. `GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
