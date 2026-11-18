@@ -648,7 +648,9 @@ document is not marked dirty. RC 10 if the name is not one of those.
 
 ## OpenMakeBurn (port `OPENMAKEBURN.1`)
 
-The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture. `SAVE`
+The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture, and homes
+the view, as the window's Open. That is the same view as `LOOK` frame, not
+the Frame button. `SAVE`
 writes Grbl laser G-code. `RESULT` is the file. `STEM` has `stem.MOVES`
 and `stem.SECONDS`, the figures the window shows after Save. `STATUS` also has `stem.KIND` (`SVG`, `DXF` or
 `Picture`), `stem.LAYERS`, `stem.MODE` and `stem.MACHINE` (the laser's name, or empty).
