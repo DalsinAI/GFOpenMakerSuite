@@ -45,10 +45,39 @@ static uint32_t argb(int r, int g, int b)
     return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }
 
+static void corner(uint32_t *v, float x, float y, uint32_t colour, uint32_t z);
+
+static int edge_quad(uint32_t *verts, int n, int cap, float ax, float ay, uint32_t za, float bx, float by, uint32_t zb,
+                     uint32_t colour)
+{
+    float dx, dy, len, nx, ny;
+    uint32_t *q;
+    if (n + 6 > cap) return -1;
+    dx = bx - ax;
+    dy = by - ay;
+    len = sqrtf(dx * dx + dy * dy);
+    if (len < 1e-3f) {
+        nx = 1.f;
+        ny = 0.f;
+    } else {
+        nx = -dy / len;
+        ny = dx / len;
+    }
+    q = verts + n * 6;
+    corner(q, ax + nx, ay + ny, colour, za);
+    corner(q + 6, bx + nx, by + ny, colour, zb);
+    corner(q + 12, bx - nx, by - ny, colour, zb);
+    corner(q + 18, ax + nx, ay + ny, colour, za);
+    corner(q + 24, bx - nx, by - ny, colour, zb);
+    corner(q + 30, ax - nx, ay - ny, colour, za);
+    return n + 6;
+}
+
 static int verts_frame(const gs_mesh *m, const gs_cam *cam, const gs_frame *f, const gs_tint *tints, int ntints,
                        uint32_t *verts, int cap)
 {
     int i, n = 0, t = 0, upto = tints && ntints > 0 ? tints[0].n : 0;
+    int wire = gs_view_shade_get() == 2;
     if (!m) return -1;
     for (i = 0; i < m->n; i++) {
         gs_v p[3];
@@ -62,8 +91,23 @@ static int verts_frame(const gs_mesh *m, const gs_cam *cam, const gs_frame *f, c
         if (tints && t < ntints && i < upto ? gs_view_colour_tint(cam, f->origin, p[0], p[1], p[2], tints[t].rgb, &r, &g, &b)
                                             : gs_view_colour(cam, f->origin, p[0], p[1], p[2], &r, &g, &b))
             continue;
-        if (n + 3 > cap) return -1;
         colour = argb(r, g, b);
+        if (wire) {
+            float ax, ay, az, bx, by, bz, cx, cy, cz;
+            uint32_t za, zb, zc;
+            if (n + 18 > cap) return -1;
+            gs_view_map(f, cam, p[0], &ax, &ay, &az);
+            gs_view_map(f, cam, p[1], &bx, &by, &bz);
+            gs_view_map(f, cam, p[2], &cx, &cy, &cz);
+            za = depth_of(f, az);
+            zb = depth_of(f, bz);
+            zc = depth_of(f, cz);
+            n = edge_quad(verts, n, cap, ax, ay, za, bx, by, zb, colour);
+            n = edge_quad(verts, n, cap, bx, by, zb, cx, cy, zc, colour);
+            n = edge_quad(verts, n, cap, cx, cy, zc, ax, ay, za, colour);
+            continue;
+        }
+        if (n + 3 > cap) return -1;
         for (k = 0; k < 3; k++) {
             gs_view_map(f, cam, p[k], &x, &y, &z);
             verts[(n + k) * 6] = fix16(x);

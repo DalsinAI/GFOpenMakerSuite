@@ -204,7 +204,8 @@ static void fill(unsigned char *rgb, float *zb, int w, int h, v3 a, v3 b, v3 c, 
     }
 }
 
-static void hair(unsigned char *rgb, float *zb, int w, int h, float x0, float y0, float z0, float x1, float y1, float z1)
+static void stroke(unsigned char *rgb, float *zb, int w, int h, float x0, float y0, float z0, float x1, float y1,
+                   float z1, int cr, int cg, int cb)
 {
     int steps, i;
     float dx = x1 - x0, dy = y1 - y0;
@@ -220,8 +221,28 @@ static void hair(unsigned char *rgb, float *zb, int w, int h, float x0, float y0
         k = y * w + x;
         if (z <= zb[k]) continue;
         zb[k] = z;
-        put_rgb(rgb, w, h, x, y, 70, 78, 92);
+        put_rgb(rgb, w, h, x, y, cr, cg, cb);
     }
+}
+
+static void hair(unsigned char *rgb, float *zb, int w, int h, float x0, float y0, float z0, float x1, float y1, float z1)
+{
+    stroke(rgb, zb, w, h, x0, y0, z0, x1, y1, z1, 70, 78, 92);
+}
+
+/* 0 metal, 1 clay, 2 wire. One picture, so the painters all read this. */
+static int picture;
+
+void gs_view_shade(int s)
+{
+    if (s < 0) s = 0;
+    if (s > 2) s = 2;
+    picture = s;
+}
+
+int gs_view_shade_get(void)
+{
+    return picture;
 }
 
 int gs_view_frame(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_frame *f)
@@ -373,7 +394,12 @@ static int light(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, float *
     nz /= len;
     nd = nx * -0.35f + ny * 0.82f + nz * 0.45f;
     if (nd < 0.f) nd = -nd;
-    *lit = 0.45f + 0.55f * nd;
+    if (picture == 1)
+        *lit = 0.82f + 0.18f * nd; /* clay: the light barely turns the faces */
+    else if (picture == 2)
+        *lit = 1.f;
+    else
+        *lit = 0.45f + 0.55f * nd;
     ax = fabsf(nx);
     ay = fabsf(ny);
     az = fabsf(nz);
@@ -384,9 +410,16 @@ static int light(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, float *
 int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *r, int *g, int *bl)
 {
     static const int way_rgb[3][3] = {{230, 190, 80}, {196, 84, 62}, {64, 150, 168}};
+    static const int clay_rgb[3] = {196, 176, 148};
     float lit;
     int way;
     if (light(cam, origin, a, b, c, &lit, &way)) return -1;
+    if (picture == 1) {
+        *r = (int)(clay_rgb[0] * lit);
+        *g = (int)(clay_rgb[1] * lit);
+        *bl = (int)(clay_rgb[2] * lit);
+        return 0;
+    }
     *r = (int)(way_rgb[way][0] * lit);
     *g = (int)(way_rgb[way][1] * lit);
     *bl = (int)(way_rgb[way][2] * lit);
@@ -396,7 +429,9 @@ int gs_view_colour(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, int *
 int gs_view_colour_tint(const gs_cam *cam, gs_v origin, gs_v a, gs_v b, gs_v c, unsigned long rgb, int *r, int *g,
                         int *bl)
 {
-    static const float side[3] = {1.f, 0.8f, 0.66f};
+    static const float side_metal[3] = {1.f, 0.8f, 0.66f};
+    static const float side_flat[3] = {1.f, 1.f, 1.f};
+    const float *side = picture ? side_flat : side_metal;
     float lit, k;
     int way;
     if (light(cam, origin, a, b, c, &lit, &way)) return -1;
@@ -482,7 +517,12 @@ int gs_view_solid(const gs_mesh *m, const gs_cam *cam, unsigned char *rgb, int w
         d.x = cx;
         d.y = cy;
         d.z = cz;
-        fill(rgb, zb, w, h, a, b, d, cr, cg, cb);
+        if (picture == 2) {
+            stroke(rgb, zb, w, h, ax, ay, az, bx, by, bz, cr, cg, cb);
+            stroke(rgb, zb, w, h, bx, by, bz, cx, cy, cz, cr, cg, cb);
+            stroke(rgb, zb, w, h, cx, cy, cz, ax, ay, az, cr, cg, cb);
+        } else
+            fill(rgb, zb, w, h, a, b, d, cr, cg, cb);
     }
     free(zb);
     return 0;
@@ -552,7 +592,12 @@ int gs_view_bed_tint(const gs_mesh *m, const gs_cam *cam, const gs_tint *tints, 
             d.x = cx;
             d.y = cy;
             d.z = cz;
-            fill(rgb, zb, w, h, a, b, d, cr, cg, cb);
+            if (picture == 2) {
+                stroke(rgb, zb, w, h, ax, ay, az, bx, by, bz, cr, cg, cb);
+                stroke(rgb, zb, w, h, bx, by, bz, cx, cy, cz, cr, cg, cb);
+                stroke(rgb, zb, w, h, cx, cy, cz, ax, ay, az, cr, cg, cb);
+            } else
+                fill(rgb, zb, w, h, a, b, d, cr, cg, cb);
         }
     }
     free(zb);

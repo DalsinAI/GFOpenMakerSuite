@@ -58,7 +58,7 @@ static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift, drag_moved;
 static int gpu_on, on_chip, draw_grid, presented;
-static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip;
+static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip, shade_kind;
 static ge_steps *steps;
 
 /* ARexx: the port GFOPENMAKE.1, and the command table in make_rexx.c. */
@@ -175,6 +175,7 @@ static int draw_gpu(int x, int y, int w, int h)
 {
     int nv, nw;
     const gs_mesh *vm;
+    gs_view_shade(shade_kind);
     if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
     vm = view_of();
@@ -186,6 +187,8 @@ static int draw_gpu(int x, int y, int w, int h)
         int extra = (sketch_live ? sketch_ghost.n * 3 : 0);
         if (has_slice) extra += sliced.n * 6 + 6;
         else if (show_layer) extra += walls.n * 6;
+        /* Wire is three edges a face, six words an edge, not three words. */
+        if (shade_kind == 2) extra += vm->n * 18;
         verts_fit(extra);
         if (sketch_live && sketch_ghost.n && !section_on && nt < GS_PARTS_MAX + 1) {
             tints[nt].n = sketch_ghost.n;
@@ -226,6 +229,7 @@ static void draw_pens(int x, int y, int w, int h)
     unsigned char *rgb;
     int at[2];
     const gs_mesh *vm;
+    gs_view_shade(shade_kind);
     rgb = (unsigned char *)malloc((size_t)w * (size_t)h * 3);
     if (!rgb) return;
     vw = w;
@@ -682,6 +686,17 @@ static void on_look(olui *ui, const olui_event *ev, void *userdata)
         gs_cam_look(&cam, which);
         say(ui, which == 0 ? "Top." : which == 1 ? "Front." : "Side.");
     }
+    olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
+
+/* Metal, clay or wire. The picture changes. The part does not. */
+static void on_shade(olui *ui, const olui_event *ev, void *userdata)
+{
+    int which = (int)(intptr_t)userdata;
+    (void)ev;
+    shade_kind = which;
+    gs_view_shade(which);
+    say(ui, which == 0 ? "Metal." : which == 1 ? "Clay." : "Wire.");
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
@@ -1438,6 +1453,9 @@ int main(int argc, char **argv)
     olui_on(ui, "vfront", OLUI_CLICK, on_look, (void *)(intptr_t)1);
     olui_on(ui, "vside", OLUI_CLICK, on_look, (void *)(intptr_t)2);
     olui_on(ui, "vframe", OLUI_CLICK, on_look, (void *)(intptr_t)3);
+    olui_on(ui, "metal", OLUI_CLICK, on_shade, (void *)(intptr_t)0);
+    olui_on(ui, "clay", OLUI_CLICK, on_shade, (void *)(intptr_t)1);
+    olui_on(ui, "wire", OLUI_CLICK, on_shade, (void *)(intptr_t)2);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
