@@ -586,6 +586,50 @@ int ge_start(gs_mesh *m, const char *path, char *err, int errlen)
     return 0;
 }
 
+/* The same list as the bench's shelf. The files are the copies in
+ * examples/cad/, not a second download. */
+static const struct {
+    const char *name;
+    const char *file;
+} ge_shelf_items[] = {
+    {"NASA wrench", "examples/cad/nasa/nasa-wrench.stl"},
+    {"Galileo", "examples/cad/nasa/galileo.stl"},
+    {"James Webb body", "examples/cad/nasa/jwst-body.stl"},
+    {"Curiosity body", "examples/cad/nasa/curiosity-body.stl"},
+    {"Hubble body", "examples/cad/nasa/hubble-body.stl"},
+    {"Voyager dish", "examples/cad/nasa/voyager-dish.stl"},
+    {"Utah teapot", "examples/cad/teapot/utah-teapot.stl"},
+    {"Angle bracket", "examples/cad/workshop/bracket.stl"},
+    {"Knob", "examples/cad/workshop/knob.stl"},
+    {"Spur gear", "examples/cad/workshop/spur-gear.stl"},
+    {"Block with hole", "examples/cad/workshop/hole-block.stl"},
+};
+
+int ge_shelf_count(void)
+{
+    return (int)(sizeof ge_shelf_items / sizeof ge_shelf_items[0]);
+}
+
+const char *ge_shelf_name(int i)
+{
+    return i >= 0 && i < ge_shelf_count() ? ge_shelf_items[i].name : NULL;
+}
+
+int ge_shelf_load(gs_mesh *m, int i, char *err, int errlen)
+{
+    char path[160];
+    const char *file;
+    if (!m || i < 0 || i >= ge_shelf_count()) {
+        if (m) gs_mesh_free(m);
+        if (err && errlen > 0) snprintf(err, (size_t)errlen, "That example is not on the shelf.");
+        return -1;
+    }
+    file = ge_shelf_items[i].file;
+    if (ge_open(m, file, err, errlen) == 0) return 0;
+    snprintf(path, sizeof path, "PROGDIR:%s", file);
+    return ge_open(m, path, err, errlen);
+}
+
 /* The footprint and the height, shared by the placed solid and the ghost. */
 static int extrude_ok(const gs_mesh *part, int kind, int op, float w, float d, float h, char *line, int len)
 {

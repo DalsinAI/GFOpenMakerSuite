@@ -661,6 +661,32 @@ static void on_lay(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
+static void take_added(olui *ui, gs_mesh box, const char *name);
+
+/* File's Shelf: the chosen example, on the bed, as the bench's library. */
+static void on_shelf(olui *ui, const olui_event *ev, void *userdata)
+{
+    gs_mesh next;
+    char err[160], line[96];
+    int i = olui_select_index(olui_find(ui, "shelfsel"));
+    const char *name = ge_shelf_name(i);
+    (void)ev;
+    (void)userdata;
+    if (gs_parts_count(parts) >= GS_PARTS_MAX) {
+        say(ui, "Twenty-four parts is the limit.");
+        return;
+    }
+    err[0] = 0;
+    memset(&next, 0, sizeof next);
+    if (!name || ge_shelf_load(&next, i, err, (int)sizeof err)) {
+        say(ui, err[0] ? err : "Could not open that example");
+        return;
+    }
+    take_added(ui, next, name);
+    snprintf(line, sizeof line, "%s is on the bed.", name);
+    say(ui, line);
+}
+
 /* The slider is 1 to 100 along the layers that are drawn. With Section
  * on, that is the solid below the plane, not the hidden part above it. */
 static void slider_to_layer(olui *ui)
@@ -1383,6 +1409,7 @@ int main(int argc, char **argv)
     olui_on(ui, "drop", OLUI_CLICK, on_drop, NULL);
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
+    olui_on(ui, "shelf", OLUI_CLICK, on_shelf, NULL);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
@@ -1405,6 +1432,9 @@ int main(int argc, char **argv)
         olui_select_add(ui, olui_find(ui, "xkind"), "Round", "Round");
         olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
         olui_select_set(ui, olui_find(ui, "xkind"), 0);
+        for (k = 0; k < ge_shelf_count(); k++)
+            olui_select_add(ui, olui_find(ui, "shelfsel"), ge_shelf_name(k), ge_shelf_name(k));
+        olui_select_set(ui, olui_find(ui, "shelfsel"), 0);
     }
     olui_on(ui, "xadd", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_BED);
     olui_on(ui, "xon", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_TOP);
