@@ -646,6 +646,16 @@ Template: `FRAME FILE/A`
 Writes G-code that travels around the job's box with the laser off, as
 the window's Frame, to `FILE`. RC 10 if there is no job yet.
 
+### LOOK
+
+Template: `LOOK NAME/A`
+
+Turns the view. `NAME` is `top`, `front`, `side` or `frame`. `frame` is
+the view at open. It is not the Frame button: that is `FRAME`, a travel
+around the job with the laser off. The window has no button for this.
+The picture changes. The job does not, and it is not marked dirty.
+RC 10 if the name is not one of those.
+
 ## GFOpenCNC (port `GFOPENCNC.1`)
 
 The shared commands. `OPEN` loads an SVG or a DXF. `SAVE` writes mill
