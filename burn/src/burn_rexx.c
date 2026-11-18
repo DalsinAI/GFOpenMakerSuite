@@ -653,6 +653,15 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, NULL, "LAYERS", nbuf);
     stem_put(c, NULL, "MODE", mode);
     stem_put(c, NULL, "MACHINE", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
+    {
+        char pbuf[32];
+        key_value(g->opts, key_of("x"), pbuf, (int)sizeof pbuf);
+        stem_put(c, NULL, "X", pbuf);
+        key_value(g->opts, key_of("y"), pbuf, (int)sizeof pbuf);
+        stem_put(c, NULL, "Y", pbuf);
+        key_value(g->opts, key_of("rot"), pbuf, (int)sizeof pbuf);
+        stem_put(c, NULL, "ROT", pbuf);
+    }
     return OMR_OK;
 }
 

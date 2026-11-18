@@ -145,7 +145,9 @@ int main(void)
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN.1") && strstr(buf, "0"),
            "STATUS, not dirty");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
-               omr_host_var("ST.MACHINE") && !strcmp(omr_host_var("ST.MACHINE"), g.machine.name),
+               omr_host_var("ST.MACHINE") && !strcmp(omr_host_var("ST.MACHINE"), g.machine.name) &&
+               omr_host_var("ST.X") && !strcmp(omr_host_var("ST.X"), "0") && omr_host_var("ST.Y") &&
+               !strcmp(omr_host_var("ST.Y"), "0") && omr_host_var("ST.ROT") && !strcmp(omr_host_var("ST.ROT"), "0"),
            "STATUS names the laser loaded with the port");
     expect(run(&g, "MACHINE", &io) == 0 && io.rc == OMR_ERROR, "MACHINE needs a file");
     expect(run(&g, "MACHINE DRIVER machines/printer/marlin/driver.om PROFILE machines/printer/marlin/profiles/generic-220.om",
@@ -257,6 +259,10 @@ int main(void)
     expect(run(&g, "SET KEY x VALUE 5", &io) == 0 && io.rc == OMR_OK && opts.x == 5.f, "SET x");
     expect(run(&g, "SET KEY y VALUE 5", &io) == 0 && io.rc == OMR_OK && opts.y == 5.f, "SET y");
     expect(run(&g, "SET KEY rot VALUE 90", &io) == 0 && io.rc == OMR_OK && opts.rot == 90.f, "SET rot");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.X") &&
+               !strcmp(omr_host_var("ST.X"), "5") && omr_host_var("ST.Y") && !strcmp(omr_host_var("ST.Y"), "5") &&
+               omr_host_var("ST.ROT") && !strcmp(omr_host_var("ST.ROT"), "90"),
+           "STATUS reads the place fields");
     expect(run(&g, "SET KEY x VALUE no", &io) == 0 && io.rc == OMR_ERROR, "x wants a number");
     expect(run(&g, "SET KEY x VALUE 20000", &io) == 0 && io.rc == OMR_OK && opts.x == 10000.f, "x is held to 10000");
     expect(run(&g, "SET KEY x VALUE 5", &io) == 0 && io.rc == OMR_OK, "x back to 5");
