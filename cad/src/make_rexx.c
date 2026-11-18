@@ -263,6 +263,23 @@ static int cmd_extrude(void *c, void *g0)
         omr_set_result(c, "no document");
         return OMR_ERROR;
     }
+    if (omr_switch(c, "LIST")) {
+        static const char *const keys[] = {"block", "round", "slot"};
+        char nbuf[16];
+        int n = (int)(sizeof names / sizeof names[0]), k;
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        stem_put(c, NULL, "0", nbuf);
+        for (k = 0; k < n; k++) {
+            char tail[24];
+            snprintf(nbuf, sizeof nbuf, "%d", k + 1);
+            stem_put(c, NULL, nbuf, names[k]);
+            snprintf(tail, sizeof tail, "%d.KIND", k + 1);
+            stem_put(c, NULL, tail, keys[k]);
+        }
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        omr_set_result(c, nbuf);
+        return OMR_OK;
+    }
     kind = extrude_kind(kind_s);
     if (kind < 0) {
         omr_set_result(c, "KIND is block, round or slot");
@@ -1991,7 +2008,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "QUIT", "FORCE/S", "close the window", cmd_quit},
     {sizeof(omr_verb), "OPEN", "FILE/A", "open an STL as a new part", cmd_open},
     {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K LIST/S STEM/K", "put a shelf example on the bed", cmd_shelf},
-    {sizeof(omr_verb), "EXTRUDE", "KIND/A OP/K W/K D/K H/K", "add, join or cut a block, round or slot", cmd_extrude},
+    {sizeof(omr_verb), "EXTRUDE", "KIND/K OP/K W/K D/K H/K LIST/S STEM/K", "add, join or cut a block, round or slot", cmd_extrude},
     {sizeof(omr_verb), "DRAW", "X0/A Y0/A X1/A Y1/A KIND/K OP/K H/K", "the dragged footprint, as Draw", cmd_draw},
     {sizeof(omr_verb), "DROP", "", "drop the picked part onto the bed", cmd_drop},
     {sizeof(omr_verb), "CENTRE", "", "centre the picked part on the bed", cmd_centre},
