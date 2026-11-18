@@ -51,6 +51,43 @@ static int file_has(const char *path, const char *what)
     return ok;
 }
 
+static int file_before(const char *path, const char *a, const char *b)
+{
+    FILE *f = fopen(path, "rb");
+    char *buf;
+    long n;
+    char *pa, *pb;
+    int ok = 0;
+    if (!f) return 0;
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return 0;
+    }
+    n = ftell(f);
+    if (n < 0 || n > 200000) {
+        fclose(f);
+        return 0;
+    }
+    rewind(f);
+    buf = (char *)malloc((size_t)n + 1);
+    if (!buf) {
+        fclose(f);
+        return 0;
+    }
+    if ((long)fread(buf, 1, (size_t)n, f) != n) {
+        free(buf);
+        fclose(f);
+        return 0;
+    }
+    buf[n] = 0;
+    fclose(f);
+    pa = strstr(buf, a);
+    pb = strstr(buf, b);
+    ok = pa && pb && pa < pb;
+    free(buf);
+    return ok;
+}
+
 static int gcode_has_move(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -113,6 +150,9 @@ int main(void)
     expect(run(&g, "SET KEY mode VALUE fill", &io) == 0 && io.rc == OMR_OK && strstr(buf, "fill"), "SET mode fill");
     expect(run(&g, "SET KEY mode VALUE line", &io) == 0 && io.rc == OMR_OK, "SET mode line");
     expect(run(&g, "SET KEY no-such VALUE 1", &io) == 0 && io.rc == OMR_ERROR, "SET unknown key");
+    expect(run(&g, "GET KEY order", &io) == 0 && io.rc == OMR_OK && buf[0] == 0, "GET order is empty at first");
+    expect(run(&g, "SET KEY order VALUE 2,1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "Open a drawing first"),
+           "SET order before a drawing");
     expect(run(&g, "LASER POWER 40 SPEED 15 CONSTANT 1", &io) == 0 && io.rc == OMR_OK && opts.power == 40.f &&
                opts.speed == 15.f && opts.constant == 1,
            "LASER");
@@ -205,6 +245,27 @@ int main(void)
 
     expect(run(&g, "OPEN FILE burn/tests/data/two-rects.svg", &io) == 0 && io.rc == OMR_OK && doc.nlayer >= 2,
            "OPEN two-rects");
+    expect(run(&g, "SET KEY order VALUE 2,1", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "2,1") && opts.nseq == 2 &&
+               opts.seq && opts.seq[0] == 1 && opts.seq[1] == 0 && g.have_order,
+           "SET order 2,1");
+    expect(run(&g, "GET KEY order", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "2,1"), "GET order");
+    expect(run(&g, "SET KEY order VALUE 9", &io) == 0 && io.rc == OMR_ERROR && opts.nseq == 2 && opts.seq[0] == 1,
+           "an order past the drawing is refused");
+    expect(run(&g, "SET KEY order VALUE blue", &io) == 0 && io.rc == OMR_ERROR, "order wants layer numbers");
+    expect(run(&g, "SET KEY cuts_last VALUE 0", &io) == 0 && io.rc == OMR_OK && opts.cuts_last == 0, "cuts last off");
+    expect(run(&g, "LAYER INDEX 1 POWER 100 SPEED 10", &io) == 0 && io.rc == OMR_OK, "the first layer heavy");
+    expect(run(&g, "LAYER INDEX 2 POWER 25 SPEED 40", &io) == 0 && io.rc == OMR_OK, "the second layer light");
+    expect(run(&g, "SAVE FILE build/rexx-order.gcode", &io) == 0 && io.rc == OMR_OK, "SAVE in list order");
+    expect(file_before("build/rexx-order.gcode", "S250", "S1000") && file_before("build/rexx-order.gcode", " F2400", " F600"),
+           "order 2,1 burns the second layer first");
+    burn_defaults(&opts);
+    opts.layer = store;
+    gb_rexx_keep(&g);
+    expect(opts.nseq == 2 && opts.seq == g.seq && opts.seq[0] == 1 && opts.seq[1] == 0,
+           "a rebuild keeps the layer order");
+    expect(run(&g, "SET KEY order VALUE \"\"", &io) == 0 && io.rc == OMR_OK && !g.have_order && opts.nseq == 0,
+           "an empty order is the file order");
+    expect(run(&g, "SET KEY cuts_last VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.cuts_last == 1, "cuts last back on");
     expect(run(&g, "LAYER COLOUR #ff0000 POWER 70", &io) == 0 && io.rc == OMR_OK, "LAYER by colour");
     expect(run(&g, "OPEN FILE burn/tests/data/bars-8x2.pgm", &io) == 0 && io.rc == OMR_OK && have_image && have_doc,
            "OPEN picture");
