@@ -413,6 +413,15 @@ static int cmd_status(void *c, void *g0)
     snprintf(nbuf, sizeof nbuf, "%d", g->layer_no < 1 ? 1 : g->layer_no);
     stem_put(c, NULL, "LAYER", nbuf);
     stem_put(c, NULL, "PRINTER", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
+    if (j) job_value(j, 0, nbuf, (int)sizeof nbuf);
+    else snprintf(nbuf, sizeof nbuf, "0");
+    stem_put(c, NULL, "SUPPORT", nbuf);
+    if (j) job_value(j, 1, buf, (int)sizeof buf);
+    else buf[0] = 0;
+    stem_put(c, NULL, "START", buf);
+    if (j) job_value(j, 2, buf, (int)sizeof buf);
+    else buf[0] = 0;
+    stem_put(c, NULL, "END", buf);
     return OMR_OK;
 }
 

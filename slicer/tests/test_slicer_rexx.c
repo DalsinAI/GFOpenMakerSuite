@@ -131,7 +131,10 @@ int main(void)
                !strcmp(omr_host_var("ST.ROUGH"), "0") && omr_host_var("ST.PICTURE") &&
                !strcmp(omr_host_var("ST.PICTURE"), "0") && omr_host_var("ST.LAYER") &&
                !strcmp(omr_host_var("ST.LAYER"), "1") && omr_host_var("ST.PRINTER") &&
-               !strcmp(omr_host_var("ST.PRINTER"), ""),
+               !strcmp(omr_host_var("ST.PRINTER"), "") && omr_host_var("ST.SUPPORT") &&
+               !strcmp(omr_host_var("ST.SUPPORT"), "0") && omr_host_var("ST.START") &&
+               !strcmp(omr_host_var("ST.START"), "") && omr_host_var("ST.END") &&
+               !strcmp(omr_host_var("ST.END"), ""),
            "STATUS LOADED");
     expect(run(&g, "LOAD FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part, "LOAD stl");
 
@@ -163,6 +166,11 @@ int main(void)
     expect(run(&g, "GET KEY start", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "M117 hello"), "GET start");
     expect(run(&g, "SET KEY start VALUE \"\"", &io) == 0 && io.rc == OMR_OK && job.start[0] == 0, "an empty start clears it");
     expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK, "start set again");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKESLICER.1") &&
+               omr_host_var("ST.SUPPORT") && !strcmp(omr_host_var("ST.SUPPORT"), "1") && omr_host_var("ST.START") &&
+               !strcmp(omr_host_var("ST.START"), "M117 hello") && omr_host_var("ST.END") &&
+               !strcmp(omr_host_var("ST.END"), "M117 done"),
+           "STATUS names support, start and end");
 
     expect(run(&g, "SET KEY tasks VALUE maybe", &io) == 0 && io.rc == OMR_ERROR && g.tasks == 4, "tasks is a number");
     expect(run(&g, "SET KEY tasks VALUE 0", &io) == 0 && io.rc == OMR_OK && g.tasks == 1 && strcmp(buf, "1") == 0,
