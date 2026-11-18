@@ -19,6 +19,7 @@ typedef struct gw_rexx {
     void (*hide)(void *win);
     void *win;
     void *ui;
+    int home; /* 1: the window homes the camera, as a click on the list */
 } gw_rexx;
 
 #define GW_REXX_PORT "OPENMAKEWORKSHOP"

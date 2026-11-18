@@ -364,6 +364,25 @@ static int cmd_rename(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The list: show that row. It does not open the item. */
+static int cmd_pick(void *c, void *g0)
+{
+    gw_rexx *g = app(g0);
+    const char *item = omr_arg(c, "ITEM");
+    int idx;
+    if (need(g, c)) return OMR_ERROR;
+    idx = gpr_find(&g->ws->project, item);
+    if (idx < 0) {
+        omr_set_result(c, "no such item");
+        return OMR_ERROR;
+    }
+    g->ws->picked = idx;
+    g->ws->status[0] = 0;
+    g->home = 1;
+    omr_set_result(c, g->ws->project.items[idx].name);
+    return OMR_OK;
+}
+
 static int kind_match(const char *item_kind, const char *want)
 {
     char a[GPR_KIND_MAX + 1], b[GPR_KIND_MAX + 1];
@@ -585,6 +604,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "REMOVE", "ITEM/A", "Drop an item from the manifest", cmd_remove},
     {sizeof(omr_verb), "RENAME", "ITEM/A NAME/A", "Rename an item in the manifest", cmd_rename},
     {sizeof(omr_verb), "ITEMS", "KIND/K STEM/K VAR/K", "List the items", cmd_items},
+    {sizeof(omr_verb), "PICK", "ITEM/A", "show that item, as a click on the list", cmd_pick},
     {sizeof(omr_verb), "OPENITEM", "ITEM/A", "Open an item in its app", cmd_openitem},
     {sizeof(omr_verb), "SEND", "APP/A CMD/F/A", "Pass a command to another app's port", cmd_send},
     {sizeof(omr_verb), "RECENT", "STEM/K VAR/K", "The recent projects", cmd_recent},

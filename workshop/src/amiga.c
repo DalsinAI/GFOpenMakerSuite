@@ -405,6 +405,10 @@ int main(void)
         if (rmask && (got & rmask)) {
             omr_cmd *cmd;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gw_rexx_verbs(), gw_rexx_nverbs(), &rexx);
+            if (rexx.home) {
+                gs_cam_home(&cam);
+                rexx.home = 0;
+            }
             workshop_ui_refresh(ui, &ws);
             olui_repaint(ui, olui_find(ui, "view"), NULL);
             if (rexx.quit) goto done;
