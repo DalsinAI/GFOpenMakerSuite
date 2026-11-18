@@ -188,6 +188,22 @@ int main(void)
         expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the shelf part");
         expect(run(&g, "SHELF NAME \"no such thing\"", &io) == 0 && io.rc == OMR_ERROR, "SHELF refuses an unknown name");
     }
+    {
+        int n = gs_parts_count(ps);
+        float pos[3], size[3];
+        expect(run(&g, "EXTRUDE KIND block", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 1 &&
+                   strstr(buf, "on the bed") && !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Block"),
+               "EXTRUDE add puts a block on the bed");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the block");
+        expect(run(&g, "SELECT PART 1", &io) == 0 && io.rc == OMR_OK, "SELECT a part to stand on");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(run(&g, "EXTRUDE KIND round OP on W 8 H 4", &io) == 0 && io.rc == OMR_OK && strstr(buf, "stands") &&
+                   gs_parts_count(ps) == n,
+               "EXTRUDE on joins a round to the top");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(size[2] > 4.f, "the part is still there, and taller than the boss alone");
+        expect(run(&g, "EXTRUDE KIND potato", &io) == 0 && io.rc == OMR_ERROR, "EXTRUDE refuses an unknown kind");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);

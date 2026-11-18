@@ -219,6 +219,18 @@ and the rest). `INDEX` is 1-based in that same list. With neither, the
 first example is used. `RESULT` says it is on the bed. RC 10 if there
 is no such example, or the list is full.
 
+### EXTRUDE
+
+Template: `EXTRUDE KIND/A OP/K W/K D/K H/K`
+
+The window's Extrude, from the width, depth and height. `KIND` is
+`block`, `round` or `slot`. `OP` is `add` (a new part on the bed; the
+default), `on` (joined to the top of the picked part) or `cut` (that
+depth off the top). `W`, `D` and `H` are millimetres; the defaults are
+20, 10 and 8, the same as the fields. A round uses `W` as the diameter.
+`RESULT` says what was done. RC 10 if the size is out of range, there
+is no part to join or cut, or the solid does not build.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`
