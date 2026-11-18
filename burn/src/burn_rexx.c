@@ -376,6 +376,40 @@ static void own_copy(char *dst, int n, const char *src)
     dst[k] = 0;
 }
 
+/* The window keeps power, speed, passes, mode and gap on the layer rows.
+ * A job SET has to write those rows or the next rebuild throws it away.
+ * mask bits: 1 power, 2 speed, 4 passes, 8 mode, 16 gap. */
+static void layers_job(gb_rexx *g, unsigned mask)
+{
+    int i, n;
+    if (!g || !g->opts || !g->store || !mask) return;
+    n = g->opts->nlayer;
+    if (n > g->store_cap) n = g->store_cap;
+    for (i = 0; i < n; i++) {
+        burn_layer *L = &g->store[i];
+        if (mask & 1u) {
+            L->power = g->opts->power;
+            L->set |= BURN_SET_POWER;
+        }
+        if (mask & 2u) {
+            L->speed = g->opts->speed;
+            L->set |= BURN_SET_SPEED;
+        }
+        if (mask & 4u) {
+            L->passes = g->opts->passes;
+            L->set |= BURN_SET_PASSES;
+        }
+        if (mask & 8u) {
+            L->mode = g->opts->mode;
+            L->set |= BURN_SET_MODE;
+        }
+        if (mask & 16u) {
+            L->interval = g->opts->interval;
+            L->set |= BURN_SET_INTERVAL;
+        }
+    }
+}
+
 static int cmd_get(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
@@ -446,6 +480,19 @@ static int cmd_set(void *c, void *g0)
     }
     if (k == 11) g->invert = g->opts->invert;
     if (k == 12) g->width = g->opts->width;
+    if (k == 2) {
+        g->have_travel = 1;
+        g->travel = g->opts->travel;
+    }
+    if (k == 5) {
+        g->have_s100 = 1;
+        g->s100 = g->opts->s100;
+    }
+    if (k == 0) layers_job(g, 1u);
+    if (k == 1) layers_job(g, 2u);
+    if (k == 3) layers_job(g, 4u);
+    if (k == 6) layers_job(g, 8u);
+    if (k == 7) layers_job(g, 16u);
     dirty(g);
     key_value(g->opts, k, buf, (int)sizeof buf);
     omr_set_result(c, buf);
@@ -672,6 +719,7 @@ static int cmd_laser(void *c, void *g0)
     char err[160], buf[96];
     int has, constant = 0, passes = 0;
     float power = 0, speed = 0, travel = 0, s100 = 0;
+    unsigned mask = 0;
     err[0] = 0;
     if (!g->opts) {
         omr_set_result(c, "no document");
@@ -682,25 +730,38 @@ static int cmd_laser(void *c, void *g0)
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) g->opts->power = hold(power, 0.f, 100.f);
+    if (has > 0) {
+        g->opts->power = hold(power, 0.f, 100.f);
+        mask |= 1u;
+    }
     has = arg_f(c, "SPEED", &speed);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) g->opts->speed = hold(speed, 0.1f, 500.f);
+    if (has > 0) {
+        g->opts->speed = hold(speed, 0.1f, 500.f);
+        mask |= 2u;
+    }
     has = arg_f(c, "TRAVEL", &travel);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) g->opts->travel = hold(travel, 0.f, 1000.f);
+    if (has > 0) {
+        g->opts->travel = hold(travel, 0.f, 1000.f);
+        g->have_travel = 1;
+        g->travel = g->opts->travel;
+    }
     has = arg_i(c, "PASSES", &passes);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) g->opts->passes = passes < 1 ? 1 : passes;
+    if (has > 0) {
+        g->opts->passes = passes < 1 ? 1 : passes;
+        mask |= 4u;
+    }
     has = arg_i(c, "CONSTANT", &constant);
     if (has < 0) {
         omr_set_result(c, "not a number");
@@ -712,7 +773,12 @@ static int cmd_laser(void *c, void *g0)
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) g->opts->s100 = hold(s100, 1.f, 10000.f);
+    if (has > 0) {
+        g->opts->s100 = hold(s100, 1.f, 10000.f);
+        g->have_s100 = 1;
+        g->s100 = g->opts->s100;
+    }
+    layers_job(g, mask);
     dirty(g);
     snprintf(buf, sizeof buf, "%g %g", (double)g->opts->power, (double)g->opts->speed);
     omr_set_result(c, buf);
@@ -735,6 +801,7 @@ static int cmd_mode(void *c, void *g0)
         return OMR_ERROR;
     }
     g->opts->mode = mode;
+    layers_job(g, 8u);
     dirty(g);
     omr_set_result(c, burn_mode_name(mode));
     return OMR_OK;
@@ -876,6 +943,8 @@ void gb_rexx_keep(gb_rexx *g)
     g->opts->end = g->end[0] ? g->end : NULL;
     g->opts->invert = g->invert;
     g->opts->width = g->width;
+    if (g->have_travel) g->opts->travel = g->travel;
+    if (g->have_s100) g->opts->s100 = g->s100;
 }
 
 const omr_verb *gb_rexx_verbs(void) { return verbs; }

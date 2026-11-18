@@ -214,6 +214,7 @@ void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap)
         store[i].tabw = omv_number(ui, id);
         store[i].set |= BURN_SET_TABW;
     }
+    burn_job_from_layers(o);
 }
 
 

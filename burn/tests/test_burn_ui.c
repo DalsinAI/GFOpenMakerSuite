@@ -184,7 +184,8 @@ int main(void)
                store[0].colour == 0xff0000u && store[1].index == 2 && store[0].mode == BURN_FILL &&
                store[0].interval == 0.1f && store[1].mode == BURN_LINE && store[1].kerf == 0.2f &&
                (store[1].set & BURN_SET_KERF) && store[1].tabs == 4 && store[1].tabw == 1.5f &&
-               (store[1].set & BURN_SET_TABS) && (store[1].set & BURN_SET_TABW),
+               (store[1].set & BURN_SET_TABS) && (store[1].set & BURN_SET_TABW) && o.power == 80.f &&
+               o.speed == 20.f && o.mode == BURN_FILL && o.interval == 0.1f,
            "the list is read back, including M3, fill, kerf and tabs");
     olui_set_number(ui, olui_find(ui, "place-x"), 50);   /* 5.0 with one decimal */
     olui_set_number(ui, olui_find(ui, "place-y"), -25);  /* -2.5 */
