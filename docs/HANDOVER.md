@@ -2,11 +2,11 @@
 
 16 November 2026. The browser bench in `cad/bench/` was ahead of `cad/src/make.c`. This is the state of that bench. The sources in the same commit are the bench, so this note is not only in a chat. `docs/bench.md` is the 9 November record. It still holds.
 
-17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, and a dragged sketch. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. Still only on the bench: the NASA shelf. The example files are in `examples/`, listed in `docs/media-examples.md`.
+17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, a dragged sketch, and the shelf. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. The example files are in `examples/`, listed in `docs/media-examples.md`. Shelf puts one of `examples/cad/` on the bed.
 
 ## What it is
 
-A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is OpenMakeCore's toolpath engine (`core/src/plan.c` and the rest, run by `slicer/src/sl_job.c`): walls, skins, infill and a brim. The first slicer, `slicer/src/slice.c`, is gone. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It has the bench's tools except the NASA shelf. Section on the window hides the picture, and the layer walls stop there too. Split is the cut. Draw drags the footprint, and the solid is shown while the pointer moves.
+A mesh workshop on a 220 mm plate, Z up. It is not a slicer and not a parametric kernel. The slicer is OpenMakeCore's toolpath engine (`core/src/plan.c` and the rest, run by `slicer/src/sl_job.c`): walls, skins, infill and a brim. The first slicer, `slicer/src/slice.c`, is gone. The Amiga window is `cad/src/make.c`, on the same 220 mm plate. It has the bench's tools. Section on the window hides the picture, and the layer walls stop there too. Split is the cut. Draw drags the footprint, and the solid is shown while the pointer moves. Shelf puts an example from `examples/cad/` on the bed.
 
 The window is OpenLayout Clear, laid out like the OpenQL launcher. One light window. A group is a box with a legend. A label sits to the left of its field. The status is one line along the bottom. Save STL is the blue primary button, in the place OpenQL puts Start.
 
@@ -67,7 +67,6 @@ Turning a part off hides the lines. Moving the part with the gizmo refreshes the
 ## Not done
 
 - Draw drags a footprint on the bed, and the solid is shown while the pointer moves (blue to add, green on top, red to cut). It is not joined or cut until the button comes up. A block or a slot is the box between the two points. A round is centred on the first point, and its width is the diameter. Add, On top and Cut, while Draw is on, choose what the drag does. With Draw off they still place from the width, depth and height fields.
-- The NASA shelf is still only on the bench. The files for a media volume are in `examples/`, listed in `docs/media-examples.md`.
 - The window's layer lines are core's cut (`core/src/layer.c`). The bench's segments are not joined. A slice welds the loops. The view does not yet lay a sliced toolpath back on the solid.
 - The Amiga window was not rebuilt for this note.
 

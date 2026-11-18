@@ -104,8 +104,8 @@ tools, including one drill, a 90 degree countersink, a washer and a
 split. Section hides the picture above a height, and the layer walls
 follow that cut. Draw drags a footprint on the bed, and the solid is
 shown while the pointer moves: a block or a slot is the box between the
-two points, a round is centred on the first. The NASA shelf is still
-only on the bench.
+two points, a round is centred on the first. Shelf, on Model, puts one
+of the examples in `examples/cad/` on the bed.
 
 ## Preview bench
 
@@ -115,7 +115,7 @@ Add drops a block or a round on a 220 mm bed. On stands that shape on the select
 
 Layers draw the walls of the selected part at one height. The segments are not joined, and there is no infill and no G-code. The window is OpenLayout Clear, laid out like the OpenQL launcher: groups, a label beside each field, a status line, and Save STL as the primary button.
 
-The meshes in `cad/bench/library/` are the shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut, so they stay on the bench.
+The meshes in `cad/bench/library/` are the same shelf. The NASA ones are public domain. The Utah teapot is CC0. The wrench and the spacecraft are too heavy to cut. They can still be opened.
 
 ## Examples
 
@@ -128,7 +128,6 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 Support, and start or end G-code of your own. A skirt can still be a
 rectangle rather than the outline. The view shows the solid and one
 layer's walls. It does not yet lay a sliced toolpath back onto the model.
-The NASA models are files in `examples/`, not a shelf in the window.
 
 ## Building
 

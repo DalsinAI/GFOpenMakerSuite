@@ -234,6 +234,13 @@ int main(void)
         expect(near(got.min.z, 0.f) && near(got.max.z, 10.f) && near(got.min.x, 2.f), "an opened part sits on the plate");
         expect(signed_volume(&got) > 999.f, "an opened part has its outside out");
         expect(ge_open(&got, "build/none.stl", err, (int)sizeof err) == -1 && got.n == 0, "a missing file opens nothing");
+        expect(ge_shelf_count() == 11 && ge_shelf_name(0) && !strcmp(ge_shelf_name(0), "NASA wrench") &&
+                   ge_shelf_name(10) && !strcmp(ge_shelf_name(10), "Block with hole") && !ge_shelf_name(11) &&
+                   !ge_shelf_name(-1),
+               "the shelf is the bench's eleven");
+        expect(ge_shelf_load(&got, 11, err, (int)sizeof err) == -1 && got.n == 0, "past the shelf loads nothing");
+        expect(ge_shelf_load(&got, 10, err, (int)sizeof err) == 0 && got.n > 0 && near(got.min.z, 0.f),
+               "the block with a hole loads and sits on the plate");
         gs_mesh_free(&part);
         gs_mesh_free(&got);
     }
