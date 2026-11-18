@@ -404,8 +404,14 @@ int main(void)
         got = Wait(mask | rmask);
         if (rmask && (got & rmask)) {
             omr_cmd *cmd;
+            rexx.look = -1;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gw_rexx_verbs(), gw_rexx_nverbs(), &rexx);
-            if (rexx.home) {
+            if (rexx.look >= 0 && rexx.look <= 3) {
+                if (rexx.look == 3) gs_cam_home(&cam);
+                else gs_cam_look(&cam, rexx.look);
+                rexx.look = -1;
+                rexx.home = 0;
+            } else if (rexx.home) {
                 gs_cam_home(&cam);
                 rexx.home = 0;
             }
