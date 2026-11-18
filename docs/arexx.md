@@ -609,6 +609,18 @@ RC 10 if the file cannot be read, or if it is not a printer. When that
 printer is in the window's list, the list keeps it, and the settings
 are held to it.
 
+### PRINTERS
+
+Template: `PRINTERS DIR/K STEM/K`
+
+Names the printers the window's list shows. `DIR` is the machines drawer
+(`machines` on the host, `PROGDIR:machines` on the Amiga), the same root
+the window scans. `RESULT` is how many. `STEM`, when given, has `stem.0`
+(that count), `stem.1` onwards the names, `stem.1.DRIVER` and
+`stem.1.PROFILE` the two files `PRINTER` takes. It does not load one, and
+it does not mark the document dirty. A missing drawer is `0`. Out of
+memory is RC 10.
+
 ### SLICE
 
 Template: `SLICE STEM/K VAR/K`

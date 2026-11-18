@@ -82,9 +82,11 @@ $(BUILD)/test_settings_ui: core/tests/test_settings_ui.c core/ui/settings_ui.c c
 
 # OpenMakeSlicer's job: the toolpath engine on tasks, checked and written.
 # GFOpenSlicer's ARexx commands (slicer/src/slicer_rexx.c), on the host stub.
-$(BUILD)/test_slicer_rexx: slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c $(SL_JOB) slicer/src/slicer_rexx.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/src -Islicer/include -Islicer/src -Imachines/include -o $@ \
-	    slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c $(SL_JOB) -lm
+$(BUILD)/test_slicer_rexx: slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c $(SL_JOB) core/ui/machines_ui.c core/ui/omview_machines.h slicer/src/slicer_rexx.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/src -Icore/ui -Islicer/include -Islicer/src -Imachines/include -I$(LAYOUT)/include -o $@ \
+	    slicer/tests/test_slicer_rexx.c slicer/src/slicer_rexx.c core/src/rexx.c core/ui/machines_ui.c $(SL_JOB) \
+	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
+	    $(LAYOUT)/build/libopenlayout.a -lm
 
 $(BUILD)/test_sl_job: slicer/tests/test_sl_job.c slicer/include/sl_job.h $(SL_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Islicer/include -Imachines/include -o $@ slicer/tests/test_sl_job.c \
