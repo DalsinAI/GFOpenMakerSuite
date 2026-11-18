@@ -156,6 +156,29 @@ int main(void)
                    !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Box upper"),
                "SPLIT at 10 mm");
     }
+    {
+        int n = gs_parts_count(ps), i, hidden = 0;
+        expect(run(&g, "SELECT PART 1", &io) == 0 && io.rc == OMR_OK, "SELECT the lower half");
+        expect(run(&g, "COPY", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 1 && strstr(buf, "copy"),
+               "COPY adds one part");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the copy");
+        expect(run(&g, "LINE AXIS y COUNT 3 GAP 8", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 2 &&
+                   strstr(buf, "along Y"),
+               "LINE of 3 along Y");
+        n = gs_parts_count(ps);
+        expect(run(&g, "LINE AXIS q", &io) == 0 && io.rc == OMR_ERROR, "LINE refuses a bad axis");
+        expect(run(&g, "RING COUNT 4", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 3 &&
+                   strstr(buf, "Ring of 4"),
+               "RING of 4");
+        expect(run(&g, "MIRROR", &io) == 0 && io.rc == OMR_OK && strstr(buf, "mirrored"), "MIRROR");
+        expect(run(&g, "TURN", &io) == 0 && io.rc == OMR_OK && strstr(buf, "90"), "TURN 90 degrees about Z");
+        expect(run(&g, "STACK", &io) == 0 && io.rc == OMR_OK && strstr(buf, "stacked"), "STACK");
+        expect(run(&g, "SOLO", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Only"), "SOLO hides the others");
+        for (i = 0; i < gs_parts_count(ps); i++)
+            if (!gs_parts_shown(ps, i)) hidden++;
+        expect(hidden > 0, "a part is hidden");
+        expect(run(&g, "SOLO", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Every"), "SOLO again shows them all");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);

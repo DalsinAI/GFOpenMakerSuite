@@ -724,6 +724,126 @@ static int cmd_washer(void *c, void *g0)
     return OMR_OK;
 }
 
+static int axis_of(const char *s);
+
+static int arrange_begin(void *c, gm_rexx *g)
+{
+    if (!list(g) || gs_parts_count(list(g)) < 1) {
+        omr_set_result(c, "no part");
+        return -1;
+    }
+    remember(g);
+    return 0;
+}
+
+static int arrange_finish(void *c, gm_rexx *g, int rc, char *line)
+{
+    if (rc < 0) {
+        forget(g);
+        omr_set_result(c, line && line[0] ? line : "that did not arrange");
+        return OMR_ERROR;
+    }
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, line);
+    return OMR_OK;
+}
+
+/* The bench's Copy: one copy, 6 mm on in X, picked. */
+static int cmd_copy(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_duplicate(list(g), line, (int)sizeof line), line);
+}
+
+/* Line of copies along an axis. COUNT and GAP match the Arrange fields. */
+static int cmd_line(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    int axis, count = 3, has;
+    float gap = 6.f;
+    const char *ax = omr_arg(c, "AXIS");
+    axis = ax && ax[0] ? axis_of(ax) : 0;
+    if (axis < 0) {
+        omr_set_result(c, "AXIS is x, y or z");
+        return OMR_ERROR;
+    }
+    has = arg_i(c, "COUNT", &count);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    has = arg_f(c, "GAP", &gap);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_line(list(g), axis, count, gap, line, (int)sizeof line), line);
+}
+
+static int cmd_ring(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    int count = 3, has;
+    has = arg_i(c, "COUNT", &count);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_ring(list(g), count, line, (int)sizeof line), line);
+}
+
+static int cmd_mirror(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_mirror(list(g), line, (int)sizeof line), line);
+}
+
+static int cmd_turn(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    int axis, has;
+    float deg = 90.f;
+    const char *ax = omr_arg(c, "AXIS");
+    axis = ax && ax[0] ? axis_of(ax) : 2;
+    if (axis < 0) {
+        omr_set_result(c, "AXIS is x, y or z");
+        return OMR_ERROR;
+    }
+    has = arg_f(c, "DEG", &deg);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_turn(list(g), axis, deg, line, (int)sizeof line), line);
+}
+
+static int cmd_stack(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_stack(list(g), line, (int)sizeof line), line);
+}
+
+static int cmd_solo(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char line[160];
+    if (arrange_begin(c, g)) return OMR_ERROR;
+    return arrange_finish(c, g, ge_solo(list(g), line, (int)sizeof line), line);
+}
+
 /* The bench's split: the picked part cut at Z, or through its middle. */
 static int cmd_split(void *c, void *g0)
 {
@@ -975,6 +1095,13 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
     {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
     {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},
+    {sizeof(omr_verb), "COPY", "", "one copy of the picked part, 6 mm on in X", cmd_copy},
+    {sizeof(omr_verb), "LINE", "AXIS/K COUNT/N/K GAP/K", "copies of the picked part in a line", cmd_line},
+    {sizeof(omr_verb), "RING", "COUNT/N/K", "copies of the picked part round the bed", cmd_ring},
+    {sizeof(omr_verb), "MIRROR", "", "mirror the picked part through X", cmd_mirror},
+    {sizeof(omr_verb), "TURN", "AXIS/K DEG/K", "turn the picked part about its middle", cmd_turn},
+    {sizeof(omr_verb), "STACK", "", "sit the picked part on the one before it", cmd_stack},
+    {sizeof(omr_verb), "SOLO", "", "show only the picked part, or all of them again", cmd_solo},
     {sizeof(omr_verb), "SPLIT", "Z/K", "cut the picked part into two at a height", cmd_split},
     {sizeof(omr_verb), "PULL", "MM/A FACE/N/K", "pull a face by a distance", cmd_pull},
     {sizeof(omr_verb), "CHAMFER", "MM/A FACE/N/K", "chamfer a face's edges", cmd_chamfer},

@@ -279,6 +279,60 @@ Adds the bench's washer: 32 mm across, a 14 mm hole, 8 mm thick, on the
 bed past the parts shown. `RESULT` says so. RC 10 if the list is full or
 the washer does not build.
 
+### COPY
+
+Template: `COPY`
+
+One copy of the picked part, 6 mm on in X, and that copy is picked. The
+same as the window's Copy. `RESULT` names it. RC 10 if the list is full.
+
+### LINE
+
+Template: `LINE AXIS/K COUNT/N/K GAP/K`
+
+Copies of the picked part in a line, as the window's Line. `AXIS` is
+`x`, `y` or `z` (the default is `x`). `COUNT` is how many in all, held
+to 2..8 (the default is 3). `GAP` is the space between them in
+millimetres, held to 0..80 (the default is 6). The last copy is picked.
+RC 10 if the list cannot hold them.
+
+### RING
+
+Template: `RING COUNT/N/K`
+
+Copies of the picked part round the bed's middle, as the window's Ring.
+`COUNT` is how many in all, held to 3..12 (the default is 3). A part on
+the middle has its copies round it. RC 10 if the list cannot hold them.
+
+### MIRROR
+
+Template: `MIRROR`
+
+Mirrors the picked part through X about its middle. `RESULT` says so.
+
+### TURN
+
+Template: `TURN AXIS/K DEG/K`
+
+Turns the picked part about its middle. `AXIS` is `x`, `y` or `z` (the
+default is `z`). `DEG` is degrees (the default is 90, the window's
+button). `RESULT` says the turn.
+
+### STACK
+
+Template: `STACK`
+
+Sits the picked part on the one before it in the list, over that part's
+middle. The first part stacks on the second. RC 10 if it is the only
+part.
+
+### SOLO
+
+Template: `SOLO`
+
+Hides every part but the picked one. Sent again, shows them all. RC 10
+if it is the only part.
+
 ### SPLIT
 
 Template: `SPLIT Z/K`
