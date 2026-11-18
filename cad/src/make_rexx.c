@@ -151,6 +151,69 @@ static int cmd_open(void *c, void *g0)
     return OMR_OK;
 }
 
+/* File's Shelf: an example from examples/cad/ on the bed. */
+static int cmd_shelf(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    gs_mesh next;
+    const char *name = omr_arg(c, "NAME");
+    char err[160], line[96];
+    int i, n, has, index = 0;
+    if (!ps) {
+        omr_set_result(c, "no document");
+        return OMR_ERROR;
+    }
+    n = ge_shelf_count();
+    if (n < 1) {
+        omr_set_result(c, "the shelf is empty");
+        return OMR_ERROR;
+    }
+    if (name && name[0]) {
+        index = -1;
+        for (i = 0; i < n; i++)
+            if (ge_shelf_name(i) && eqi(ge_shelf_name(i), name)) index = i;
+        if (index < 0) {
+            omr_set_result(c, "no such example");
+            return OMR_ERROR;
+        }
+    } else {
+        has = arg_i(c, "INDEX", &index);
+        if (has < 0) {
+            omr_set_result(c, "not a number");
+            return OMR_ERROR;
+        }
+        if (has > 0) index -= 1;
+        if (index < 0 || index >= n) {
+            omr_set_result(c, "no such example");
+            return OMR_ERROR;
+        }
+    }
+    if (gs_parts_count(ps) >= GS_PARTS_MAX) {
+        omr_set_result(c, "Twenty-four parts is the limit.");
+        return OMR_ERROR;
+    }
+    err[0] = 0;
+    memset(&next, 0, sizeof next);
+    if (ge_shelf_load(&next, index, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "Could not open that example");
+        return OMR_ERROR;
+    }
+    remember(g);
+    i = gs_parts_add(ps, &next, ge_shelf_name(index));
+    if (i < 0) {
+        gs_mesh_free(&next);
+        forget(g);
+        omr_set_result(c, "Could not add that part");
+        return OMR_ERROR;
+    }
+    g->face = -1;
+    changed(g);
+    snprintf(line, sizeof line, "%s is on the bed.", ge_shelf_name(index));
+    omr_set_result(c, line);
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1076,6 +1139,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "the program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "close the window", cmd_quit},
     {sizeof(omr_verb), "OPEN", "FILE/A", "open an STL as a new part", cmd_open},
+    {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K", "put a shelf example on the bed", cmd_shelf},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},
