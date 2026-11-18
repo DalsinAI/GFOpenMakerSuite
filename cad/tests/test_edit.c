@@ -414,6 +414,27 @@ int main(void)
         ge_facts_line(line, (int)sizeof line, &cube);
         expect(!strcmp(line, "8.00 cm3, 9.9 g of PLA. 20.0 x 20.0 x 20.0 mm, 12 triangles."), "the part's facts said");
         expect(strlen(line) <= 78, "in the status line's 78 characters");
+        ge_mass_line(line, (int)sizeof line, &cube);
+        expect(!strcmp(line, "9.9 g"), "the mass, on the plate");
+        ge_move(&cube, 200.f, 0.f, 0.f);
+        ge_mass_line(line, (int)sizeof line, &cube);
+        expect(!strcmp(line, "9.9 g, off the plate"), "a part past 220 mm is marked");
+        ge_move(&cube, -200.f, 0.f, -5.f);
+        ge_mass_line(line, (int)sizeof line, &cube);
+        expect(!strcmp(line, "9.9 g, off the plate"), "and one that sinks through the bed");
+        {
+            float p = 0.4f, turn = 15.f * 3.14159265f / 180.f, acc = 1.f;
+            int steps = 0;
+            expect(ge_snap_step(&p, 1.f) == 0.f && near(p, 0.4f), "under half a millimetre waits");
+            p = 0.6f;
+            expect(near(ge_snap_step(&p, 1.f), 1.f) && near(p, -0.4f), "past half a millimetre takes one");
+            p = 0.1f;
+            expect(ge_snap_step(&p, turn) == 0.f, "under half of 15 degrees waits");
+            p = 0.2f;
+            expect(near(ge_snap_step(&p, turn), turn), "past it turns 15 degrees");
+            expect(near(ge_snap_scale(&acc, &steps, 1.04f), 1.f) && steps == 0, "a small scale waits");
+            expect(near(ge_snap_scale(&acc, &steps, 1.08f), 1.1f) && steps == 1, "then one step of 0.1");
+        }
         gs_mesh_free(&cube);
         ge_facts_line(line, (int)sizeof line, &cube);
         expect(!strcmp(line, "No part to measure."), "no part");
