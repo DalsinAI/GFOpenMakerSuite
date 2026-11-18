@@ -31,7 +31,7 @@ with the product:
         cad/            STL, and later the CAD's own files
         print/          slicer jobs and printer G-code
         laser/          SVG, DXF, pictures, and laser G-code
-        cnc/            later
+        cnc/            SVG and DXF for the mill
         electronics/    KiCad work that has been placed here
 
 Paths in the manifest are relative to the project drawer when the file
@@ -97,7 +97,7 @@ Known kinds in the first cut:
 | `cad` | CAD | `.stl`, and later the CAD's own files | GFOpenMake |
 | `print` | Print | printer G-code, and a slicer job's other files | GFOpenSlicer |
 | `laser` | Laser | `.svg`, `.dxf`, Netpbm pictures, laser G-code | GFOpenBurn |
-| `cnc` | CNC | later | OpenMakeCNC (not started) |
+| `cnc` | CNC | `.svg`, `.dxf` | GFOpenCNC |
 | `electronics` | Electronics | `.kicad_pro`, `.kicad_pcb`, `.kicad_sch` | gfamigakicad |
 
 A later **Render** kind (a Blender-style 3D rendering app, planned, not
@@ -248,7 +248,7 @@ Open in app, and the ARexx `OPENITEM` command, do the same thing:
 | cad | GFOpenMake | `GFOPENMAKE` |
 | print | GFOpenSlicer | `OPENMAKESLICER` |
 | laser | GFOpenBurn | `OPENMAKEBURN` |
-| cnc | later | later |
+| cnc | GFOpenCNC | none yet: the window has no ARexx port, so Workshop only starts it with the file |
 | electronics | gfamigakicad | none in the first cut: the program is started with the file, and is not driven further |
 
 `cad/` and `burn/` are not edited for this, except a tiny documented hook

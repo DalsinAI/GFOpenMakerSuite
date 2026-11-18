@@ -292,6 +292,12 @@ int main(void)
     o.name = "Shot";
     o.copy = 0;
     expect(gpr_add(&w.project, &o, err, (int)sizeof err) == 3, err[0] ? err : "add an unknown render item, referenced");
+    gpr_add_defaults(&o);
+    o.kind = "cnc";
+    o.file = svg;
+    o.name = "Job";
+    o.copy = 0;
+    expect(gpr_add(&w.project, &o, err, (int)sizeof err) == 4, err[0] ? err : "add a mill drawing");
     w.picked = 0;
     if (strlen(rec) >= sizeof w.recent_path) expect(0, "the recent path is too long");
     else memcpy(w.recent_path, rec, strlen(rec) + 1);
@@ -338,6 +344,11 @@ int main(void)
     w.picked = 3;
     workshop_ui_refresh(ui, &w);
     expect(workshop_launch(&w, err, (int)sizeof err) == -1, "the hook refuses a kind with no app");
+    w.picked = 4;
+    workshop_ui_refresh(ui, &w);
+    expect(workshop_launch(&w, err, (int)sizeof err) == 0 && strstr(workshop_launch_last(&w), "GFOpenCNC") &&
+               strstr(workshop_launch_last(&w), ".svg"),
+           "Open in app records GFOpenCNC for a mill drawing");
 
     w.picked = 0;
     workshop_ui_refresh(ui, &w);

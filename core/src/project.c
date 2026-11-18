@@ -335,6 +335,7 @@ const char *gpr_kind_app(const char *kind)
     if (!strcmp(k, "cad")) return "GFOpenMake";
     if (!strcmp(k, "print")) return "GFOpenSlicer";
     if (!strcmp(k, "laser")) return "GFOpenBurn";
+    if (!strcmp(k, "cnc")) return "GFOpenCNC";
     if (!strcmp(k, "electronics")) return "gfamigakicad";
     return NULL;
 }
