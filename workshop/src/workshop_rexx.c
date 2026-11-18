@@ -256,6 +256,7 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "DIRTY", dirty ? "1" : "0");
     stem_put(c, "ITEMS", nbuf);
     stem_put(c, "NAME", have(g) ? g->ws->project.name : "");
+    stem_put(c, "NOTES", have(g) ? g->ws->project.notes : "");
     {
         const gpr_item *it = NULL;
         int at = -1;
