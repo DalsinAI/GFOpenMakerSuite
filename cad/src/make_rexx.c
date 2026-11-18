@@ -171,6 +171,19 @@ static int cmd_shelf(void *c, void *g0)
         omr_set_result(c, "the shelf is empty");
         return OMR_ERROR;
     }
+    if (omr_switch(c, "LIST")) {
+        char nbuf[16];
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        stem_put(c, NULL, "0", nbuf);
+        for (i = 0; i < n; i++) {
+            const char *nm = ge_shelf_name(i);
+            snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+            stem_put(c, NULL, nbuf, nm ? nm : "");
+        }
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        omr_set_result(c, nbuf);
+        return OMR_OK;
+    }
     if (name && name[0]) {
         index = -1;
         for (i = 0; i < n; i++)
@@ -1919,7 +1932,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "the program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "close the window", cmd_quit},
     {sizeof(omr_verb), "OPEN", "FILE/A", "open an STL as a new part", cmd_open},
-    {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K", "put a shelf example on the bed", cmd_shelf},
+    {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K LIST/S STEM/K", "put a shelf example on the bed", cmd_shelf},
     {sizeof(omr_verb), "EXTRUDE", "KIND/A OP/K W/K D/K H/K", "add, join or cut a block, round or slot", cmd_extrude},
     {sizeof(omr_verb), "DRAW", "X0/A Y0/A X1/A Y1/A KIND/K OP/K H/K", "the dragged footprint, as Draw", cmd_draw},
     {sizeof(omr_verb), "DROP", "", "drop the picked part onto the bed", cmd_drop},

@@ -220,13 +220,16 @@ its box. `RESULT` is the new part's 1-based index and its name.
 
 ### SHELF
 
-Template: `SHELF NAME/K INDEX/N/K`
+Template: `SHELF NAME/K INDEX/N/K LIST/S STEM/K`
 
 Puts one of the shelf examples (`examples/cad/`) on the bed, as the
 window's Shelf. `NAME` is the example's name (`Angle bracket`, `Knob`,
-and the rest). `INDEX` is 1-based in that same list. With neither, the
-first example is used. `RESULT` says it is on the bed. RC 10 if there
-is no such example, or the list is full.
+and the rest). `INDEX` is 1-based in that same list. With neither `NAME`
+nor `INDEX`, the first example is used. `LIST` does not put one on the
+bed: `RESULT` is how many, and `STEM` has `stem.0` (that count) then
+`stem.1` onwards, the names in the window's list. It is not an undo step.
+`RESULT` of a put says it is on the bed. RC 10 if there is no such
+example, or the list is full.
 
 ### EXTRUDE
 
