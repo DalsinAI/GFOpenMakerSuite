@@ -161,9 +161,28 @@ int main(void)
     expect(run(&g, "SET KEY tasks VALUE 2", &io) == 0 && io.rc == OMR_OK && g.tasks == 2, "tasks set to 2");
 
     expect(run(&g, "SLICE STEM ST", &io) == 0 && io.rc == OMR_OK && job.sliced && job.path.nlayers > 0 &&
-               job.tasks == 2 && strstr(buf, "layers") && omr_host_var("ST.LAYERS") &&
+               job.tasks == 2 && g.fresh == 1 && strstr(buf, "layers") && omr_host_var("ST.LAYERS") &&
                atoi(omr_host_var("ST.LAYERS")) > 0,
            "SLICE");
+    {
+        int dirty = g.dirty, n = job.path.nlayers;
+        expect(n > 4, "the cube has more than four layers");
+        expect(run(&g, "LAYERS", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 1 && g.fresh == 0 &&
+                   strstr(buf, "Layers 1 to 1"),
+               "LAYERS turns the picture on");
+        expect(run(&g, "LAYERS INDEX 4", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 4 &&
+                   strstr(buf, "Layers 1 to 4"),
+               "LAYERS index");
+        expect(run(&g, "LAYERS INDEX 1000000", &io) == 0 && io.rc == OMR_OK && g.layer_no == n && g.layers == 1,
+               "LAYERS holds at the last layer");
+        expect(run(&g, "LAYERS INDEX 0", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1 && g.layers == 1,
+               "LAYERS index 0 is 1");
+        expect(run(&g, "LAYERS ON 0", &io) == 0 && io.rc == OMR_OK && g.layers == 0 && strstr(buf, "hidden"),
+               "LAYERS hides the picture");
+        expect(run(&g, "LAYERS ON no", &io) == 0 && io.rc == OMR_ERROR && g.layers == 0, "LAYERS wants a number");
+        expect(run(&g, "LAYERS INDEX no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 1, "LAYERS index wants a number");
+        expect(g.dirty == dirty, "LAYERS does not dirty");
+    }
     expect(run(&g, "STATS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.TIME") &&
                omr_host_var("ST.FILAMENT"),
            "STATS");

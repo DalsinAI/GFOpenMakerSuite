@@ -500,7 +500,8 @@ and `end` are the Settings side of the window, the same as `SUPPORT=`,
 `START=` and `END=` on the command. `support` is `1` or `0`. `start` and
 `end` are lines of your own, after the machine's start and before its end.
 An empty line clears that one. `tasks` is how many tasks the next slice
-runs on, the same as `TASKS=` on the command. A whole number is held from
+runs on, the same as `TASKS=` on the command, and the window's Slice
+button uses that count. A whole number is held from
 1 to 64. The window has no field for it, and the count is not a print
 setting, so it does not mark the document dirty. The list with no `KEY`
 stays the print settings.
@@ -544,6 +545,19 @@ Template: `STATS STEM/K VAR/K`
 
 The last slice's figures, in the same form as `SLICE`. RC 10 if it has not
 been sliced yet.
+
+### LAYERS
+
+Template: `LAYERS ON/N/K INDEX/N/K`
+
+The layer bar: show layers 1 to a layer of the last slice. It does not
+change the part, and it does not mark the document dirty. With neither
+`ON` nor `INDEX`, it toggles, as the Show layers checkbox. `INDEX` is
+how far to draw, 1 for the first layer, and turns the picture on, as
+the slider, Prev and Next. A number below 1 is 1. Once there is a slice,
+a higher number is that slice's last layer. `ON` is `1` or `0` (any other
+number is on). A slice leaves the window on the top layer. RC 10 if `ON`
+or `INDEX` is not a number.
 
 ## OpenMakeBurn (port `OPENMAKEBURN.1`)
 

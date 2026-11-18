@@ -27,6 +27,9 @@ typedef struct os_rexx {
     void (*hide)(void *win);
     void *win;
     void *ui;
+    int layers;   /* 0 hide the toolpath, 1 show layers 1 to layer_no */
+    int layer_no; /* 1-based; the picture is layers 1 to this */
+    int fresh;    /* 1: this message sliced; the window shows the top layer */
 } os_rexx;
 
 #define OS_REXX_PORT "OPENMAKESLICER"
