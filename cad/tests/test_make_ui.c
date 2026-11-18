@@ -36,12 +36,13 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
  * from PARTS_BUTTONS on, then the Print tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
     "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
+    "vtop", "vfront", "vside", "vframe",
     "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
     "dup", "linex", "liney", "ring", "mirror", "turn", "stack", "solo",
     "prev", "next", "slice", "gcode"
 };
-#define PARTS_BUTTONS 12
-#define PRINT_BUTTONS 32
+#define PARTS_BUTTONS 16
+#define PRINT_BUTTONS 36
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -163,7 +164,7 @@ int main(void)
             olui_el *shape = olui_find(ui, "shape");
             olui_rect r;
             expect(shape && !strcmp(olui_tag(shape), "select") && olui_box(ui, shape, &r) && inside(&r, w, h) &&
-                       r.w >= 90 && !overlap(&r, &box[12]) && r.x < box[12].x,
+                       r.w >= 90 && !overlap(&r, &box[PARTS_BUTTONS]) && r.x < box[PARTS_BUTTONS].x,
                    "the shape select is beside Add, wide enough for a name");
             continue;
         }
@@ -389,7 +390,7 @@ int main(void)
             for (a = PARTS_BUTTONS; a < PRINT_BUTTONS; a++) {
                 snprintf(what, sizeof what, "%s in the side at %d by %d, clear", buttons[a], at[s][0], at[s][1]);
                 expect(olui_box(ui, olui_find(ui, buttons[a]), &b[a]) && b[a].x >= side.x &&
-                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= 18 && a < 24 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
+                           b[a].x + b[a].w <= side.x + side.w && b[a].y + b[a].h <= st.y && b[a].w >= (a >= PARTS_BUTTONS + 6 && a < PARTS_BUTTONS + 12 ? 24 : 8 * (int)strlen(olui_get_text(olui_find(ui, buttons[a]))) + 2) &&
                            !overlap(&b[a], &r[0]) && !overlap(&b[a], &r[1]) && !overlap(&b[a], &r[2]) &&
                            !overlap(&b[a], &r[3]) && !overlap(&b[a], &r[4]),
                        what);

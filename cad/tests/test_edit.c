@@ -897,6 +897,30 @@ int main(void)
                "over 2,500 triangles is not split");
         gs_parts_free(ps);
     }
+    {
+        /* Top, front, side, and frame. The plate stays the picture. */
+        gs_mesh cube;
+        gs_cam cam;
+        gs_frame f;
+        float x, y, z;
+        gs_v mid = {10.f, 10.f, 10.f};
+        memset(&cube, 0, sizeof cube);
+        gs_cam_home(&cam);
+        gs_cam_look(&cam, 0);
+        expect(near(cam.pitch, 1.4f) && near(cam.yaw, 0.f) && near(cam.dist, 1.f) && near(cam.panx, 0.f), "top is the steep turntable");
+        gs_cam_look(&cam, 1);
+        expect(near(cam.pitch, 0.f) && near(cam.yaw, 3.14159265f), "front looks from -Y");
+        gs_cam_look(&cam, 2);
+        expect(near(cam.pitch, 0.f) && near(cam.yaw, 1.5707963f), "side looks from +X");
+        expect(gm_cube(&cube, 0.f, 0.f, 0.f, 20.f, 20.f, 20.f) == 0, "a cube in the corner");
+        gs_cam_home(&cam);
+        gs_cam_frame(&cam, &cube, 320, 240);
+        expect(cam.dist > 2.f, "frame zooms onto the cube");
+        expect(gs_view_frame_bed(&cube, &cam, 320, 240, 0.f, 0.f, GS_BED, GS_BED, &f) == 0, "the framed plate");
+        gs_view_map(&f, &cam, mid, &x, &y, &z);
+        expect(fabsf(x - 160.f) < 24.f && fabsf(y - 120.f) < 24.f, "the cube's middle lands in the middle of the picture");
+        gs_mesh_free(&cube);
+    }
     if (fails) { /* the checks after the first count too */
         fprintf(stderr, "%d failed\n", fails);
         return 1;

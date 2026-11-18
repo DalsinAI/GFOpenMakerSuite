@@ -30,6 +30,13 @@ void gs_cam_home(gs_cam *c);
 void gs_cam_orbit(gs_cam *c, float dx, float dy);
 void gs_cam_pan(gs_cam *c, float dx, float dy);
 void gs_cam_zoom(gs_cam *c, float factor);
+/* Top, front (from -Y) or side (from +X). Pan goes back to the middle and
+ * the zoom back to the plate. which 0, 1 or 2. */
+void gs_cam_look(gs_cam *c, int which);
+/* Zoom and pan so m fills the picture, at the angle already set. The
+ * plate stays the frame. w and h are the view. A mesh with nothing in it
+ * is left alone. */
+void gs_cam_frame(gs_cam *c, const gs_mesh *m, int w, int h);
 
 /* How gs_view_solid fitted this mesh into the picture. Depth is the
  * painter's: a larger z is closer. */
