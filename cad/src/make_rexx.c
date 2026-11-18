@@ -393,6 +393,112 @@ static int cmd_lay(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const metal_names[] = {"brass", "sand", "copper", "steel", "teal", "sage"};
+
+static int metal_of(const char *s)
+{
+    int i;
+    if (!s) return -1;
+    for (i = 0; i < 6; i++)
+        if (eqi(s, metal_names[i])) return i;
+    return -1;
+}
+
+/* The name field, Hide and the metal swatches. */
+static int cmd_rename(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    const char *name = omr_arg(c, "NAME");
+    int at;
+    if (!ps || (at = gs_parts_picked(ps)) < 0) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    if (!name || !name[0]) {
+        omr_set_result(c, "NAME is required");
+        return OMR_ERROR;
+    }
+    if (!strcmp(name, gs_parts_name(ps, at))) {
+        omr_set_result(c, name);
+        return OMR_OK;
+    }
+    remember(g);
+    if (gs_parts_rename(ps, at, name) < 0) {
+        forget(g);
+        omr_set_result(c, "That name can't be used");
+        return OMR_ERROR;
+    }
+    changed(g);
+    omr_set_result(c, gs_parts_name(ps, at));
+    return OMR_OK;
+}
+
+static int cmd_show(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    int at, on, has;
+    if (!ps || (at = gs_parts_picked(ps)) < 0) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    has = arg_i(c, "ON", &on);
+    if (has < 0) {
+        omr_set_result(c, "use 0 or 1");
+        return OMR_ERROR;
+    }
+    if (has <= 0) on = !gs_parts_shown(ps, at);
+    else on = on ? 1 : 0;
+    remember(g);
+    if (gs_parts_show(ps, at, on) < 0) {
+        forget(g);
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    changed(g);
+    omr_set_result(c, on ? "Showing." : "Hidden.");
+    return OMR_OK;
+}
+
+static int cmd_colour(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    const char *name = omr_arg(c, "NAME");
+    int at, colour, has;
+    if (!ps || (at = gs_parts_picked(ps)) < 0) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    if (name && name[0]) colour = metal_of(name);
+    else {
+        has = arg_i(c, "INDEX", &colour);
+        if (has < 0) {
+            omr_set_result(c, "not a number");
+            return OMR_ERROR;
+        }
+        if (has <= 0) {
+            omr_set_result(c, "NAME or INDEX is required");
+            return OMR_ERROR;
+        }
+        colour -= 1;
+    }
+    if (colour < 0 || colour > 5) {
+        omr_set_result(c, "NAME is brass, sand, copper, steel, teal or sage");
+        return OMR_ERROR;
+    }
+    remember(g);
+    if (gs_parts_set_colour(ps, at, colour) < 0) {
+        forget(g);
+        omr_set_result(c, "That metal can't be used");
+        return OMR_ERROR;
+    }
+    changed(g);
+    omr_set_result(c, metal_names[colour]);
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1323,6 +1429,9 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "DROP", "", "drop the picked part onto the bed", cmd_drop},
     {sizeof(omr_verb), "CENTRE", "", "centre the picked part on the bed", cmd_centre},
     {sizeof(omr_verb), "LAY", "FACE/N/K", "lay a face of the picked part on the bed", cmd_lay},
+    {sizeof(omr_verb), "RENAME", "NAME/A", "rename the picked part", cmd_rename},
+    {sizeof(omr_verb), "SHOW", "ON/N/K", "show or hide the picked part", cmd_show},
+    {sizeof(omr_verb), "COLOUR", "NAME/K INDEX/N/K", "the picked part's metal", cmd_colour},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},

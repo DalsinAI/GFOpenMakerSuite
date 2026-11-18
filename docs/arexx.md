@@ -242,6 +242,17 @@ picked face is used, or the largest face. `RESULT` says what happened.
 A face that is already flat is not an undo step. RC 10 if there is no
 part, or the face will not lie flat.
 
+### RENAME / SHOW / COLOUR
+
+Templates: `RENAME NAME/A`, `SHOW ON/N/K`, `COLOUR NAME/K INDEX/N/K`
+
+`RENAME` is the name field. The same name again is not an undo step.
+`SHOW` hides or shows the picked part. `ON` is `1` or `0`; without it,
+the part toggles, as the window's Hide button. `COLOUR` is one of
+`brass`, `sand`, `copper`, `steel`, `teal` or `sage`, or `INDEX` 1 to
+6 in that order. Each is an undo step. RC 10 if there is no part, or
+the name or metal is refused.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`
