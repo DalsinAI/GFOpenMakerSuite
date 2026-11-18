@@ -488,6 +488,12 @@ int main(void)
     expect(gm_command_key('c', 0, 0) == GM_KEY_SECTION && gm_command_key('[', 0, 0) == GM_KEY_SECT_DOWN &&
                gm_command_key(']', 0, 0) == GM_KEY_SECT_UP && gm_command_key('c', 1, 0) == 0,
            "C sections, and the brackets move the plane");
+    expect(gm_command_key('g', 0, 0) == GM_KEY_MOVE && gm_command_key('R', 0, 1) == GM_KEY_ROT &&
+               gm_command_key('s', 0, 0) == GM_KEY_SCALE && gm_command_key('f', 0, 0) == GM_KEY_FRAME &&
+               gm_command_key('m', 0, 0) == GM_KEY_MEASURE && gm_command_key('i', 0, 0) == GM_KEY_SOLO &&
+               gm_command_key(127, 0, 0) == GM_KEY_DELETE && gm_command_key('g', 1, 0) == 0 &&
+               gm_command_key('z', 0, 0) == 0,
+           "G move, R turn, S scale, F frame, M measure, I solo, Delete removes");
     expect(seen.save_bg == ACCENT && seen.save_text == 0xffffffffu, "Save STL is the accent primary button");
     expect(seen.open_bg == 0xfffefefeu && seen.open_border == 0xffd0d0d0u && seen.open_radius == 4,
            "the other buttons are Clear's, with radius 4");

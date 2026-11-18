@@ -38,11 +38,15 @@
  * for each axis, are the
  * bench's Size and place: the picked part's box in mm, and its bottom middle. */
 /* A key no field took. With Amiga held (command): Amiga-Z undoes,
- * Amiga-Shift-Z and Amiga-Y redo, as the Amiga's programs. Without: P
- * drags the picked face to pull it, Escape leaves that and Draw, as the bench's.
- * C hides what is above a height. [ and ] move that height. Anything
- * else is ignored. */
-enum { GM_KEY_UNDO = 1, GM_KEY_REDO, GM_KEY_PULL, GM_KEY_LEAVE, GM_KEY_SECTION, GM_KEY_SECT_DOWN, GM_KEY_SECT_UP };
+ * Amiga-Shift-Z and Amiga-Y redo, as the Amiga's programs. Without: G
+ * moves, R turns, S scales, F frames the picked part, M measures, P
+ * drags the picked face to pull it, I solos, Delete removes the part.
+ * Escape leaves Pull, Draw and Measure. C hides what is above a height.
+ * [ and ] move that height. Anything else is ignored. */
+enum {
+    GM_KEY_UNDO = 1, GM_KEY_REDO, GM_KEY_PULL, GM_KEY_LEAVE, GM_KEY_SECTION, GM_KEY_SECT_DOWN, GM_KEY_SECT_UP,
+    GM_KEY_MOVE, GM_KEY_ROT, GM_KEY_SCALE, GM_KEY_FRAME, GM_KEY_MEASURE, GM_KEY_SOLO, GM_KEY_DELETE
+};
 static int gm_command_key(unsigned code, int command, int shift)
 {
     if (!command) {
@@ -51,6 +55,13 @@ static int gm_command_key(unsigned code, int command, int shift)
         if (code == 'c' || code == 'C') return GM_KEY_SECTION;
         if (code == '[') return GM_KEY_SECT_DOWN;
         if (code == ']') return GM_KEY_SECT_UP;
+        if (code == 'g' || code == 'G') return GM_KEY_MOVE;
+        if (code == 'r' || code == 'R') return GM_KEY_ROT;
+        if (code == 's' || code == 'S') return GM_KEY_SCALE;
+        if (code == 'f' || code == 'F') return GM_KEY_FRAME;
+        if (code == 'm' || code == 'M') return GM_KEY_MEASURE;
+        if (code == 'i' || code == 'I') return GM_KEY_SOLO;
+        if (code == 127) return GM_KEY_DELETE;
         return 0;
     }
     if (code == 'y' || code == 'Y' || ((code == 'z' || code == 'Z') && shift)) return GM_KEY_REDO;
