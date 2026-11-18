@@ -595,6 +595,8 @@ picture. `GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
 or `drill`), `x`, `y`, `start`, `end`. A number is held to that field's range on the
 window. `start` and `end` are lines of your own, after the machine's start
 and before its end. The window has no field for them. `STATUS` adds `MODE`.
+`MILL DRIVER PROFILE` picks the mill, as the window's list. A printer is
+refused. When that mill is in the list, the list keeps it.
 
 ## GFOpenMakerWorkshop (port `OPENMAKEWORKSHOP.1`)
 

@@ -116,13 +116,15 @@ int main(void)
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && !g.quit, "QUIT refuses a dirty document");
     expect(run(&g, "SAVE FILE build/cnc-rexx-none.nc", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "no mill"),
            "SAVE with no mill is refused");
+    expect(run(&g, "MILL", &io) == 0 && io.rc == OMR_ERROR, "MILL needs a file");
+    expect(run(&g, "MILL DRIVER machines/printer/marlin/driver.om PROFILE machines/printer/marlin/profiles/generic-220.om",
+               &io) == 0 &&
+               io.rc == OMR_ERROR && !g.have_machine,
+           "MILL refuses a printer");
+    expect(run(&g, "MILL DRIVER machines/cnc/grbl/driver.om PROFILE machines/cnc/grbl/profiles/generic-300.om", &io) == 0 &&
+               io.rc == OMR_OK && g.have_machine && g.machine.family == OM_CNC && buf[0],
+           "MILL the generic mill");
     {
-        char err[160];
-        err[0] = 0;
-        expect(om_load(&g.machine, "machines/cnc/grbl/driver.om", err, (int)sizeof err) == 0 &&
-                   om_load(&g.machine, "machines/cnc/grbl/profiles/generic-300.om", err, (int)sizeof err) == 0,
-               err[0] ? err : "the generic mill");
-        g.have_machine = 1;
         opts.mode = CNC_PROFILE;
         opts.tool = 0.f;
         g.dirty = 1;

@@ -393,6 +393,37 @@ static int cmd_preview(void *c, void *g0)
     return OMR_OK;
 }
 
+static int cmd_mill(void *c, void *g0)
+{
+    oc_rexx *g = app(g0);
+    const char *driver = omr_arg(c, "DRIVER"), *profile = omr_arg(c, "PROFILE");
+    char err[160];
+    err[0] = 0;
+    if ((!driver || !driver[0]) && (!profile || !profile[0])) {
+        omr_set_result(c, "DRIVER or PROFILE is required");
+        return OMR_ERROR;
+    }
+    om_clear(&g->machine);
+    g->have_machine = 0;
+    if (driver && driver[0] && om_load(&g->machine, driver, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the driver did not load");
+        return OMR_ERROR;
+    }
+    if (profile && profile[0] && om_load(&g->machine, profile, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the profile did not load");
+        return OMR_ERROR;
+    }
+    if (g->machine.family != OM_CNC) {
+        omr_set_result(c, "not a mill");
+        om_clear(&g->machine);
+        return OMR_ERROR;
+    }
+    g->have_machine = 1;
+    g->dirty = 1;
+    omr_set_result(c, g->machine.name[0] ? g->machine.name : (profile && profile[0] ? profile : driver));
+    return OMR_OK;
+}
+
 static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty document", cmd_quit},
@@ -404,6 +435,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SET", "KEY/A VALUE/A", "Set a cut setting, held to the window's range", cmd_set},
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the file, whether it is dirty, and the mode", cmd_status},
     {sizeof(omr_verb), "PREVIEW", "FILE/K", "Plan the cut; with FILE, write a PPM of it", cmd_preview},
+    {sizeof(omr_verb), "MILL", "DRIVER/K PROFILE/K", "Pick the mill from a driver and profile", cmd_mill},
 };
 
 void oc_rexx_init(oc_rexx *g)
