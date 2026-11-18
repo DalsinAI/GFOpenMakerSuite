@@ -212,6 +212,27 @@ int main(void)
         ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
         expect(size[2] > 4.f, "the part is still there, and taller than the boss alone");
         expect(run(&g, "EXTRUDE KIND potato", &io) == 0 && io.rc == OMR_ERROR, "EXTRUDE refuses an unknown kind");
+        expect(run(&g, "DRAW KIND block", &io) == 0 && io.rc == OMR_ERROR, "DRAW needs two points");
+        expect(run(&g, "DRAW X0 10 Y0 20 X1 40 Y1 28 KIND block H 6", &io) == 0 && io.rc == OMR_OK &&
+                   gs_parts_count(ps) == n + 1 && strstr(buf, "on the bed"),
+               "DRAW adds the box between the points");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(size[0] > 29.f && size[0] < 31.f && size[1] > 7.f && size[1] < 9.f && size[2] > 5.f && size[2] < 7.f,
+               "DRAW's block is 30 by 8 by 6");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the drawn block");
+        expect(run(&g, "SNAP", &io) == 0 && io.rc == OMR_OK && g.snap == 1, "SNAP for a draw");
+        expect(run(&g, "DRAW X0 10.4 Y0 20.4 X1 30.6 Y1 24.2 KIND block H 4", &io) == 0 && io.rc == OMR_OK,
+               "DRAW with snap");
+        ge_where(gs_parts_mesh(ps, gs_parts_picked(ps)), pos, size);
+        expect(size[0] > 20.f && size[0] < 22.f && size[1] > 3.f && size[1] < 5.f, "snap holds the corners to 1 mm");
+        expect(run(&g, "SNAP ON 0", &io) == 0 && io.rc == OMR_OK && g.snap == 0, "SNAP off after the draw");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the snapped block");
+        expect(run(&g, "DRAW X0 0 Y0 0 X1 0.2 Y1 0.2 KIND block", &io) == 0 && io.rc == OMR_ERROR,
+               "DRAW refuses a footprint under 1 mm");
+        expect(run(&g, "DRAW X0 10 Y0 20 X1 30 Y1 28 H 5", &io) == 0 && io.rc == OMR_OK &&
+                   !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Block") && strstr(buf, "on the bed"),
+               "DRAW without KIND is a block");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the default block");
     }
     {
         float pos[3], size[3];

@@ -9,6 +9,7 @@
 #include "gs_par.h"
 #include "gs_plan.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -273,6 +274,83 @@ static int cmd_extrude(void *c, void *g0)
     if (ge_extrude(part, kind, op, w, d, h, &out, line, (int)sizeof line)) {
         gs_mesh_free(&out);
         omr_set_result(c, line[0] ? line : "that extrude did not build");
+        return OMR_ERROR;
+    }
+    remember(g);
+    if (op == GM_ON_BED) {
+        i = gs_parts_add(ps, &out, names[kind]);
+        if (i < 0) {
+            gs_mesh_free(&out);
+            forget(g);
+            omr_set_result(c, "Could not add that part");
+            return OMR_ERROR;
+        }
+    } else {
+        gs_mesh *m = picked(g);
+        gs_mesh_free(m);
+        *m = out;
+    }
+    g->face = -1;
+    changed(g);
+    omr_set_result(c, line);
+    return OMR_OK;
+}
+
+/* Draw's drag: two points on the bed, then the same extrude. */
+static int cmd_draw(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    gs_mesh out, *part;
+    char line[160];
+    const char *kind_s = omr_arg(c, "KIND");
+    int kind, op, i, hx0, hy0, hx1, hy1;
+    float x0 = 0.f, y0 = 0.f, x1 = 0.f, y1 = 0.f, cx, cy, w, d, h = 8.f;
+    static const char *const names[] = {"Block", "Round", "Slot"};
+    if (!ps) {
+        omr_set_result(c, "no document");
+        return OMR_ERROR;
+    }
+    if (!kind_s || !kind_s[0]) kind = GM_RECT;
+    else kind = extrude_kind(kind_s);
+    if (kind < 0) {
+        omr_set_result(c, "KIND is block, round or slot");
+        return OMR_ERROR;
+    }
+    op = extrude_op(omr_arg(c, "OP"));
+    if (op < 0) {
+        omr_set_result(c, "OP is add, on or cut");
+        return OMR_ERROR;
+    }
+    hx0 = arg_f(c, "X0", &x0);
+    hy0 = arg_f(c, "Y0", &y0);
+    hx1 = arg_f(c, "X1", &x1);
+    hy1 = arg_f(c, "Y1", &y1);
+    if (hx0 < 0 || hy0 < 0 || hx1 < 0 || hy1 < 0 || arg_f(c, "H", &h) < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (!hx0 || !hy0 || !hx1 || !hy1) {
+        omr_set_result(c, "X0, Y0, X1 and Y1 are required");
+        return OMR_ERROR;
+    }
+    if (g->snap) {
+        x0 = floorf(x0 + 0.5f);
+        y0 = floorf(y0 + 0.5f);
+        x1 = floorf(x1 + 0.5f);
+        y1 = floorf(y1 + 0.5f);
+    }
+    if (op == GM_ON_BED && gs_parts_count(ps) >= GS_PARTS_MAX) {
+        omr_set_result(c, "Twenty-four parts is the limit.");
+        return OMR_ERROR;
+    }
+    part = op == GM_ON_BED ? NULL : picked(g);
+    memset(&out, 0, sizeof out);
+    line[0] = 0;
+    if (ge_footprint(kind, x0, y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line) ||
+        ge_extrude_at(part, kind, op, cx, cy, w, d, h, &out, line, (int)sizeof line)) {
+        gs_mesh_free(&out);
+        omr_set_result(c, line[0] ? line : "that draw did not build");
         return OMR_ERROR;
     }
     remember(g);
@@ -1697,6 +1775,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "OPEN", "FILE/A", "open an STL as a new part", cmd_open},
     {sizeof(omr_verb), "SHELF", "NAME/K INDEX/N/K", "put a shelf example on the bed", cmd_shelf},
     {sizeof(omr_verb), "EXTRUDE", "KIND/A OP/K W/K D/K H/K", "add, join or cut a block, round or slot", cmd_extrude},
+    {sizeof(omr_verb), "DRAW", "X0/A Y0/A X1/A Y1/A KIND/K OP/K H/K", "the dragged footprint, as Draw", cmd_draw},
     {sizeof(omr_verb), "DROP", "", "drop the picked part onto the bed", cmd_drop},
     {sizeof(omr_verb), "CENTRE", "", "centre the picked part on the bed", cmd_centre},
     {sizeof(omr_verb), "LAY", "FACE/N/K", "lay a face of the picked part on the bed", cmd_lay},
