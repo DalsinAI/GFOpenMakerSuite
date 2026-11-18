@@ -81,6 +81,7 @@ static void rexx_sync(olui *ui)
         if (have_image && olui_find(ui, "layer-0-name")) olui_set_text(ui, olui_find(ui, "layer-0-name"), "Image");
     }
     if (olui_find(ui, "constant")) olui_set_checked(ui, olui_find(ui, "constant"), opts.constant);
+    burn_ui_place(ui, &opts);
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 

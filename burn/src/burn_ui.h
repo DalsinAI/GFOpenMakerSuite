@@ -31,6 +31,10 @@ int burn_ui_move(olui *ui, const gv_doc *d, burn_opts *o, burn_layer *store, int
  * cuts_last, which are read from the window. */
 void burn_ui_read(olui *ui, burn_opts *o, burn_layer *store, int cap);
 
+/* Write o's X, Y and rotation into the place fields, so a port SET
+ * survives the next read. */
+void burn_ui_place(olui *ui, const burn_opts *o);
+
 /* The materials picker: "None" first, then the library, sorted as scanned. */
 int burn_ui_materials_fill(olui *ui, const char *id, const burn_materials *l);
 

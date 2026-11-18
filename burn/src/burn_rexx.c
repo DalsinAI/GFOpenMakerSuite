@@ -212,7 +212,7 @@ static int cmd_hide(void *c, void *g0)
 
 static const char *const job_keys[] = {"power",  "speed",    "travel", "passes",   "constant",
                                        "s100",   "mode",     "interval", "cuts_last", "start", "end",
-                                       "invert", "width", NULL};
+                                       "invert", "width", "x", "y", "rot", NULL};
 
 static int key_of(const char *s)
 {
@@ -266,6 +266,15 @@ static void key_value(const burn_opts *o, int k, char *buf, int len)
         break;
     case 12:
         snprintf(buf, (size_t)len, "%g", (double)o->width);
+        break;
+    case 13:
+        snprintf(buf, (size_t)len, "%g", (double)o->x);
+        break;
+    case 14:
+        snprintf(buf, (size_t)len, "%g", (double)o->y);
+        break;
+    case 15:
+        snprintf(buf, (size_t)len, "%g", (double)o->rot);
         break;
     default:
         break;
@@ -337,6 +346,18 @@ static int set_key(burn_opts *o, int k, const char *value, char *err, int errlen
             return -1;
         }
         o->width = hold(f, 0.f, 2000.f);
+        return 0;
+    case 13:
+    case 14:
+    case 15:
+        f = (float)strtod(value, &end);
+        if (!end || end == value) {
+            snprintf(err, (size_t)errlen, "not a number");
+            return -1;
+        }
+        if (k == 15) o->rot = hold(f, -3600.f, 3600.f);
+        else if (k == 13) o->x = hold(f, -10000.f, 10000.f);
+        else o->y = hold(f, -10000.f, 10000.f);
         return 0;
     default:
         snprintf(err, (size_t)errlen, "unknown key");

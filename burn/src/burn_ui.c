@@ -267,6 +267,25 @@ static float scale_dec(int dec)
     return d;
 }
 
+static void set_place(olui *ui, const char *id, float v)
+{
+    olui_el *el = olui_find(ui, id);
+    int n;
+    float d;
+    if (!el) return;
+    d = scale_dec(olui_number_decimals(el));
+    n = (int)(v * d + (v < 0.f ? -0.5f : 0.5f));
+    olui_set_number(ui, el, n);
+}
+
+void burn_ui_place(olui *ui, const burn_opts *o)
+{
+    if (!ui || !o) return;
+    set_place(ui, "place-x", o->x);
+    set_place(ui, "place-y", o->y);
+    set_place(ui, "place-rot", o->rot);
+}
+
 int burn_ui_materials_fill(olui *ui, const char *id, const burn_materials *l)
 {
     olui_el *sel = olui_find(ui, id);

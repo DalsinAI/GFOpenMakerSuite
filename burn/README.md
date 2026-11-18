@@ -5,7 +5,7 @@ G-code. The plan is [docs/burn-plan.md](../docs/burn-plan.md).
 
 The command, `openmake-burn`, reads an SVG or a DXF and writes Grbl laser G-code
 in line mode, for the generic 400 mm diode unless DRIVER or PROFILE say
-otherwise. `START=` and `END=` are lines of your own, after the machine's start and before its end. The port takes the same lines as `SET start` and `SET end`. `SET invert` burns the white of a picture, and `SET width` is that picture's width in millimetres. The window has no field for them. A `layer=` sets power, speed, passes, mode or on for one colour
+otherwise. `START=` and `END=` are lines of your own, after the machine's start and before its end. The port takes the same lines as `SET start` and `SET end`. `SET invert` burns the white of a picture, and `SET width` is that picture's width in millimetres. `SET x`, `SET y` and `SET rot` move the drawing, the same as the place fields. The window has no field for the lines, invert or width. A `layer=` sets power, speed, passes, mode or on for one colour
 (or a 1-based index). `mode=fill` scans back and forth inside closed shapes, `mode=offset`
 follows them inwards, `interval` the gap in mm (0.2 by default).
 
