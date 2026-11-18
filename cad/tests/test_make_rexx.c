@@ -58,6 +58,15 @@ int main(void)
     expect(run(&g, "HELP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "ADD") && strstr(buf, "OPEN"), "HELP lists ADD");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOPENMAKE.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    {
+        int n = gs_parts_count(ps);
+        expect(run(&g, "SHAPES STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "7") && g.dirty == 0 &&
+                   gs_parts_count(ps) == n && omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "7") &&
+                   omr_host_var("ST.1") && !strcmp(omr_host_var("ST.1"), "Box") && omr_host_var("ST.2") &&
+                   !strcmp(omr_host_var("ST.2"), "Cylinder") && omr_host_var("ST.7") &&
+                   !strcmp(omr_host_var("ST.7"), "Slot"),
+               "SHAPES names the Add list");
+    }
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
                !strcmp(omr_host_var("ST.SHOWN"), "1") && omr_host_var("ST.COLOUR") &&
                !strcmp(omr_host_var("ST.COLOUR"), "brass") && omr_host_var("ST.NAME") &&

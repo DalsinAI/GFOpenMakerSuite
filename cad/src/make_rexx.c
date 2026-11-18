@@ -1075,6 +1075,25 @@ static int cmd_add(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The Add list. It does not add a part and it is not an undo step. */
+static int cmd_shapes(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    char nbuf[16];
+    int i, n = GE_SHAPES;
+    (void)g;
+    snprintf(nbuf, sizeof nbuf, "%d", n);
+    stem_put(c, NULL, "0", nbuf);
+    for (i = 0; i < n; i++) {
+        const char *nm = ge_shape_name(i);
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, NULL, nbuf, nm ? nm : "");
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", n);
+    omr_set_result(c, nbuf);
+    return OMR_OK;
+}
+
 static int cmd_select(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
@@ -1993,6 +2012,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SET", "KEY/A VALUE/A", "set a print setting", cmd_set},
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "the port, the file and the parts", cmd_status},
     {sizeof(omr_verb), "ADD", "SHAPE/A X/K Y/K Z/K W/K D/K H/K", "add a part", cmd_add},
+    {sizeof(omr_verb), "SHAPES", "STEM/K", "the shapes the Add list shows", cmd_shapes},
     {sizeof(omr_verb), "SELECT", "PART/N NAME/K", "pick a part", cmd_select},
     {sizeof(omr_verb), "DELETE", "", "delete the picked part", cmd_delete},
     {sizeof(omr_verb), "UNDO", "", "one step back", cmd_undo},
