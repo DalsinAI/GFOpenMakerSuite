@@ -408,13 +408,18 @@ size above 0, or the part would be thinner than 0.1 mm.
 
 ### HOLE
 
-Template: `HOLE KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K`
+Template: `HOLE KIND/K D/K N/K PCD/K PITCH/K CB/K DEEP/K LIST/S STEM/K`
 
 Cuts holes in the picked part, as the Holes tab. `KIND` is `circle` (a
 bolt circle: `D`, `N`, `PCD`), `row` (`D`, `N`, `PITCH`), `counterbore`
 (`D`, `CB`, `DEEP`), `drill` (one hole, `D` wide, through the middle) or
 `countersink` (`D` the hole, `CB` the 90 degree mouth). `RESULT` says
-what was done. RC 10 if the values are out of range or the cut cannot
+what was done. `LIST` does not cut, and it does not need a part:
+`RESULT` is how many, and `STEM` has `stem.0`, then `stem.1` onwards
+the button names (`Bolt circle`, `Hole row`, `Drill through`,
+`Counterbore`, `Countersink`) and `stem.1.KIND` the word `KIND` takes.
+The washer is `WASHER`, not one of these. It is not an undo step.
+RC 10 if the values are out of range or the cut cannot
 be made, with why in `RESULT`.
 
 ### WASHER
