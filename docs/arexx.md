@@ -231,6 +231,20 @@ depth off the top). `W`, `D` and `H` are millimetres; the defaults are
 `RESULT` says what was done. RC 10 if the size is out of range, there
 is no part to join or cut, or the solid does not build.
 
+### DRAW
+
+Template: `DRAW X0/A Y0/A X1/A Y1/A KIND/K OP/K H/K`
+
+The window's Draw: two points on the bed, then the same solid as
+`EXTRUDE`. A block or a slot is the box between the points. A round is
+centred on the first point, and the diameter is the distance to the
+second. `KIND` and `OP` are the same words as `EXTRUDE`. `KIND` defaults
+to `block`. `H` is the height in millimetres; the default is 8. With
+Snap on, each point is held to the nearest millimetre, as the drag.
+`RESULT` says what was done. It is an undo step. RC 10 if a point is
+missing or not a number, the footprint is under 1 mm, or the solid
+does not build.
+
 ### DROP / CENTRE / LAY
 
 Templates: `DROP`, `CENTRE`, `LAY FACE/N/K`
