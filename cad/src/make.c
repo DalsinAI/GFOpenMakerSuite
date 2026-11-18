@@ -1633,6 +1633,7 @@ int main(int argc, char **argv)
             char why[160];
             rexx.face = picked;
             rexx.look = -1;
+            rexx.tool = -1;
             rexx.shade = shade_kind;
             rexx.snap = snap_on;
             rexx.section = section_on;
@@ -1643,6 +1644,11 @@ int main(int argc, char **argv)
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gm_rexx_verbs(), gm_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
             picked = rexx.face;
+            if (rexx.tool >= 0 && rexx.tool <= TOOL_SKETCH) {
+                if (rexx.tool == TOOL_PULL) set_pull(ui, 1);
+                else if (rexx.tool == TOOL_SKETCH) set_sketch(ui, 1);
+                else on_tool(ui, NULL, (void *)(intptr_t)rexx.tool);
+            }
             if (rexx.look >= 0 && rexx.look <= 3) {
                 if (rexx.look == 3) {
                     rebuild_shown();

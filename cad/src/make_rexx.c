@@ -591,6 +591,43 @@ static int cmd_section(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const tool_names[] = {"orbit", "move", "rot", "scale", "measure", "pull", "draw"};
+static const char *const tool_said[] = {
+    "Orbit. Drag turns the view. A click picks a face.",
+    "Move. Drag slides. Shift-drag lifts.",
+    "Rotate. Drag turns the part.",
+    "Scale. Drag up grows it.",
+    "Measure. Click two points on the part or bed.",
+    "Pull. Drag the face along its normal. Escape leaves.",
+    "Draw. Drag the footprint on the bed. Escape leaves.",
+};
+
+/* The tool buttons. Pull needs a face. None of them changes the part. */
+static int cmd_tool(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    const char *name = omr_arg(c, "NAME");
+    gs_mesh *m;
+    int which;
+    if (name && eqi(name, "rotate")) name = "rot";
+    if (name && eqi(name, "sketch")) name = "draw";
+    which = word_of(name, tool_names, 7);
+    if (which < 0) {
+        omr_set_result(c, "NAME is orbit, move, rot, scale, measure, pull or draw");
+        return OMR_ERROR;
+    }
+    if (which == 5) {
+        m = picked(g);
+        if (g->face < 0 || !m || !m->n) {
+            omr_set_result(c, "Click a face on the part, then Drag.");
+            return OMR_ERROR;
+        }
+    }
+    g->tool = which;
+    omr_set_result(c, tool_said[which]);
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1559,6 +1596,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SHADE", "NAME/A", "metal, clay or wire", cmd_shade},
     {sizeof(omr_verb), "SNAP", "ON/N/K", "snap moves to 1 mm, 15 degrees and 0.1 scale", cmd_snap},
     {sizeof(omr_verb), "SECTION", "ON/N/K Z/K", "hide the picture above a height", cmd_section},
+    {sizeof(omr_verb), "TOOL", "NAME/A", "orbit, move, rot, scale, measure, pull or draw", cmd_tool},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},
@@ -1603,6 +1641,7 @@ void gm_rexx_init(gm_rexx *g)
     g->size = (int)sizeof *g;
     g->face = -1;
     g->look = -1;
+    g->tool = -1;
     g->version = "GFOpenMake 0.1.0";
     gs_settings_default(&g->set);
 }
