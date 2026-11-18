@@ -1429,6 +1429,24 @@ static int cmd_hole(void *c, void *g0)
     char why[96];
     int kind;
     memset(&h, 0, sizeof h);
+    if (omr_switch(c, "LIST")) {
+        static const char *const shown[] = {"Bolt circle", "Hole row", "Drill through", "Counterbore", "Countersink"};
+        static const char *const keys[] = {"circle", "row", "drill", "counterbore", "countersink"};
+        char nbuf[16];
+        int n = (int)(sizeof shown / sizeof shown[0]), k;
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        stem_put(c, NULL, "0", nbuf);
+        for (k = 0; k < n; k++) {
+            char tail[24];
+            snprintf(nbuf, sizeof nbuf, "%d", k + 1);
+            stem_put(c, NULL, nbuf, shown[k]);
+            snprintf(tail, sizeof tail, "%d.KIND", k + 1);
+            stem_put(c, NULL, tail, keys[k]);
+        }
+        snprintf(nbuf, sizeof nbuf, "%d", n);
+        omr_set_result(c, nbuf);
+        return OMR_OK;
+    }
     if (!m) {
         omr_set_result(c, "no part");
         return OMR_ERROR;
@@ -2042,7 +2060,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "WHERE", "STEM/K VAR/K", "the picked part's size and where it sits", cmd_where},
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
     {sizeof(omr_verb), "SCALE", "BY/A", "multiply the picked part about its middle", cmd_scale},
-    {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
+    {sizeof(omr_verb), "HOLE", "KIND/K D/K N/K PCD/K PITCH/K CB/K DEEP/K LIST/S STEM/K", "cut holes in the picked part", cmd_hole},
     {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},
     {sizeof(omr_verb), "COPY", "", "one copy of the picked part, 6 mm on in X", cmd_copy},
     {sizeof(omr_verb), "LINE", "AXIS/K COUNT/N/K GAP/K", "copies of the picked part in a line", cmd_line},

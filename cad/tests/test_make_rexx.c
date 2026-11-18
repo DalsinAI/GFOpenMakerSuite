@@ -259,6 +259,23 @@ int main(void)
     expect(run(&g, "ACTIVATE", &io) == 0 && io.rc == OMR_OK, "ACTIVATE with no window");
     expect(run(&g, "HIDE", &io) == 0 && io.rc == OMR_OK, "HIDE with no window");
     expect(run(&g, "ADD potato", &io) == 0 && io.rc == OMR_ERROR, "ADD unknown shape");
+    {
+        int n = gs_parts_count(ps), dirty = g.dirty;
+        expect(run(&g, "HOLE LIST STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "5") &&
+                   gs_parts_count(ps) == n && g.dirty == dirty && omr_host_var("ST.0") &&
+                   !strcmp(omr_host_var("ST.0"), "5") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "Bolt circle") && omr_host_var("ST.1.KIND") &&
+                   !strcmp(omr_host_var("ST.1.KIND"), "circle") && omr_host_var("ST.2") &&
+                   !strcmp(omr_host_var("ST.2"), "Hole row") && omr_host_var("ST.2.KIND") &&
+                   !strcmp(omr_host_var("ST.2.KIND"), "row") && omr_host_var("ST.3") &&
+                   !strcmp(omr_host_var("ST.3"), "Drill through") && omr_host_var("ST.3.KIND") &&
+                   !strcmp(omr_host_var("ST.3.KIND"), "drill") && omr_host_var("ST.4") &&
+                   !strcmp(omr_host_var("ST.4"), "Counterbore") && omr_host_var("ST.4.KIND") &&
+                   !strcmp(omr_host_var("ST.4.KIND"), "counterbore") && omr_host_var("ST.5") &&
+                   !strcmp(omr_host_var("ST.5"), "Countersink") && omr_host_var("ST.5.KIND") &&
+                   !strcmp(omr_host_var("ST.5.KIND"), "countersink"),
+               "HOLE LIST names the Holes tab and does not cut");
+    }
     expect(run(&g, "PULL MM 2 FACE 0", &io) == 0, "PULL runs (rc depends on the face)");
     expect(run(&g, "HOLE KIND circle D 3 N 4 PCD 10", &io) == 0, "HOLE circle runs");
     expect(run(&g, "HOLE KIND drill D 6", &io) == 0 && io.rc == OMR_OK, "HOLE drill through the box");
