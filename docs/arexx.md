@@ -658,6 +658,9 @@ window. `start` and `end` are lines of your own, after the machine's start
 and before its end. The window has no field for them. `STATUS` adds `MODE`.
 `MILL DRIVER PROFILE` picks the mill, as the window's list. A printer is
 refused. When that mill is in the list, the list keeps it.
+`LOOK` is `top`, `front`, `side` or `frame`. Frame is the view at open:
+the cut is flat on the bed, so there is no solid to fit. The window has
+no button for it. The picture changes. The cut does not.
 
 ## GFOpenMakerWorkshop (port `OPENMAKEWORKSHOP.1`)
 

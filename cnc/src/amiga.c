@@ -329,7 +329,12 @@ int main(int argc, char **argv)
             cnc_ui_read(ui, &opts);
             take_lines();
             rexx.have_machine = chosen_mill(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            rexx.look = -1;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);
+            if (rexx.look >= 0 && rexx.look <= 3) {
+                if (rexx.look == 3) gs_cam_home(&cam);
+                else gs_cam_look(&cam, rexx.look);
+            }
             rexx_sync(ui);
             if (rexx.have_machine) omv_machines_show(ui, "machine", &mills, rexx.machine.name);
             if (rexx.quit) goto done;
