@@ -249,6 +249,8 @@ static void more_of(const gc_more *x, gc_more *to)
 {
     gc_more_defaults(to, x->size >= (int)(offsetof(gc_more, o) + sizeof x->o) ? x->o : NULL);
     if (x->size >= (int)(offsetof(gc_more, first) + sizeof x->first)) to->first = x->first;
+    if (x->size >= (int)(offsetof(gc_more, start) + sizeof x->start)) to->start = x->start;
+    if (x->size >= (int)(offsetof(gc_more, end) + sizeof x->end)) to->end = x->end;
 }
 
 int gc_estimate_more(const gt_path *p, const om_machine *m, const gc_more *more, gc_stats *st)
@@ -352,7 +354,9 @@ int gc_write_more(gc_put put, void *ud, const gt_path *p, const om_machine *m, c
     }
     say(&w, "; GFOpenMake\n");
     code_line(&w, code);
+    if (x.start && x.start[0]) code_line(&w, x.start);
     run(&w, p);
+    if (x.end && x.end[0]) code_line(&w, x.end);
     if (om_code(m->end, o->hotend, o->bed, code, (int)sizeof code)) {
         snprintf(err, (size_t)errlen, "the machine's end code is too long");
         return -1;
