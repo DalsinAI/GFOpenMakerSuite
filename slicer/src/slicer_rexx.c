@@ -33,6 +33,41 @@ static int stem_put(omr_cmd *cmd, const char *stem, const char *tail, const char
     return omr_set_stem(cmd, s, tail, value);
 }
 
+static const char *const job_keys[] = {"support", "start", "end"};
+
+static int job_key(const char *s)
+{
+    int i;
+    if (!s) return -1;
+    for (i = 0; i < 3; i++)
+        if (eqi(s, job_keys[i])) return i;
+    return -1;
+}
+
+static int flag01(const char *s, int *out)
+{
+    if (!s) return -1;
+    if (eqi(s, "1") || eqi(s, "on") || eqi(s, "yes") || eqi(s, "true")) {
+        *out = 1;
+        return 0;
+    }
+    if (eqi(s, "0") || eqi(s, "off") || eqi(s, "no") || eqi(s, "false")) {
+        *out = 0;
+        return 0;
+    }
+    return -1;
+}
+
+static void job_value(const sl_job *j, int k, char *buf, int len)
+{
+    if (!buf || len < 1) return;
+    buf[0] = 0;
+    if (!j) return;
+    if (k == 0) snprintf(buf, (size_t)len, "%d", j->support ? 1 : 0);
+    else if (k == 1) snprintf(buf, (size_t)len, "%s", j->start);
+    else if (k == 2) snprintf(buf, (size_t)len, "%s", j->end);
+}
+
 static void dirty(os_rexx *g)
 {
     if (g) g->dirty = 1;
@@ -202,9 +237,20 @@ static int cmd_get(void *c, void *g0)
     const char *key = omr_arg(c, "KEY");
     const char *stem = omr_arg(c, "STEM");
     const char *var = omr_arg(c, "VAR");
-    char buf[64], nbuf[16];
-    int i, n;
+    char buf[240], nbuf[16];
+    int i, n, jk;
     if (key) {
+        jk = job_key(key);
+        if (jk >= 0) {
+            if (!g->job) {
+                omr_set_result(c, "no document");
+                return OMR_ERROR;
+            }
+            job_value(g->job, jk, buf, (int)sizeof buf);
+            omr_set_result(c, buf);
+            if (var) omr_set_var(c, var, buf);
+            return OMR_OK;
+        }
         i = gs_setting_find(key);
         if (i < 0) {
             omr_set_result(c, "no such setting");
@@ -237,12 +283,31 @@ static int cmd_set(void *c, void *g0)
 {
     os_rexx *g = app(g0);
     const char *key = omr_arg(c, "KEY"), *val = omr_arg(c, "VALUE");
-    char err[80], *end = NULL;
-    int i;
+    char err[80], buf[240], *end = NULL;
+    int i, jk, on = 0;
     float f;
     if (!key || !val) {
         omr_set_result(c, "KEY and VALUE are required");
         return OMR_ERROR;
+    }
+    jk = job_key(key);
+    if (jk >= 0) {
+        if (!g->job) {
+            omr_set_result(c, "no document");
+            return OMR_ERROR;
+        }
+        if (jk == 0) {
+            if (flag01(val, &on)) {
+                omr_set_result(c, "use 0 or 1");
+                return OMR_ERROR;
+            }
+            g->job->support = on;
+        } else
+            sl_own(g->job, jk == 1 ? val : NULL, jk == 2 ? val : NULL);
+        dirty(g);
+        job_value(g->job, jk, buf, (int)sizeof buf);
+        omr_set_result(c, buf);
+        return OMR_OK;
     }
     i = gs_setting_find(key);
     if (i < 0) {

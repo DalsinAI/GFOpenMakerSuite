@@ -442,7 +442,12 @@ shows. `STEM` has `stem.VOLUME`, `stem.SURFACE`, `stem.X`, `stem.Y`,
 
 The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes
 G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
-`stem.TIME` and `stem.FILAMENT`.
+`stem.TIME` and `stem.FILAMENT`. `GET` and `SET` take the print settings,
+and also `support`, `start` and `end` by name: the Settings side of the
+window, the same as `SUPPORT=`, `START=` and `END=` on the command.
+`support` is `1` or `0`. `start` and `end` are lines of your own, after
+the machine's start and before its end. An empty line clears that one.
+The list with no `KEY` stays the print settings.
 
 ### LOAD
 

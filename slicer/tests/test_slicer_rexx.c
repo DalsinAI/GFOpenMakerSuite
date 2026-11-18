@@ -54,6 +54,21 @@ static int write_cube(const char *path)
     return 0;
 }
 
+static int file_has(const char *path, const char *what)
+{
+    FILE *f = fopen(path, "r");
+    char line[240];
+    int ok = 0;
+    if (!f) return 0;
+    while (fgets(line, (int)sizeof line, f))
+        if (strstr(line, what)) {
+            ok = 1;
+            break;
+        }
+    fclose(f);
+    return ok;
+}
+
 static int gcode_has_move(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -122,6 +137,18 @@ int main(void)
                io.rc == OMR_OK,
            "PRINTER Marlin again");
 
+    expect(run(&g, "GET KEY support", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0") == 0, "GET support");
+    expect(run(&g, "SET KEY support VALUE 1", &io) == 0 && io.rc == OMR_OK && job.support == 1, "SET support");
+    expect(run(&g, "SET KEY support VALUE maybe", &io) == 0 && io.rc == OMR_ERROR && job.support == 1,
+           "support is 0 or 1");
+    expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK && !strcmp(job.start, "M117 hello"),
+           "SET start");
+    expect(run(&g, "SET KEY end VALUE \"M117 done\"", &io) == 0 && io.rc == OMR_OK && !strcmp(job.end, "M117 done"),
+           "SET end");
+    expect(run(&g, "GET KEY start", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "M117 hello"), "GET start");
+    expect(run(&g, "SET KEY start VALUE \"\"", &io) == 0 && io.rc == OMR_OK && job.start[0] == 0, "an empty start clears it");
+    expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK, "start set again");
+
     expect(run(&g, "SLICE STEM ST", &io) == 0 && io.rc == OMR_OK && job.sliced && job.path.nlayers > 0 &&
                strstr(buf, "layers") && omr_host_var("ST.LAYERS") && atoi(omr_host_var("ST.LAYERS")) > 0,
            "SLICE");
@@ -129,7 +156,9 @@ int main(void)
                omr_host_var("ST.FILAMENT"),
            "STATS");
     expect(run(&g, "SAVE FILE build/rexx-slicer.gcode", &io) == 0 && io.rc == OMR_OK && g.dirty == 0, "SAVE");
-    expect(gcode_has_move("build/rexx-slicer.gcode"), "SAVE wrote moves");
+    expect(gcode_has_move("build/rexx-slicer.gcode") && file_has("build/rexx-slicer.gcode", "M117 hello") &&
+               file_has("build/rexx-slicer.gcode", "M117 done"),
+           "SAVE wrote the cut and the user's lines");
 
     expect(run(&g, "OPEN FILE no-such.stl", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
     g.dirty = 1;
