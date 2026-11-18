@@ -143,9 +143,10 @@ $(BUILD)/test_cnc_ui: cnc/tests/test_cnc_ui.c cnc/src/markup.h cnc/src/cnc_ui.c 
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # GFOpenCNC's ARexx commands (cnc/src/cnc_rexx.c), on the host stub.
-$(BUILD)/test_cnc_rexx: cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c cnc/src/cnc_rexx.h core/src/rexx.c $(CNC_JOB) | $(BUILD)
+$(BUILD)/test_cnc_rexx: cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c cnc/src/cnc_rexx.h core/src/rexx.c $(CNC_JOB) core/src/toolpath_paint.c core/src/view.c core/src/solid.c | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/src -Imachines/include -Icnc/include -Icnc/src -o $@ \
-	    cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c core/src/rexx.c $(CNC_JOB) -lm
+	    cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c core/src/rexx.c $(CNC_JOB) \
+	    core/src/toolpath_paint.c core/src/view.c core/src/solid.c -lm
 
 WS_UI = workshop/src/workshop_ui.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c
 

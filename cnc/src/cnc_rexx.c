@@ -1,8 +1,11 @@
 /* GFOpenCNC's ARexx command table. The window Wait()s on GFOPENCNC.1
  * and dispatches through these verbs; host tests use omr_do_line.
- * The shared commands only. A preview verb is not in this cut.
+ * The shared commands, and PREVIEW: the cut, and a PPM when FILE is given.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "cnc_rexx.h"
+
+#include "gs_toolpath.h"
+#include "gs_view.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -308,6 +311,59 @@ static int cmd_status(void *c, void *g0)
     return OMR_OK;
 }
 
+static int write_ppm(const char *file, const unsigned char *rgb, int w, int h)
+{
+    FILE *f;
+    if (!file || !rgb || w < 1 || h < 1) return -1;
+    f = fopen(file, "wb");
+    if (!f) return -1;
+    fprintf(f, "P6\n%d %d\n255\n", w, h);
+    if (fwrite(rgb, 1, (size_t)w * (size_t)h * 3, f) != (size_t)w * (size_t)h * 3) {
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+    return 0;
+}
+
+/* The window's Preview: plan the cut, and with FILE write that picture. */
+static int cmd_preview(void *c, void *g0)
+{
+    oc_rexx *g = app(g0);
+    const char *file = omr_arg(c, "FILE");
+    char err[160];
+    err[0] = 0;
+    if (!g->doc || !g->have_doc || !*g->have_doc || !g->path || !g->have_path || !g->opts) {
+        omr_set_result(c, "Open a drawing first");
+        return OMR_ERROR;
+    }
+    if (cnc_path(g->path, g->doc, g->opts, err, (int)sizeof err) || g->path->n < 2) {
+        *g->have_path = 0;
+        omr_set_result(c, err[0] ? err : "no paths to cut");
+        return OMR_ERROR;
+    }
+    *g->have_path = 1;
+    if (file && file[0]) {
+        enum { W = 320, H = 240 };
+        unsigned char *rgb;
+        gs_cam cam;
+        rgb = (unsigned char *)malloc((size_t)W * (size_t)H * 3);
+        if (!rgb) {
+            omr_set_result(c, "out of memory");
+            return OMR_ERROR;
+        }
+        gs_cam_home(&cam);
+        if (gt_paint_part(g->path, &cam, 0, rgb, W, H) || write_ppm(file, rgb, W, H)) {
+            free(rgb);
+            omr_set_result(c, "Could not write there");
+            return OMR_ERROR;
+        }
+        free(rgb);
+        omr_set_result(c, file);
+    }
+    return OMR_OK;
+}
+
 static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty document", cmd_quit},
@@ -318,6 +374,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "GET", "KEY/K STEM/K VAR/K", "Read a cut setting", cmd_get},
     {sizeof(omr_verb), "SET", "KEY/A VALUE/A", "Set a cut setting, held to the window's range", cmd_set},
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the file, whether it is dirty, and the mode", cmd_status},
+    {sizeof(omr_verb), "PREVIEW", "FILE/K", "Plan the cut; with FILE, write a PPM of it", cmd_preview},
 };
 
 void oc_rexx_init(oc_rexx *g)

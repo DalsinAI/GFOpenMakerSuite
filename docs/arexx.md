@@ -433,10 +433,9 @@ the window's Frame, to `FILE`. RC 10 if there is no job yet.
 ## GFOpenCNC (port `GFOPENCNC.1`)
 
 The shared commands. `OPEN` loads an SVG or a DXF. `SAVE` writes mill
-G-code for the mill picked, and is RC 10 when none is picked. There is
-no preview command yet: Preview on the window still builds the picture.
-
-`GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
+G-code for the mill picked, and is RC 10 when none is picked. `PREVIEW`
+plans the cut the window shows. With `FILE` it also writes a PPM of that
+picture. `GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
 `stepover`, `feed`, `plunge`, `safe`, `rpm`, `mode` (`profile`, `pocket`
 or `drill`), `x`, `y`. A number is held to that field's range on the
 window. `STATUS` adds `MODE`.
