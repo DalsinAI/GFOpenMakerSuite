@@ -324,7 +324,18 @@ int main(void)
     }
     {
         int n = gs_parts_count(ps);
+        int dirty = g.dirty;
         float pos[3], size[3];
+        expect(run(&g, "EXTRUDE LIST STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3") &&
+                   gs_parts_count(ps) == n && g.dirty == dirty && omr_host_var("ST.0") &&
+                   !strcmp(omr_host_var("ST.0"), "3") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "Block") && omr_host_var("ST.1.KIND") &&
+                   !strcmp(omr_host_var("ST.1.KIND"), "block") && omr_host_var("ST.2") &&
+                   !strcmp(omr_host_var("ST.2"), "Round") && omr_host_var("ST.2.KIND") &&
+                   !strcmp(omr_host_var("ST.2.KIND"), "round") && omr_host_var("ST.3") &&
+                   !strcmp(omr_host_var("ST.3"), "Slot") && omr_host_var("ST.3.KIND") &&
+                   !strcmp(omr_host_var("ST.3.KIND"), "slot"),
+               "EXTRUDE LIST names the list and does not add a part");
         expect(run(&g, "EXTRUDE KIND block", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 1 &&
                    strstr(buf, "on the bed") && !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Block"),
                "EXTRUDE add puts a block on the bed");

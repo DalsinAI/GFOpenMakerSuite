@@ -242,14 +242,17 @@ example, or the list is full.
 
 ### EXTRUDE
 
-Template: `EXTRUDE KIND/A OP/K W/K D/K H/K`
+Template: `EXTRUDE KIND/K OP/K W/K D/K H/K LIST/S STEM/K`
 
 The window's Extrude, from the width, depth and height. `KIND` is
 `block`, `round` or `slot`. `OP` is `add` (a new part on the bed; the
 default), `on` (joined to the top of the picked part) or `cut` (that
 depth off the top). `W`, `D` and `H` are millimetres; the defaults are
 20, 10 and 8, the same as the fields. A round uses `W` as the diameter.
-`RESULT` says what was done. RC 10 if the size is out of range, there
+`RESULT` says what was done. `LIST` does not extrude: `RESULT` is how
+many, and `STEM` has `stem.0`, then `stem.1` onwards the names the list
+shows (`Block`, `Round`, `Slot`) and `stem.1.KIND` the word `KIND` takes.
+It is not an undo step. RC 10 if the size is out of range, there
 is no part to join or cut, or the solid does not build.
 
 ### DRAW
