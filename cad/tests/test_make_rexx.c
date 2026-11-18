@@ -75,6 +75,13 @@ int main(void)
            "PRINTER Marlin");
     expect(run(&g, "GCODE FILE build/rexx-box.gcode", &io) == 0 && io.rc == OMR_OK, "GCODE");
     {
+        int dirty = g.dirty, back = ge_steps_back(steps);
+        expect(run(&g, "SLICE", &io) == 0 && io.rc == OMR_OK && g.sliced == 1 && g.slice_layers > 0 &&
+                   g.slice_moves > 0 && strstr(buf, "layers"),
+               "SLICE");
+        expect(g.dirty == dirty && ge_steps_back(steps) == back, "SLICE is not an undo step");
+    }
+    {
         FILE *f = fopen("build/rexx-box.gcode", "r");
         char line[80];
         int ok = 0;

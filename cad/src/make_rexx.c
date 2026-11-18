@@ -1448,6 +1448,61 @@ static int cmd_printer(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The Slice button: the shown parts as a toolpath. It does not write a file. */
+static int cmd_slice(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    gs_mesh scene;
+    gt_path path;
+    gp_opts o;
+    gc_opts go;
+    gp_more x;
+    gc_more gx;
+    gc_stats st;
+    char buf[120];
+    int layers;
+    if (!ps) {
+        omr_set_result(c, "no document");
+        return OMR_ERROR;
+    }
+    memset(&scene, 0, sizeof scene);
+    memset(&path, 0, sizeof path);
+    memset(&st, 0, sizeof st);
+    if (gs_parts_scene(ps, &scene) || !scene.n) {
+        gs_mesh_free(&scene);
+        omr_set_result(c, "nothing to slice");
+        return OMR_ERROR;
+    }
+    gs_settings_opts(&g->set, &o, &go);
+    gs_settings_more(&g->set, &x);
+    if (gp_part_more(&path, &scene, &o, &x) || !path.n) {
+        gt_free(&path);
+        gs_mesh_free(&scene);
+        omr_set_result(c, "That did not slice: out of memory, or nothing to slice");
+        return OMR_ERROR;
+    }
+    gs_settings_gc_more(&g->set, &go, &gx);
+    g->slice_how = gc_estimate_more(&path, g->have_machine ? &g->machine : NULL, &gx, &st);
+    layers = path.nlayers;
+    if (g->slice_into) {
+        gt_path *dest = (gt_path *)g->slice_into;
+        gt_free(dest);
+        *dest = path;
+        memset(&path, 0, sizeof path);
+    } else gt_free(&path);
+    gs_mesh_free(&scene);
+    g->sliced = 1;
+    g->slice_layers = layers;
+    g->slice_moves = st.moves;
+    g->slice_seconds = st.seconds;
+    g->slice_filament = st.filament;
+    snprintf(buf, sizeof buf, "%d layers, %d moves, %.1f s, %.1f mm", layers, st.moves, (double)st.seconds,
+             (double)st.filament);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int cmd_gcode(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
@@ -1663,6 +1718,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "pick the printer from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "GCODE", "FILE/A", "slice the shown parts and write G-code", cmd_gcode},
+    {sizeof(omr_verb), "SLICE", "", "slice the shown parts for the view", cmd_slice},
     {sizeof(omr_verb), "MEASURE", "X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K", "the distance between two points",
      cmd_measure},
     {sizeof(omr_verb), "FACTS", "PART/N/K STEM/K VAR/K", "a part's volume, surface, size and triangles", cmd_facts},
