@@ -342,6 +342,50 @@ void ge_facts_line(char *buf, int len, const gs_mesh *m)
              (double)cm3, (double)(cm3 * 1.24f), (double)f.sx, (double)f.sy, (double)f.sz, f.tris);
 }
 
+void ge_mass_line(char *buf, int len, const gs_mesh *m)
+{
+    gs_facts f;
+    float g;
+    int off;
+    if (!buf || len < 1) return;
+    buf[0] = 0;
+    if (!m || !m->n || gm_facts(m, &f)) return;
+    g = f.volume / 1000.f * 1.24f;
+    off = m->min.x < -0.2f || m->max.x > GS_BED + 0.2f || m->min.y < -0.2f || m->max.y > GS_BED + 0.2f || m->min.z < -0.4f;
+    if (off)
+        snprintf(buf, (size_t)len, g >= 10.f ? "%.0f g, off the plate" : "%.1f g, off the plate", (double)g);
+    else
+        snprintf(buf, (size_t)len, g >= 10.f ? "%.0f g" : "%.1f g", (double)g);
+}
+
+float ge_snap_step(float *pending, float step)
+{
+    float n, q;
+    if (!pending || !(step > 0.f)) return 0.f;
+    n = floorf(*pending / step + 0.5f);
+    if (n == 0.f) return 0.f;
+    q = n * step;
+    *pending -= q;
+    return q;
+}
+
+float ge_snap_scale(float *acc, int *steps, float factor)
+{
+    int n;
+    float was, want;
+    if (!acc || !steps || !(factor > 0.f)) return 1.f;
+    if (*acc <= 0.f) *acc = 1.f;
+    *acc *= factor;
+    n = (int)floorf((*acc - 1.f) / 0.1f + 0.5f);
+    if (n == *steps) return 1.f;
+    was = 1.f + 0.1f * (float)*steps;
+    want = 1.f + 0.1f * (float)n;
+    if (was < 0.1f) was = 0.1f;
+    if (want < 0.1f) want = 0.1f;
+    *steps = n;
+    return want / was;
+}
+
 void ge_scene_free(ge_scene *s)
 {
     if (!s) return;

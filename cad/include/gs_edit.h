@@ -44,6 +44,16 @@ int ge_project(const gs_mesh *m, const gs_cam *cam, int w, int h, gs_v p, float 
  * a part's volume, its PLA (1.24 g/cm3, as the bench), size and triangles. */
 void ge_measure_line(char *buf, int len, gs_v a, gs_v b);
 void ge_facts_line(char *buf, int len, const gs_mesh *m);
+/* The picked part's PLA, and a mark when it hangs off the 220 mm plate
+ * or sits below the bed. Short, for the Face row. */
+void ge_mass_line(char *buf, int len, const gs_mesh *m);
+/* pending moves onto a grid of step. Returns the whole steps taken, and
+ * pending keeps the rest. 0 until half a step. */
+float ge_snap_step(float *pending, float step);
+/* acc is the scale since the drag started (1 at the start). steps is how
+ * many 0.1 changes are already in the part. Returns the factor to apply
+ * now, or 1 when the drag has not reached the next tenth. */
+float ge_snap_scale(float *acc, int *steps, float factor);
 
 /* Reads an STL for the editor: welded, empty triangles dropped, the
  * outside turned out, and sitting on z = 0. It does not close cracks.
