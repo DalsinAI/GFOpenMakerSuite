@@ -1319,22 +1319,13 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
  * The settings are held to it, as picking it in the list does. */
 static void show_printer(olui *ui)
 {
-    olui_el *sel;
-    int i;
-    if (!ui || !rexx.have_machine || !rexx.machine.name[0]) return;
-    sel = olui_find(ui, "machine");
-    if (!sel) return;
-    for (i = 0; i < printers.n; i++) {
-        gs_settings s;
-        char why[160];
-        if (strcmp(printers.at[i].name, rexx.machine.name) != 0) continue;
-        if (olui_select_index(sel) == i) return;
-        olui_select_set(ui, sel, i);
-        why[0] = 0;
-        omv_settings_fit(ui, &rexx.machine, &s, why, (int)sizeof why);
-        if (why[0]) say(ui, why);
-        return;
-    }
+    gs_settings s;
+    char why[160];
+    if (!ui || !rexx.have_machine) return;
+    if (!omv_machines_show(ui, "machine", &printers, rexx.machine.name)) return;
+    why[0] = 0;
+    omv_settings_fit(ui, &rexx.machine, &s, why, (int)sizeof why);
+    if (why[0]) say(ui, why);
 }
 
 /* The printer picked, loaded; or -1 and why. */

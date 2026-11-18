@@ -147,3 +147,19 @@ int omv_machines_chosen(olui *ui, const char *id, const omv_machines *l)
     int i = sel ? olui_select_index(sel) : -1;
     return l->n && i >= 0 && i < l->n ? i : -1;
 }
+
+int omv_machines_show(olui *ui, const char *id, const omv_machines *l, const char *name)
+{
+    olui_el *sel;
+    int i;
+    if (!ui || !id || !l || !name || !name[0]) return 0;
+    sel = olui_find(ui, id);
+    if (!sel) return 0;
+    for (i = 0; i < l->n; i++) {
+        if (strcmp(l->at[i].name, name) != 0) continue;
+        if (olui_select_index(sel) == i) return 0;
+        olui_select_set(ui, sel, i);
+        return 1;
+    }
+    return 0;
+}

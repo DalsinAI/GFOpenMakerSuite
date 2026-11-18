@@ -499,7 +499,9 @@ Template: `PRINTER DRIVER/K PROFILE/K`
 
 Picks the machine. `DRIVER` is a driver file (`machines/printer/marlin/driver.om`
 and the rest); `PROFILE` is a machine profile. At least one is required.
-RC 10 if the file cannot be read, or if it is not a printer.
+RC 10 if the file cannot be read, or if it is not a printer. When that
+printer is in the window's list, the list keeps it, and the settings
+are held to it.
 
 ### SLICE
 

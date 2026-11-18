@@ -72,6 +72,12 @@ int main(void)
            "the select filled, the first chosen");
     olui_select_set(ui, sel, 3);
     expect(omv_machines_chosen(ui, "machine", &l) == 3, "and the one chosen");
+    expect(omv_machines_show(ui, "machine", &l, "Big Marlin 300") == 1 && omv_machines_chosen(ui, "machine", &l) == 2,
+           "a named machine is selected");
+    expect(omv_machines_show(ui, "machine", &l, "Big Marlin 300") == 0 && omv_machines_chosen(ui, "machine", &l) == 2,
+           "the same name again does not move the list");
+    expect(omv_machines_show(ui, "machine", &l, "No such printer") == 0 && omv_machines_chosen(ui, "machine", &l) == 2,
+           "an unknown name leaves the list");
     expect(omv_machines_fill(ui, "machine", &none, "No printers") == 0 && olui_select_count(sel) == 1 &&
                !strcmp(olui_select_option_text(sel, 0), "No printers") && omv_machines_chosen(ui, "machine", &none) == -1,
            "none: one option saying so, nothing chosen");
