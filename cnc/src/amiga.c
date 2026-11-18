@@ -331,6 +331,7 @@ int main(int argc, char **argv)
             rexx.have_machine = chosen_mill(ui, &rexx.machine, why, (int)sizeof why) == 0;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);
             rexx_sync(ui);
+            if (rexx.have_machine) omv_machines_show(ui, "machine", &mills, rexx.machine.name);
             if (rexx.quit) goto done;
         }
         if (!(got & mask)) continue;
