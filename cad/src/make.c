@@ -58,7 +58,7 @@ static gs_cam cam;
 static struct Window *win;
 static int dragging, drag_x, drag_y, drag_shift, drag_moved;
 static int gpu_on, on_chip, draw_grid, presented;
-static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip, shade_kind;
+static int tool, picked = -1, pushed, vw = 640, vh = 320, said_chip, shade_kind, snap_on;
 static ge_steps *steps;
 
 /* ARexx: the port GFOPENMAKE.1, and the command table in make_rexx.c. */
@@ -301,7 +301,7 @@ static int tenths(float v)
 
 static void face_line(olui *ui)
 {
-    char buf[32];
+    char buf[32], mass[48];
     float pos[3], size[3];
     int k;
     if (picked >= 0) snprintf(buf, sizeof buf, "face %d", picked);
@@ -312,6 +312,8 @@ static void face_line(olui *ui)
         olui_set_number(ui, olui_find(ui, place_ids[k]), tenths(size[k]));
         olui_set_number(ui, olui_find(ui, place_ids[3 + k]), tenths(pos[k]));
     }
+    ge_mass_line(mass, (int)sizeof mass, work());
+    olui_set_text(ui, olui_find(ui, "mass"), mass);
 }
 
 static const char *tool_label(void)
@@ -700,6 +702,16 @@ static void on_shade(olui *ui, const olui_event *ev, void *userdata)
     olui_repaint(ui, olui_find(ui, "view"), NULL);
 }
 
+/* 1 mm, 15 degrees, and steps of 0.1 on the scale. The part waits for a step. */
+static void on_snap(olui *ui, const olui_event *ev, void *userdata)
+{
+    (void)ev;
+    (void)userdata;
+    snap_on = !snap_on;
+    olui_set_selected(ui, olui_find(ui, "snap"), snap_on);
+    say(ui, snap_on ? "Snap is 1 mm, 15 degrees, and steps of 0.1 scale." : "Snap is off.");
+}
+
 static void take_added(olui *ui, gs_mesh box, const char *name);
 
 /* File's Shelf: the chosen example, on the bed, as the bench's library. */
@@ -808,10 +820,16 @@ static int axes(float b[3][2])
 
 static void drag_edit(olui *ui, float dx, float dy)
 {
+    static float pend_x, pend_y, pend_z, pend_rx, pend_rz, pend_sc;
+    static int pend_steps;
+    const float turn = 15.f * 3.14159265f / 180.f;
     if (dx == 0.f && dy == 0.f) return;
     if (!pushed) {
         remember();
         pushed = 1;
+        pend_x = pend_y = pend_z = pend_rx = pend_rz = 0.f;
+        pend_sc = 1.f;
+        pend_steps = 0;
     }
     if (tool == TOOL_MOVE) {
         float b[3][2];
@@ -819,6 +837,10 @@ static void drag_edit(olui *ui, float dx, float dy)
         if (drag_shift) {
             float len2 = b[2][0] * b[2][0] + b[2][1] * b[2][1];
             float mz = len2 < 1e-4f ? 0.f : (dx * b[2][0] + dy * b[2][1]) / len2;
+            if (snap_on) {
+                pend_z += mz;
+                mz = ge_snap_step(&pend_z, 1.f);
+            }
             ge_move(work(), 0.f, 0.f, mz);
         } else {
             float a00 = b[0][0] * b[0][0] + b[0][1] * b[0][1];
@@ -831,12 +853,26 @@ static void drag_edit(olui *ui, float dx, float dy)
             if (det < 1e-4f && det > -1e-4f) return;
             mx = (rx * a11 - ry * a01) / det;
             my = (a00 * ry - a01 * rx) / det;
+            if (snap_on) {
+                pend_x += mx;
+                pend_y += my;
+                mx = ge_snap_step(&pend_x, 1.f);
+                my = ge_snap_step(&pend_y, 1.f);
+            }
             ge_move(work(), mx, my, 0.f);
         }
     } else if (tool == TOOL_ROT) {
-        ge_rotate(work(), dy * 0.01f, 0.f, dx * 0.01f);
+        float rx = dy * 0.01f, rz = dx * 0.01f;
+        if (snap_on) {
+            pend_rx += rx;
+            pend_rz += rz;
+            rx = ge_snap_step(&pend_rx, turn);
+            rz = ge_snap_step(&pend_rz, turn);
+        }
+        ge_rotate(work(), rx, 0.f, rz);
     } else if (tool == TOOL_SCALE) {
         float s = expf(-dy * 0.005f);
+        if (snap_on) s = ge_snap_scale(&pend_sc, &pend_steps, s);
         ge_scale(work(), s, s, s);
     }
     refresh(ui);
@@ -1168,11 +1204,20 @@ static void on_xdraw(olui *ui, const olui_event *ev, void *userdata)
     set_sketch(ui, tool != TOOL_SKETCH);
 }
 
+static void snap_xy(float *x, float *y)
+{
+    if (!snap_on || !x || !y) return;
+    *x = floorf(*x + 0.5f);
+    *y = floorf(*y + 0.5f);
+}
+
 static void sketch_say(olui *ui, float x1, float y1)
 {
     float cx, cy, w, d, h;
     char line[120];
     int kind = olui_select_index(olui_find(ui, "xkind"));
+    snap_xy(&sketch_x0, &sketch_y0);
+    snap_xy(&x1, &y1);
     if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line)) {
         sketch_clear();
         say(ui, line);
@@ -1199,6 +1244,8 @@ static void sketch_commit(olui *ui, float x1, float y1)
     float cx, cy, w, d;
     gs_mesh out;
     char line[120];
+    snap_xy(&sketch_x0, &sketch_y0);
+    snap_xy(&x1, &y1);
     sketch_clear();
     memset(&out, 0, sizeof out);
     if (ge_footprint(kind, sketch_x0, sketch_y0, x1, y1, &cx, &cy, &w, &d, line, (int)sizeof line) ||
@@ -1456,6 +1503,7 @@ int main(int argc, char **argv)
     olui_on(ui, "metal", OLUI_CLICK, on_shade, (void *)(intptr_t)0);
     olui_on(ui, "clay", OLUI_CLICK, on_shade, (void *)(intptr_t)1);
     olui_on(ui, "wire", OLUI_CLICK, on_shade, (void *)(intptr_t)2);
+    olui_on(ui, "snap", OLUI_CLICK, on_snap, NULL);
     olui_on(ui, "add", OLUI_CLICK, on_add, NULL);
     olui_on(ui, "bolt", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_BOLT_CIRCLE);
     olui_on(ui, "row", OLUI_CLICK, on_holes, (void *)(intptr_t)GE_HOLE_ROW);
