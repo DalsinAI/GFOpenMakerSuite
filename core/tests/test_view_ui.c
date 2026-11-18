@@ -116,6 +116,20 @@ int main(void)
         expect(OMV_MIN_W == 640 && OMV_MIN_H == 480, "the smallest a window is sized to: 640 by 480 inside");
     }
 
+    {
+        char path[16];
+        char *named[] = {"GFOpenCNC", "work:job.svg"};
+        char *alone[] = {"GFOpenSlicer"};
+        char *blank[] = {"GFOpenBurn", ""};
+        expect(omv_startup_file(2, named, path, (int)sizeof path) == 1 && !strcmp(path, "work:job.svg"),
+               "the file named at launch");
+        path[0] = 'x';
+        expect(omv_startup_file(1, alone, path, (int)sizeof path) == 0 && path[0] == 0, "started alone: no file");
+        expect(omv_startup_file(2, blank, path, (int)sizeof path) == 0, "an empty name is not a file");
+        expect(omv_startup_file(2, named, path, 4) == -1 && path[0] == 0, "a name that does not fit is refused");
+        expect(omv_startup_file(0, NULL, path, (int)sizeof path) == 0, "no arguments is not a file");
+    }
+
     memset(&box, 0, sizeof box);
     expect(gm_cube(&box, 90, 90, 0, 40, 30, 20) == 0, "a box");
     gs_cam_home(&cam);

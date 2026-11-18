@@ -73,3 +73,16 @@ void omv_window_fit(int sw, int sh, int top, int bw, int bh, int *w, int *h)
     *w = iw < OMV_MIN_W ? OMV_MIN_W : iw;
     *h = ih < OMV_MIN_H ? OMV_MIN_H : ih;
 }
+
+int omv_startup_file(int argc, char **argv, char *path, int n)
+{
+    const char *s;
+    size_t len;
+    if (path && n > 0) path[0] = 0;
+    if (argc < 2 || !argv || !argv[1] || !argv[1][0]) return 0;
+    s = argv[1];
+    len = strlen(s);
+    if (!path || n < 1 || len >= (size_t)n) return -1;
+    memcpy(path, s, len + 1);
+    return 1;
+}

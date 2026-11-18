@@ -1,7 +1,9 @@
 /* OpenMakeCNC on the Amiga. The window is GFOpenLayout (markup.h): Open
  * asks for an SVG or a DXF, Preview builds the cut, and Save G-code writes
- * it for the mill picked. The view is the toolpath, drawn with the pens
- * (core/ui). The window is resizable, 640 by 480 inside at the least.
+ * it for the mill picked. A file named at launch is opened the way Open
+ * opens one: the name is shown, and Preview builds the cut. The view is
+ * the toolpath, drawn with the pens (core/ui). The window is resizable,
+ * 640 by 480 inside at the least.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "cnc_job.h"
 #include "cnc_ui.h"
@@ -78,16 +80,25 @@ static int chosen_mill(olui *ui, om_machine *m, char *err, int errlen)
     return omv_machines_load(&mills, i, m, err, errlen);
 }
 
-static void on_open(olui *ui, const olui_event *ev, void *userdata)
+/* The drawing's name, shown. Preview builds the cut. The same path Open
+ * and a file named at launch take. */
+static void open_drawing(olui *ui, const char *path)
 {
-    (void)ev;
-    (void)userdata;
-    if (!ask_file(ui, "Open a drawing", 0, "#?.svg|#?.dxf", drawing, (int)sizeof drawing)) return;
+    snprintf(drawing, sizeof drawing, "%s", path);
     olui_set_text(ui, olui_find(ui, "path"), drawing);
     cnc_ui_kind(ui, drawing);
     have_doc = 0;
     have_path = 0;
     omv_say(ui, drawing);
+}
+
+static void on_open(olui *ui, const olui_event *ev, void *userdata)
+{
+    char path[256];
+    (void)ev;
+    (void)userdata;
+    if (!ask_file(ui, "Open a drawing", 0, "#?.svg|#?.dxf", path, (int)sizeof path)) return;
+    open_drawing(ui, path);
 }
 
 static void on_mode(olui *ui, const olui_event *ev, void *userdata)
@@ -187,7 +198,7 @@ static void draw_view(void *userdata, const olui_el *el, int x, int y, int w, in
     free(rgb);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     olui *ui;
     olui_amiga *a;
@@ -235,6 +246,12 @@ int main(void)
     olui_amiga_theme(a, NULL);
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
     olui_amiga_layout(a);
+    {
+        char path[256];
+        int got = omv_startup_file(argc, argv, path, (int)sizeof path);
+        if (got < 0) omv_say(ui, "The file name is too long");
+        else if (got) open_drawing(ui, path);
+    }
     for (;;) {
         int r;
         WaitPort(w->UserPort);

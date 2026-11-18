@@ -5,7 +5,8 @@
  * printer picked (core/ui's machine picker), once the printer says it can.
  * The view is the part on the plate. Once sliced, the toolpath is laid on
  * that solid, in the same frame. OpenGPU draws it when gfopengpu.library
- * can, and the pens when not.
+ * can, and the pens when not. A file named at launch is opened the way
+ * Open opens one.
  * The status line, the numbers, the pen drawer and the resizable window
  * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -180,13 +181,12 @@ static int ask_file(olui *ui, const char *title, int save, const char *pattern, 
     return got;
 }
 
-static void on_open(olui *ui, const olui_event *ev, void *userdata)
+/* An STL, loaded onto the bed of the printer picked (220 mm when there is
+ * none). The same path Open and a file named at launch take. */
+static void open_stl(olui *ui, const char *path)
 {
-    char path[256], err[160];
+    char err[160];
     om_machine m;
-    (void)ev;
-    (void)userdata;
-    if (!ask_file(ui, "Open an STL", FALSE, "#?.stl", path, (int)sizeof path)) return;
     printer(ui, &m, err, (int)sizeof err);
     if (sl_load(&job, path, m.area[0], m.area[1], err, (int)sizeof err)) {
         omv_say(ui, err);
@@ -198,6 +198,15 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     snprintf(err, sizeof err, "%d triangles. Slice when ready.", job.part.n);
     omv_say(ui, err);
     refresh(ui);
+}
+
+static void on_open(olui *ui, const olui_event *ev, void *userdata)
+{
+    char path[256];
+    (void)ev;
+    (void)userdata;
+    if (!ask_file(ui, "Open an STL", FALSE, "#?.stl", path, (int)sizeof path)) return;
+    open_stl(ui, path);
 }
 
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
@@ -285,7 +294,7 @@ static void on_slide(olui *ui, const olui_event *ev, void *userdata)
     refresh(ui);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     olui *ui;
     olui_amiga *a;
@@ -341,6 +350,12 @@ int main(void)
     olui_amiga_layout(a);
     if (printers.skipped) omv_say(ui, printers.why);
     else on_machine(ui, NULL, NULL);
+    {
+        char path[256];
+        int got = omv_startup_file(argc, argv, path, (int)sizeof path);
+        if (got < 0) omv_say(ui, "The file name is too long");
+        else if (got) open_stl(ui, path);
+    }
     /* ARexx: Wait() on the window and OPENMAKESLICER.1 together. */
     os_rexx_init(&rexx);
     rexx.job = &job;

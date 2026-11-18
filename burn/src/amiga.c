@@ -4,6 +4,7 @@
  * Save G-code writes Grbl laser G-code for the laser picked (core/ui's
  * machine picker). The view is drawn by OpenGPU when gfopengpu.library
  * can (core/ui's omview_scene.h and omview_gpu.h), with the pens when not.
+ * A file named at launch is opened the way Open opens one.
  * The status line, the numbers, the pen drawer and the resizable window
  * are the suite's (core/ui).
  * MIT, Copyright (c) 2026 AmiCradle Team. */
@@ -268,13 +269,12 @@ static int ask_file(olui *ui, const char *title, int save, const char *pattern, 
     return got;
 }
 
-static void on_open(olui *ui, const olui_event *ev, void *userdata)
+/* A drawing or a picture, loaded and previewed. The same path Open and a
+ * file named at launch take. */
+static void open_drawing(olui *ui, const char *pathbuf)
 {
-    char pathbuf[256], err[160];
+    char err[160];
     om_machine m;
-    (void)ev;
-    (void)userdata;
-    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf|pbm|pgm|ppm)", pathbuf, (int)sizeof pathbuf)) return;
     burn_image_free(&pic);
     gv_doc_free(&doc);
     gv_doc_init(&doc);
@@ -307,6 +307,15 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     hook_shifts(ui);
     gs_cam_home(&cam);
     if (preview_job(ui, &m, err, (int)sizeof err)) omv_say(ui, err);
+}
+
+static void on_open(olui *ui, const olui_event *ev, void *userdata)
+{
+    char pathbuf[256];
+    (void)ev;
+    (void)userdata;
+    if (!ask_file(ui, "Open a drawing", FALSE, "#?.(svg|dxf|pbm|pgm|ppm)", pathbuf, (int)sizeof pathbuf)) return;
+    open_drawing(ui, pathbuf);
 }
 
 static void on_preview(olui *ui, const olui_event *ev, void *userdata)
@@ -365,7 +374,7 @@ static void on_frame(olui *ui, const olui_event *ev, void *userdata)
     }
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     olui *ui;
     olui_amiga *a;
@@ -417,6 +426,12 @@ int main(void)
     if (stocks.skipped) omv_say(ui, stocks.why);
     olui_amiga_layout(a);
     if (lasers.skipped) omv_say(ui, lasers.why);
+    {
+        char pathbuf[256];
+        int got = omv_startup_file(argc, argv, pathbuf, (int)sizeof pathbuf);
+        if (got < 0) omv_say(ui, "The file name is too long");
+        else if (got) open_drawing(ui, pathbuf);
+    }
     /* ARexx: Wait() on the window and OPENMAKEBURN.1 together. */
     gb_rexx_init(&rexx);
     rexx.doc = &doc;

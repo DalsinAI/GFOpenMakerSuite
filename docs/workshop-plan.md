@@ -238,24 +238,22 @@ Open in app, and the ARexx `OPENITEM` command, do the same thing:
    then send `OPEN FILE` with the item's resolved path, and return that
    reply.
 2. If that library is not in yet, a small launch hook in Workshop starts
-   the program with the file on its command line (GFOpenMake already
-   opens a file named at launch). The hook is documented and is switched
-   to the client in (1) once the ARexx library is merged. Workshop does
-   not duplicate `openmakerexx.library`.
+   the program with the file on its command line. GFOpenMake, GFOpenSlicer,
+   GFOpenBurn and GFOpenCNC open a file named at launch, the same way their
+   Open button does. The hook is documented and is switched to the client
+   in (1) once the ARexx library is merged. Workshop does not duplicate
+   `openmakerexx.library`.
 
 | Kind | Binary | Port stem |
 | --- | --- | --- |
 | cad | GFOpenMake | `GFOPENMAKE` |
 | print | GFOpenSlicer | `OPENMAKESLICER` |
 | laser | GFOpenBurn | `OPENMAKEBURN` |
-| cnc | GFOpenCNC | none yet: the window has no ARexx port, so Workshop only starts it with the file |
+| cnc | GFOpenCNC | none yet: the window has no ARexx port, so Workshop only starts it with the file, which the window opens |
 | electronics | gfamigakicad | none in the first cut: the program is started with the file, and is not driven further |
 
-`cad/` and `burn/` are not edited for this, except a tiny documented hook
-if an app cannot yet take a file at launch. Amy's ARexx work is what
-adds `OPEN` and the rest to those windows. gfamigakicad is launched only;
-its repository is not touched, and no port name is assumed for it until
-one exists.
+gfamigakicad is launched only; its repository is not touched, and no port
+name is assumed for it until one exists.
 
 ## ARexx: `OPENMAKEWORKSHOP.1` is the master port
 

@@ -20,8 +20,10 @@ groups (CAD, Print, Laser, CNC, Electronics) and a group for any other
 kind the project has. The view is the picked item: an STL as a solid,
 an SVG or DXF as strokes, G-code as a toolpath; a KiCad file is listed
 and opened in gfamigakicad, never drawn or parsed. Launch starts
-the kind's program (`PROGDIR:` first, then the name). That is a launch
-hook; ARexx (`OPENMAKEWORKSHOP.1` on openmakerexx.library) follows.
+the kind's program (`PROGDIR:` first, then the name) with the file on
+its command line. GFOpenMake, GFOpenSlicer, GFOpenBurn and GFOpenCNC
+open that file. That is a launch hook; ARexx (`OPENMAKEWORKSHOP.1` on
+openmakerexx.library) follows.
 
 A host render of the window (not an Amiga run):
 
