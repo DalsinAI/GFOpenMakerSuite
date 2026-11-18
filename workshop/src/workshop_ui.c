@@ -58,6 +58,14 @@ static int ends_ci(const char *s, const char *suf)
     return 1;
 }
 
+/* A KiCad file is gfamigakicad's. The suffix is enough; the file is not read. */
+static int left_to_kicad(const gpr_item *it, const char *path)
+{
+    const char *app = it ? gpr_kind_app(it->kind) : NULL;
+    if (app && strcmp(app, "gfamigakicad") == 0) return 1;
+    return ends_ci(path, ".kicad_pro") || ends_ci(path, ".kicad_pcb") || ends_ci(path, ".kicad_sch");
+}
+
 static int kind_is(const char *kind, const char *want)
 {
     if (!kind || !want) return 0;
@@ -180,6 +188,8 @@ void workshop_ui_refresh(olui *ui, workshop *w)
     }
     if (!w->have) snprintf(defstat, sizeof defstat, "No project");
     else if (w->project.n == 0) snprintf(defstat, sizeof defstat, "%s — no items yet", w->project.name);
+    else if (it && left_to_kicad(it, it->file))
+        snprintf(defstat, sizeof defstat, "%s — gfamigakicad opens this", it->name);
     else snprintf(defstat, sizeof defstat, "%s — %d item%s%s", w->project.name, w->project.n, w->project.n == 1 ? "" : "s",
                   w->project.dirty ? ", not saved" : "");
     omv_say(ui, defstat);
@@ -349,7 +359,10 @@ int workshop_ui_preview(const workshop *w, const gs_cam *cam, unsigned char *rgb
     if (ends_ci(path, ".svg") || ends_ci(path, ".dxf")) return paint_vec(path, rgb, width, height, err, errlen);
     if (ends_ci(path, ".gcode") || ends_ci(path, ".nc") || ends_ci(path, ".gc"))
         return paint_gcode(path, rgb, width, height, err, errlen);
-    (void)it;
+    if (left_to_kicad(it, path)) {
+        if (err && errlen > 0) snprintf(err, (size_t)errlen, "gfamigakicad opens this");
+        return -1;
+    }
     if (err && errlen > 0) snprintf(err, (size_t)errlen, "no preview for this file");
     return -1;
 }

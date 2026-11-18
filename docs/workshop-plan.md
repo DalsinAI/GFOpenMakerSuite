@@ -122,11 +122,12 @@ may still suggest a default kind in the window's Add requester
 
 ## KiCad
 
-Electronics items are referenced and opened in gfamigakicad. Workshop
-lists the files by name and extension only. It does not read, edit or
-write `.kicad_pro`, `.kicad_pcb` or `.kicad_sch`, and it does not touch
-the gfamigakicad repository. The first cut only adds an existing KiCad
-project; it does not create one.
+gfamigakicad is trusted with KiCad files. Workshop lists a `.kicad_pro`,
+`.kicad_pcb` or `.kicad_sch` by name and hands that path to gfamigakicad.
+It does not read, draw, edit or write those files, and it does not touch
+the gfamigakicad repository. A sibling board or schematic is found by
+its file name only, so an item can point at the project. Workshop does
+not create a KiCad project.
 
 ## Shared library: `openmakeproject.library`
 
@@ -219,8 +220,7 @@ already draw it:
 - G-code — `openmakeview`'s G-code lines, when the file is plain text
   G-code
 - Netpbm pictures — later, if the picture can be drawn cheaply
-- KiCad — no preview in the first cut (the files are not parsed); the
-  name and path are shown
+- KiCad — not drawn. The status says gfamigakicad opens it.
 - CNC — later
 
 Buttons: New, Open and Save for the project; Add, Remove, Rename, and
@@ -250,10 +250,10 @@ Open in app, and the ARexx `OPENITEM` command, do the same thing:
 | print | GFOpenSlicer | `OPENMAKESLICER` |
 | laser | GFOpenBurn | `OPENMAKEBURN` |
 | cnc | GFOpenCNC | `GFOPENCNC`. Workshop still starts it with the file. The port has the shared commands and `PREVIEW` |
-| electronics | gfamigakicad | none in the first cut: the program is started with the file, and is not driven further |
+| electronics | gfamigakicad | none. The program is started with the file. The files are not read here |
 
-gfamigakicad is launched only; its repository is not touched, and no port
-name is assumed for it until one exists.
+gfamigakicad is launched only. Its repository is not touched, and no port
+name is assumed for it.
 
 ## ARexx: `OPENMAKEWORKSHOP.1` is the master port
 
@@ -366,10 +366,9 @@ here has been run on an Amiga until a lab run says so.
 ## Not in the first cut
 
 - A Render kind, or any work for a rendering app.
-- CNC jobs (the group is shown empty).
-- Creating, editing or parsing KiCad files; any change to gfamigakicad.
+- Creating a KiCad project here, or reading one. gfamigakicad owns those files.
 - Inventing a native CAD document format.
-- PNG or JPEG previews, or a KiCad board preview.
+- PNG or JPEG previews.
 - Deleting an item's file when the item is removed.
 - An `OPENMAKE:` assign, or a fixed default drawer for new projects
   (New asks for a drawer).
@@ -381,7 +380,7 @@ These are the defaults this plan takes, and will go with unless they
 should be otherwise:
 
 - Suite files are copied into the project drawer; KiCad projects are
-  referenced in place.
+  referenced in place. gfamigakicad is trusted with those files.
 - The binary is GFOpenWorkshop; the window title is GFOpenMakerWorkshop.
 - Recent projects are stored in `PROGDIR:workshop-recent.om`.
 - `from=` and `settings=` are stored in the first cut; the window may

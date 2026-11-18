@@ -329,7 +329,8 @@ int main(void)
     lit = count_lit(rgb, 80 * 60, 0x14, 0x16, 0x1c);
     expect(lit > 10, "the laser preview drew strokes");
     w.picked = 2;
-    expect(workshop_ui_preview(&w, NULL, rgb, 80, 60, err, (int)sizeof err) == -1, "KiCad is listed, not drawn");
+    expect(workshop_ui_preview(&w, NULL, rgb, 80, 60, err, (int)sizeof err) == -1 && strstr(err, "gfamigakicad"),
+           "a KiCad file is left to gfamigakicad");
     lit = count_lit(rgb, 80 * 60, 0x14, 0x16, 0x1c);
     expect(lit == 0, "the electronics preview stays a dark view");
     w.picked = 3;
@@ -339,6 +340,8 @@ int main(void)
 
     w.picked = 2;
     workshop_ui_refresh(ui, &w);
+    expect(strstr(olui_get_text(olui_find(ui, "status")), "gfamigakicad opens this") != NULL,
+           "the status trusts gfamigakicad with the board");
     expect(workshop_launch(&w, err, (int)sizeof err) == 0 && strstr(workshop_launch_last(&w), "gfamigakicad"),
            "Open in app records gfamigakicad for electronics");
     w.picked = 3;
