@@ -58,6 +58,20 @@ static int flag01(const char *s, int *out)
     return -1;
 }
 
+/* TASKS= on the command: a whole number, held to 1..64. Not a print setting. */
+static int parse_tasks(const char *s, int *out)
+{
+    char *end = NULL;
+    long n;
+    if (!s || !s[0] || !out) return -1;
+    n = strtol(s, &end, 10);
+    if (end == s || (end && *end)) return -1;
+    if (n < 1) n = 1;
+    if (n > 64) n = 64;
+    *out = (int)n;
+    return 0;
+}
+
 static void job_value(const sl_job *j, int k, char *buf, int len)
 {
     if (!buf || len < 1) return;
@@ -240,6 +254,15 @@ static int cmd_get(void *c, void *g0)
     char buf[240], nbuf[16];
     int i, n, jk;
     if (key) {
+        if (eqi(key, "tasks")) {
+            int held = g->tasks;
+            if (held < 1) held = 1;
+            if (held > 64) held = 64;
+            snprintf(buf, sizeof buf, "%d", held);
+            omr_set_result(c, buf);
+            if (var) omr_set_var(c, var, buf);
+            return OMR_OK;
+        }
         jk = job_key(key);
         if (jk >= 0) {
             if (!g->job) {
@@ -289,6 +312,17 @@ static int cmd_set(void *c, void *g0)
     if (!key || !val) {
         omr_set_result(c, "KEY and VALUE are required");
         return OMR_ERROR;
+    }
+    if (eqi(key, "tasks")) {
+        int n = 1;
+        if (parse_tasks(val, &n)) {
+            omr_set_result(c, "not a number");
+            return OMR_ERROR;
+        }
+        g->tasks = n;
+        snprintf(buf, sizeof buf, "%d", n);
+        omr_set_result(c, buf);
+        return OMR_OK;
     }
     jk = job_key(key);
     if (jk >= 0) {

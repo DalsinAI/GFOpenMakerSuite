@@ -483,11 +483,15 @@ shows. `STEM` has `stem.VOLUME`, `stem.SURFACE`, `stem.X`, `stem.Y`,
 The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes
 G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
 `stem.TIME` and `stem.FILAMENT`. `GET` and `SET` take the print settings,
-and also `support`, `start` and `end` by name: the Settings side of the
-window, the same as `SUPPORT=`, `START=` and `END=` on the command.
-`support` is `1` or `0`. `start` and `end` are lines of your own, after
-the machine's start and before its end. An empty line clears that one.
-The list with no `KEY` stays the print settings.
+and also `support`, `start`, `end` and `tasks` by name. `support`, `start`
+and `end` are the Settings side of the window, the same as `SUPPORT=`,
+`START=` and `END=` on the command. `support` is `1` or `0`. `start` and
+`end` are lines of your own, after the machine's start and before its end.
+An empty line clears that one. `tasks` is how many tasks the next slice
+runs on, the same as `TASKS=` on the command. A whole number is held from
+1 to 64. The window has no field for it, and the count is not a print
+setting, so it does not mark the document dirty. The list with no `KEY`
+stays the print settings.
 
 ### LOAD
 

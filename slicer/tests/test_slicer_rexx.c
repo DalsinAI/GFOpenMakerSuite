@@ -104,6 +104,10 @@ int main(void)
            "HELP lists SLICE");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKESLICER.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    expect(run(&g, "GET KEY tasks", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "1") == 0, "GET tasks with no part");
+    expect(run(&g, "SET KEY tasks VALUE 4", &io) == 0 && io.rc == OMR_OK && g.tasks == 4 && g.dirty == 0 &&
+               strcmp(buf, "4") == 0,
+           "SET tasks does not dirty");
     expect(run(&g, "GET KEY layer-height", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0.2") == 0, "GET layer-height");
     expect(run(&g, "SET KEY layer-height VALUE 0.3", &io) == 0 && io.rc == OMR_OK && g.dirty == 1, "SET layer-height");
     expect(run(&g, "GET KEY layer-height", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0.3") == 0, "GET after SET");
@@ -149,8 +153,16 @@ int main(void)
     expect(run(&g, "SET KEY start VALUE \"\"", &io) == 0 && io.rc == OMR_OK && job.start[0] == 0, "an empty start clears it");
     expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK, "start set again");
 
+    expect(run(&g, "SET KEY tasks VALUE maybe", &io) == 0 && io.rc == OMR_ERROR && g.tasks == 4, "tasks is a number");
+    expect(run(&g, "SET KEY tasks VALUE 0", &io) == 0 && io.rc == OMR_OK && g.tasks == 1 && strcmp(buf, "1") == 0,
+           "tasks 0 is 1");
+    expect(run(&g, "SET KEY tasks VALUE 99", &io) == 0 && io.rc == OMR_OK && g.tasks == 64 && strcmp(buf, "64") == 0,
+           "tasks 99 is 64");
+    expect(run(&g, "SET KEY tasks VALUE 2", &io) == 0 && io.rc == OMR_OK && g.tasks == 2, "tasks set to 2");
+
     expect(run(&g, "SLICE STEM ST", &io) == 0 && io.rc == OMR_OK && job.sliced && job.path.nlayers > 0 &&
-               strstr(buf, "layers") && omr_host_var("ST.LAYERS") && atoi(omr_host_var("ST.LAYERS")) > 0,
+               job.tasks == 2 && strstr(buf, "layers") && omr_host_var("ST.LAYERS") &&
+               atoi(omr_host_var("ST.LAYERS")) > 0,
            "SLICE");
     expect(run(&g, "STATS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.TIME") &&
                omr_host_var("ST.FILAMENT"),
