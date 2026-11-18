@@ -10,8 +10,9 @@
  * older names over it, key=value over those (sl_args.h). openmake-slice
  * is the same with a picture as well. START and END are the user's own
  * lines, after the machine's start and before its end. They do not
- * replace the heat, the home, or M84. SUPPORT=1 adds one wall under an
- * overhang steeper than 45 degrees, from the bed up to it.
+ * replace the heat, the home, or M84. SUPPORT=1 adds one wall, and a line
+ * every four widths, under an overhang steeper than 45 degrees, from the
+ * bed up to it.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs.h"
 #include "gs_layer.h"
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
                         "       [FILAMENT=1.75] [HOTEND=200] [BED=60] [START=lines] [END=lines] [SUPPORT=0]\n"
                         "key: a settings profile's, as layer-height=0.16 pattern=grid around=brim\n"
                         "START and END: your own lines, after the machine's start and before its end\n"
-                        "SUPPORT=1: one wall under an overhang steeper than 45 degrees, from the bed up\n");
+                        "SUPPORT=1: a wall, and a line every four widths, under a steep overhang\n");
         return 1;
     }
     if (!driver) driver = "machines/printer/marlin/driver.om";
