@@ -24,6 +24,8 @@ typedef struct gb_rexx {
     int have_machine;
     char file[256];
     char save_file[256];
+    char start[240]; /* the user's own lines; opts->start points here when set */
+    char end[240];
     int dirty;
     const char *version;
     const char *port_name; /* "OPENMAKEBURN.1", or NULL */

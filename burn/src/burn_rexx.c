@@ -210,7 +210,7 @@ static int cmd_hide(void *c, void *g0)
 }
 
 static const char *const job_keys[] = {"power",  "speed",    "travel", "passes",   "constant",
-                                       "s100",   "mode",     "interval", "cuts_last", NULL};
+                                       "s100",   "mode",     "interval", "cuts_last", "start", "end", NULL};
 
 static int key_of(const char *s)
 {
@@ -252,6 +252,12 @@ static void key_value(const burn_opts *o, int k, char *buf, int len)
         break;
     case 8:
         snprintf(buf, (size_t)len, "%d", o->cuts_last ? 1 : 0);
+        break;
+    case 9:
+        snprintf(buf, (size_t)len, "%s", o->start ? o->start : "");
+        break;
+    case 10:
+        snprintf(buf, (size_t)len, "%s", o->end ? o->end : "");
         break;
     default:
         break;
@@ -315,11 +321,22 @@ static int set_key(burn_opts *o, int k, const char *value, char *err, int errlen
     }
 }
 
+static void own_copy(char *dst, int n, const char *src)
+{
+    size_t k;
+    if (!dst || n < 1) return;
+    if (!src) src = "";
+    k = strlen(src);
+    if (k >= (size_t)n) k = (size_t)n - 1;
+    memcpy(dst, src, k);
+    dst[k] = 0;
+}
+
 static int cmd_get(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
     const char *key = omr_arg(c, "KEY");
-    char buf[64], nbuf[16];
+    char buf[240], nbuf[16];
     int i, k;
     if (!g->opts) {
         omr_set_result(c, "no document");
@@ -368,6 +385,16 @@ static int cmd_set(void *c, void *g0)
     if (k < 0) {
         omr_set_result(c, "unknown key");
         return OMR_ERROR;
+    }
+    if (k == 9 || k == 10) {
+        char *dst = (k == 9) ? g->start : g->end;
+        int n = (k == 9) ? (int)sizeof g->start : (int)sizeof g->end;
+        own_copy(dst, n, value);
+        if (k == 9) g->opts->start = dst[0] ? dst : NULL;
+        else g->opts->end = dst[0] ? dst : NULL;
+        dirty(g);
+        omr_set_result(c, dst);
+        return OMR_OK;
     }
     if (set_key(g->opts, k, value, err, (int)sizeof err)) {
         omr_set_result(c, err);

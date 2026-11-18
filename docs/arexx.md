@@ -161,7 +161,9 @@ print settings (`layer-height`, `line-width`, `walls`, `infill`,
 `first-layer-speed`, `hotend`, `bed`, `filament`, `around`, `loops`,
 `distance`, `retract`, `retract-speed`). In OpenMakeBurn they are the
 job's keys (`power`, `speed`, `travel`, `passes`, `constant`, `s100`,
-`mode`, `interval`, `cuts_last`). Workshop's keys are Workshop's to list.
+`mode`, `interval`, `cuts_last`, `start`, `end`). `start` and `end` are
+lines of your own, after the machine's start and before its end. Quote a
+line that has a space. Workshop's keys are Workshop's to list.
 
 With no `KEY`, `STEM` receives every key: `stem.0` is how many, `stem.1`
 the first key, `stem.1.VALUE` its value, and so on. With `KEY`, `RESULT`
