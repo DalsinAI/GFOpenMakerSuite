@@ -1,8 +1,8 @@
 /* GFOpenSlicer on the Amiga. The window is GFOpenLayout (markup.h): Open
- * asks ASL for an STL, Slice makes its toolpath with the engine on as many
- * tasks as there are cores (sl_job.h: gp_part_par, exec tasks here), the
- * slider shows it a layer at a time, and Save G-code writes it for the
- * printer picked (core/ui's machine picker), once the printer says it can.
+ * asks ASL for an STL, Slice makes its toolpath with the engine on the
+ * port's task count (one a core until SET tasks), the slider shows layers
+ * 1 to its place, and Save G-code writes it for the printer picked
+ * (core/ui's machine picker), once the printer says it can.
  * Support, Start and End on the Settings side are the shell's SUPPORT, START
  * and END. The view is the part on the plate. Once sliced, the toolpath is laid on
  * that solid, in the same frame. OpenGPU draws it when gfopengpu.library
@@ -86,6 +86,24 @@ static void refresh(olui *ui)
         omv_say(ui, status);
     }
     olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
+
+/* The port's layer picture. A slice that just finished shows the top layer.
+ * Anything else keeps the checkbox and the slider, held to the layers there. */
+static void apply_layers(olui *ui)
+{
+    int n = job.path.nlayers > 0 ? job.path.nlayers : 1;
+    if (rexx.fresh && job.sliced && job.path.nlayers > 0) layer_no = job.path.nlayers;
+    else {
+        show_layer = rexx.layers ? 1 : 0;
+        layer_no = rexx.layer_no >= 1 ? rexx.layer_no : 1;
+        if (layer_no > n) layer_no = n;
+    }
+    rexx.fresh = 0;
+    rexx.layers = show_layer ? 1 : 0;
+    rexx.layer_no = layer_no < 1 ? 1 : layer_no;
+    if (olui_find(ui, "show")) olui_set_checked(ui, olui_find(ui, "show"), show_layer);
+    if (olui_find(ui, "layerno")) olui_set_slider(ui, olui_find(ui, "layerno"), omv_slider_of(layer_no, n));
 }
 
 /* One run of one pen: one RectFill, at the view's corner in ud. */
@@ -236,10 +254,15 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     sl_ui_settings(ui, &set);
     take_own(ui);
     omv_say(ui, "Slicing...");
-    if (sl_slice(&job, &set, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
-        omv_say(ui, err);
-        olui_repaint(ui, olui_find(ui, "view"), NULL);
-        return;
+    {
+        int tasks = rexx.tasks;
+        if (tasks < 1) tasks = 1;
+        if (tasks > 64) tasks = 64;
+        if (sl_slice(&job, &set, have ? &m : NULL, tasks, err, (int)sizeof err)) {
+            omv_say(ui, err);
+            olui_repaint(ui, olui_find(ui, "view"), NULL);
+            return;
+        }
     }
     layer_no = job.path.nlayers;
     olui_set_slider(ui, olui_find(ui, "layerno"), 100);
@@ -380,6 +403,8 @@ int main(int argc, char **argv)
     rexx.win = w;
     rexx.ui = ui;
     rexx.tasks = gs_par_cores();
+    if (rexx.tasks < 1) rexx.tasks = 1;
+    if (rexx.tasks > 64) rexx.tasks = 64;
     sl_ui_settings(ui, &rexx.set);
     rexx_port = omr_open(OS_REXX_PORT, rexx.version);
     if (rexx_port) {
@@ -397,6 +422,9 @@ int main(int argc, char **argv)
             sl_ui_settings(ui, &rexx.set);
             take_own(ui);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            rexx.layers = show_layer ? 1 : 0;
+            rexx.layer_no = layer_no < 1 ? 1 : layer_no;
+            rexx.fresh = 0;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
             show_own(ui);
@@ -410,10 +438,7 @@ int main(int argc, char **argv)
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), stl_path);
-            if (job.sliced) {
-                layer_no = job.path.nlayers;
-                if (olui_find(ui, "layerno")) olui_set_slider(ui, olui_find(ui, "layerno"), 100);
-            }
+            apply_layers(ui);
             refresh(ui);
             if (rexx.quit) goto done;
         }

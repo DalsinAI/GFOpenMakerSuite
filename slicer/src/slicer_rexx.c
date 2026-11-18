@@ -72,6 +72,18 @@ static int parse_tasks(const char *s, int *out)
     return 0;
 }
 
+static int whole_arg(void *cmd, const char *key, int *out)
+{
+    const char *s = omr_arg(cmd, key);
+    char *end = NULL;
+    long n;
+    if (!s) return 0;
+    n = strtol(s, &end, 10);
+    if (end == s || (end && *end)) return -1;
+    *out = (int)n;
+    return 1;
+}
+
 static void job_value(const sl_job *j, int k, char *buf, int len)
 {
     if (!buf || len < 1) return;
@@ -439,6 +451,42 @@ static int cmd_printer(void *c, void *g0)
     return OMR_OK;
 }
 
+/* Layers 1 to INDEX of the last slice. The picture changes. The part does not. */
+static int cmd_layers(void *c, void *g0)
+{
+    os_rexx *g = app(g0);
+    int on, n, has_on, has_n, cap;
+    char buf[64];
+    has_on = whole_arg(c, "ON", &on);
+    if (has_on < 0) {
+        omr_set_result(c, "use 0 or 1");
+        return OMR_ERROR;
+    }
+    has_n = whole_arg(c, "INDEX", &n);
+    if (has_n < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    cap = 1000000;
+    if (g->job && g->job->sliced && g->job->path.nlayers > 0) cap = g->job->path.nlayers;
+    if (has_n > 0) {
+        if (n < 1) n = 1;
+        if (n > cap) n = cap;
+        g->layer_no = n;
+    } else if (g->layer_no < 1) g->layer_no = 1;
+    if (has_on > 0) g->layers = on ? 1 : 0;
+    else if (has_n > 0) g->layers = 1;
+    else g->layers = !g->layers;
+    g->fresh = 0;
+    if (!g->layers) {
+        omr_set_result(c, "Layers are hidden.");
+        return OMR_OK;
+    }
+    snprintf(buf, sizeof buf, "Layers 1 to %d.", g->layer_no);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int cmd_slice(void *c, void *g0)
 {
     os_rexx *g = app(g0);
@@ -450,11 +498,14 @@ static int cmd_slice(void *c, void *g0)
         return OMR_ERROR;
     }
     if (g->have_machine) gp_place(&g->job->part, g->machine.area[0], g->machine.area[1]);
-    tasks = g->tasks > 0 ? g->tasks : 1;
+    tasks = g->tasks;
+    if (tasks < 1) tasks = 1;
+    if (tasks > 64) tasks = 64;
     if (sl_slice(g->job, &g->set, g->have_machine ? &g->machine : NULL, tasks, err, (int)sizeof err)) {
         omr_set_result(c, err[0] ? err : "That did not slice");
         return OMR_ERROR;
     }
+    g->fresh = 1;
     return put_stats(c, g->job);
 }
 
@@ -482,6 +533,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PROFILE", "FILE/A", "Load a print-settings profile", cmd_profile},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "Pick the machine from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "Slice the loaded part", cmd_slice},
+    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K", "show layers 1 to a layer", cmd_layers},
     {sizeof(omr_verb), "STATS", "STEM/K VAR/K", "The last slice's figures", cmd_stats},
 };
 
@@ -492,6 +544,7 @@ void os_rexx_init(os_rexx *g)
     g->size = (int)sizeof *g;
     gs_settings_default(&g->set);
     g->tasks = 1;
+    g->layer_no = 1;
 }
 
 const omr_verb *os_rexx_verbs(void) { return verbs; }
