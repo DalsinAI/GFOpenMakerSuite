@@ -325,6 +325,16 @@ static int cmd_set(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *drawing_kind(const char *path)
+{
+    const char *dot;
+    if (!path || !path[0]) return "File";
+    dot = strrchr(path, '.');
+    if (dot && (!strcmp(dot, ".svg") || !strcmp(dot, ".SVG"))) return "SVG";
+    if (dot && (!strcmp(dot, ".dxf") || !strcmp(dot, ".DXF"))) return "DXF";
+    return "File";
+}
+
 static int cmd_status(void *c, void *g0)
 {
     oc_rexx *g = app(g0);
@@ -337,6 +347,7 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "FILE", g->file);
     stem_put(c, "DIRTY", g->dirty ? "1" : "0");
     stem_put(c, "MODE", mode);
+    stem_put(c, "KIND", drawing_kind(g->file));
     return OMR_OK;
 }
 

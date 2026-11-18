@@ -99,8 +99,9 @@ int main(void)
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOPENCNC.1") &&
                strstr(buf, "rect-10mm.svg") && strstr(buf, "pocket") && omr_host_var("ST.DIRTY") &&
                !strcmp(omr_host_var("ST.DIRTY"), "1") && omr_host_var("ST.MODE") &&
-               !strcmp(omr_host_var("ST.MODE"), "pocket"),
-           "STATUS is the port, the file, dirty, and the mode");
+               !strcmp(omr_host_var("ST.MODE"), "pocket") && omr_host_var("ST.KIND") &&
+               !strcmp(omr_host_var("ST.KIND"), "SVG"),
+           "STATUS is the port, the file, dirty, the mode and the drawing");
     expect(run(&g, "SET KEY tool VALUE 3", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3"), "tool 3 for a preview");
     expect(run(&g, "SET KEY mode VALUE profile", &io) == 0 && io.rc == OMR_OK, "profile for a preview");
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW plans the cut");
