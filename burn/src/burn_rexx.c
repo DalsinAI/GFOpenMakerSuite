@@ -4,6 +4,7 @@
 #include "burn_rexx.h"
 
 #include "burn_material.h"
+#include "gs_gcode.h"
 #include "gs_toolpath.h"
 #include "gs_view.h"
 
@@ -966,10 +967,11 @@ static int cmd_mode(void *c, void *g0)
     return OMR_OK;
 }
 
-static int build_path(gb_rexx *g, char *err, int errlen)
+static int build_path(gb_rexx *g, float **speeds, char *err, int errlen)
 {
-    float *speeds = NULL;
+    float *sp = NULL;
     int rc;
+    if (speeds) *speeds = NULL;
     if (!has_doc(g) || !g->path || !g->have_path) {
         snprintf(err, (size_t)errlen, "Open a drawing first");
         return -1;
@@ -977,21 +979,38 @@ static int build_path(gb_rexx *g, char *err, int errlen)
     gt_free(g->path);
     gt_init(g->path);
     *g->have_path = 0;
-    rc = (g->have_image && *g->have_image) ? burn_image_path(g->path, &speeds, g->pic, g->opts)
-                                           : burn_path(g->path, &speeds, g->doc, g->opts);
-    free(speeds);
+    rc = (g->have_image && *g->have_image) ? burn_image_path(g->path, &sp, g->pic, g->opts)
+                                           : burn_path(g->path, &sp, g->doc, g->opts);
     if (rc) {
+        free(sp);
         snprintf(err, (size_t)errlen, "out of memory");
         return -1;
     }
     if (g->path->n < 2) {
+        free(sp);
         snprintf(err, (size_t)errlen, "no paths to burn");
         gt_free(g->path);
         gt_init(g->path);
         return -1;
     }
     *g->have_path = 1;
+    if (speeds) *speeds = sp;
+    else free(sp);
     return 0;
+}
+
+/* Same words as burn_ui_status. */
+static void preview_line(char *buf, int len, const char *name, int moves, float seconds)
+{
+    char time[40];
+    if (seconds > 0.f && seconds < 60.f)
+        snprintf(time, sizeof time, ", about %.1f s", (double)seconds);
+    else if (seconds >= 60.f) {
+        int s = (int)(seconds + 0.5f);
+        snprintf(time, sizeof time, ", about %d min %d s", s / 60, s % 60);
+    } else
+        time[0] = 0;
+    snprintf(buf, (size_t)len, "%d moves for %s%s", moves, (name && name[0]) ? name : "the laser", time);
 }
 
 static int write_ppm(const char *file, const unsigned char *rgb, int w, int h)
@@ -1013,13 +1032,37 @@ static int cmd_preview(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
     const char *file = omr_arg(c, "FILE");
+    float *speeds = NULL;
     char err[160];
     err[0] = 0;
-    if (build_path(g, err, (int)sizeof err)) {
+    if (build_path(g, &speeds, err, (int)sizeof err)) {
         omr_set_result(c, err);
         return OMR_ERROR;
     }
-    if (file && file[0]) {
+    if (!file || !file[0]) {
+        gc_laser L;
+        gc_laser_more more;
+        gc_stats st;
+        char line[160];
+        const om_machine *m = (g->have_machine && g->machine.family == OM_LASER) ? &g->machine : NULL;
+        gc_laser_defaults(&L);
+        if (g->opts) {
+            L.constant = g->opts->constant;
+            L.s100 = g->opts->s100;
+            L.speed = g->opts->speed;
+            L.travel = g->opts->travel;
+        }
+        gc_laser_more_defaults(&more, &L);
+        more.speed = speeds;
+        memset(&st, 0, sizeof st);
+        gc_laser_estimate_more(g->path, m, &more, &st);
+        free(speeds);
+        preview_line(line, (int)sizeof line, m ? m->name : "the laser", st.moves, st.seconds);
+        omr_set_result(c, line);
+        return OMR_OK;
+    }
+    free(speeds);
+    {
         enum { W = 320, H = 240 };
         unsigned char *rgb;
         gs_cam cam;

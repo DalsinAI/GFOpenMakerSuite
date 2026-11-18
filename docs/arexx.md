@@ -676,8 +676,10 @@ The job's default mode: `line`, `fill` or `offset`.
 
 Template: `PREVIEW FILE/K`
 
-Refreshes the window's preview of the job. With `FILE`, also writes a PPM
-of that preview to the file.
+Refreshes the window's preview of the job. With no `FILE`, `RESULT` is
+the window's line: the moves, the laser, and the time when there is
+one. With `FILE`, also writes a PPM of that preview, and `RESULT` is
+that file.
 
 ### FRAME
 
