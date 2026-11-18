@@ -2,7 +2,7 @@
  * Usage: preview W H out.ops [project-drawer] [item]
  * item is a 0-based index, or a name. The picked item's preview is drawn
  * into the view (STL as a solid, SVG/DXF as strokes, G-code as a
- * toolpath; KiCad is listed only) and pasted as a P picture. This is a
+ * toolpath, a Netpbm picture as ink; KiCad is listed only) and pasted as a P picture. This is a
  * host render, not an Amiga run.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "workshop_ui.h"

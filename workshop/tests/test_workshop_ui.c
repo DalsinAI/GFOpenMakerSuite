@@ -182,6 +182,19 @@ static int count_lit(const unsigned char *rgb, int n, unsigned char r0, unsigned
     return lit;
 }
 
+static int count_shade(const unsigned char *rgb, int n, int dark)
+{
+    int i, c = 0;
+    for (i = 0; i < n; i++) {
+        int r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+        if (dark) {
+            if (r < 16 && g < 16 && b < 16) c++;
+        } else if (r > 240 && g > 240 && b > 240)
+            c++;
+    }
+    return c;
+}
+
 static int layout_ok(olui *ui, int w, int h, const char *what)
 {
     olui_rect box[N], view, status, side, bar;
@@ -230,7 +243,7 @@ static int layout_ok(olui *ui, int w, int h, const char *what)
 int main(void)
 {
     olui *ui = olui_new();
-    char err[160], dir[256], stl[320], svg[320], kicad[320], rec[320];
+    char err[160], dir[256], stl[320], svg[320], kicad[320], pgm[320], rec[320];
     workshop w;
     unsigned char *rgb;
     gpr_add_opts o;
@@ -261,6 +274,7 @@ int main(void)
     snprintf(stl, sizeof stl, "%s/body.stl", dir);
     snprintf(svg, sizeof svg, "%s/plate.svg", dir);
     snprintf(kicad, sizeof kicad, "%s/Widget.kicad_pro", dir);
+    snprintf(pgm, sizeof pgm, "%s/bars.pgm", dir);
     snprintf(rec, sizeof rec, "%s/workshop-recent.om", dir);
     mkdir("build", 0755);
     snprintf(rm, sizeof rm, "rm -rf %s", dir);
@@ -269,7 +283,8 @@ int main(void)
     w.have = 1;
     gpr_set_notes(&w.project, "A shelf bracket");
     expect(write_file(stl, cube_stl) == 0 && write_file(svg, plate_svg) == 0 &&
-               write_file(kicad, "(kicad_pro (version 20240101))\n") == 0,
+               write_file(kicad, "(kicad_pro (version 20240101))\n") == 0 &&
+               write_file(pgm, "P2\n4 2\n255\n0 0 255 255\n0 0 255 255\n") == 0,
            "fixture files");
     gpr_add_defaults(&o);
     o.kind = "cad";
@@ -298,6 +313,12 @@ int main(void)
     o.name = "Job";
     o.copy = 0;
     expect(gpr_add(&w.project, &o, err, (int)sizeof err) == 4, err[0] ? err : "add a mill drawing");
+    gpr_add_defaults(&o);
+    o.kind = "laser";
+    o.file = pgm;
+    o.name = "Bars";
+    o.copy = 0;
+    expect(gpr_add(&w.project, &o, err, (int)sizeof err) == 5, err[0] ? err : "add a Netpbm picture");
     w.picked = 0;
     if (strlen(rec) >= sizeof w.recent_path) expect(0, "the recent path is too long");
     else memcpy(w.recent_path, rec, strlen(rec) + 1);
@@ -333,6 +354,10 @@ int main(void)
            "a KiCad file is left to gfamigakicad");
     lit = count_lit(rgb, 80 * 60, 0x14, 0x16, 0x1c);
     expect(lit == 0, "the electronics preview stays a dark view");
+    w.picked = 5;
+    expect(workshop_ui_preview(&w, NULL, rgb, 80, 60, err, (int)sizeof err) == 0, err[0] ? err : "a Netpbm preview");
+    expect(count_shade(rgb, 80 * 60, 1) > 10 && count_shade(rgb, 80 * 60, 0) > 10,
+           "the picture shows black ink and white paper");
     w.picked = 3;
     expect(workshop_ui_preview(&w, NULL, rgb, 80, 60, err, (int)sizeof err) == 0,
            "a render item that points at an STL still shows the solid (the file, not the kind)");

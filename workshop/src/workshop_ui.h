@@ -28,8 +28,9 @@ int workshop_ui_load(olui *ui, char *err, int errlen);
 void workshop_ui_refresh(olui *ui, workshop *w);
 
 /* The picked item into rgb. cam may be NULL (a home camera). 0 painted,
- * or -1 when there is no picture (rgb is still a dark view). A KiCad
- * file is not drawn: gfamigakicad opens it, and err says so. */
+ * or -1 when there is no picture (rgb is still a dark view). A Netpbm
+ * picture is drawn. A KiCad file is not: gfamigakicad opens it, and err
+ * says so. */
 int workshop_ui_preview(const workshop *w, const gs_cam *cam, unsigned char *rgb, int width, int height, char *err,
                         int errlen);
 
