@@ -115,7 +115,9 @@ static int cmd_open(void *c, void *g0)
         return OMR_ERROR;
     }
     g->ws->have = 1;
-    g->ws->picked = -1;
+    g->ws->picked = g->ws->project.n > 0 ? 0 : -1;
+    g->ws->status[0] = 0;
+    g->home = 1;
     omr_set_result(c, g->ws->project.path);
     return OMR_OK;
 }
@@ -328,6 +330,9 @@ static int cmd_add(void *c, void *g0)
         return OMR_ERROR;
     }
     snprintf(buf, sizeof buf, "%d %s", idx + 1, g->ws->project.items[idx].name);
+    g->ws->picked = idx;
+    g->ws->status[0] = 0;
+    g->home = 1;
     omr_set_result(c, buf);
     return OMR_OK;
 }

@@ -155,10 +155,14 @@ int main(void)
                !strcmp(omr_host_var("ST.ITEMS"), "2") && omr_host_var("ST.DIRTY") && !strcmp(omr_host_var("ST.DIRTY"), "1") &&
                omr_host_var("ST.NAME") && !strcmp(omr_host_var("ST.NAME"), "Shelf") && omr_host_var("ST.NOTES") &&
                !strcmp(omr_host_var("ST.NOTES"), "A shelf bracket") && omr_host_var("ST.PICKED") &&
-               !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") && !strcmp(omr_host_var("ST.ITEM"), "") &&
-               omr_host_var("ST.PATH") && !strcmp(omr_host_var("ST.PATH"), ""),
+               !strcmp(omr_host_var("ST.PICKED"), "2") && omr_host_var("ST.ITEM") &&
+               !strcmp(omr_host_var("ST.ITEM"), "Board") && omr_host_var("ST.KIND") &&
+               !strcmp(omr_host_var("ST.KIND"), "electronics") && omr_host_var("ST.PATH") &&
+               strstr(omr_host_var("ST.PATH"), "kicad_pro"),
            "STATUS ITEMS");
-    expect(run(&g, "PICK ITEM 9", &io) == 0 && io.rc == OMR_ERROR && w.picked < 0 && strstr(buf, "no such"),
+    expect(w.picked == 1 && g.home == 1, "ADD shows the new item, as the button");
+    g.home = 0;
+    expect(run(&g, "PICK ITEM 9", &io) == 0 && io.rc == OMR_ERROR && w.picked == 1 && strstr(buf, "no such"),
            "PICK missing");
     {
         int dirty = w.project.dirty;
@@ -218,9 +222,10 @@ int main(void)
 
     expect(run(&g, "SAVE", &io) == 0 && io.rc == OMR_OK && !w.project.dirty, "SAVE after edits");
     w.have = 0;
+    g.home = 0;
     expect(run(&g, "OPEN FILE build/ws-rexx-proj", &io) == 0 && io.rc == OMR_OK && w.have && w.project.n == 1 &&
-               !strcmp(w.project.name, "Shelf"),
-           "OPEN the project again");
+               !strcmp(w.project.name, "Shelf") && w.picked == 0 && g.home == 1,
+           "OPEN the project again, and shows the first item");
     {
         FILE *f = fopen("build/ws-rexx-copy.svg", "w");
         char line[700];
@@ -230,7 +235,8 @@ int main(void)
             fclose(f);
         }
         snprintf(line, sizeof line, "ADD KIND laser FILE %s/build/ws-rexx-copy.svg NAME Copy FROM 1", cwd ? cwd : ".");
-        expect(run(&g, line, &io) == 0 && io.rc == OMR_OK && w.project.n == 2 && w.project.items[1].from == 1,
+        expect(run(&g, line, &io) == 0 && io.rc == OMR_OK && w.project.n == 2 && w.project.items[1].from == 1 &&
+                   w.picked == 1 && g.home == 1,
                "ADD a copy from the first item");
     }
     w.picked = 1;
