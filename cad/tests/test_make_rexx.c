@@ -51,13 +51,6 @@ int main(void)
     g.parts = &ps;
     g.steps = steps;
     g.port_name = "GFOPENMAKE.1";
-    {
-        char err[160];
-        expect(om_load(&g.machine, "machines/printer/marlin/driver.om", err, (int)sizeof err) == 0 &&
-                   om_load(&g.machine, "machines/printer/marlin/profiles/generic-220.om", err, (int)sizeof err) == 0,
-               "Marlin generic-220 for GCODE");
-        g.have_machine = 1;
-    }
 
     io_init(&io, buf, (int)sizeof buf);
     expect(run(&g, "VERSION", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOpenMake"), "VERSION");
@@ -71,6 +64,15 @@ int main(void)
            "SET pattern grid");
     expect(run(&g, "SET KEY no-such VALUE 1", &io) == 0 && io.rc == OMR_ERROR, "SET unknown key");
     expect(run(&g, "SET KEY around VALUE none", &io) == 0 && io.rc == OMR_OK, "SET around none");
+    expect(run(&g, "PRINTER", &io) == 0 && io.rc == OMR_ERROR, "PRINTER needs a file");
+    expect(run(&g, "PRINTER DRIVER machines/laser/grbl/driver.om PROFILE machines/laser/grbl/profiles/generic-diode-400.om",
+               &io) == 0 &&
+               io.rc == OMR_ERROR && !g.have_machine,
+           "PRINTER refuses a laser");
+    expect(run(&g, "PRINTER DRIVER machines/printer/marlin/driver.om PROFILE machines/printer/marlin/profiles/generic-220.om",
+               &io) == 0 &&
+               io.rc == OMR_OK && g.have_machine && g.machine.family == OM_PRINTER && buf[0],
+           "PRINTER Marlin");
     expect(run(&g, "GCODE FILE build/rexx-box.gcode", &io) == 0 && io.rc == OMR_OK, "GCODE");
     {
         FILE *f = fopen("build/rexx-box.gcode", "r");

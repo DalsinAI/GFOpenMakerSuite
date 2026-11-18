@@ -432,6 +432,16 @@ Template: `EXPORT FILE/A`
 Writes the parts as an STL to `FILE`, as the window's Save STL. The same
 as `SAVE FILE`.
 
+### PRINTER
+
+Template: `PRINTER DRIVER/K PROFILE/K`
+
+Picks the printer, as the window's machine list. `DRIVER` is a driver
+file and `PROFILE` a machine profile. At least one is required. A laser
+is refused. When that printer is in the window's list, the list shows
+it and the settings are held to it. RC 10 if the file cannot be read,
+or it is not a printer.
+
 ### GCODE
 
 Template: `GCODE FILE/A`

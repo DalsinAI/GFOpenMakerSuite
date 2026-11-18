@@ -1347,6 +1347,37 @@ static int cmd_pull(void *c, void *g0) { return cmd_face(c, g0, 0); }
 
 static int cmd_chamfer(void *c, void *g0) { return cmd_face(c, g0, 1); }
 
+static int cmd_printer(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    const char *driver = omr_arg(c, "DRIVER"), *profile = omr_arg(c, "PROFILE");
+    char err[160];
+    err[0] = 0;
+    if ((!driver || !driver[0]) && (!profile || !profile[0])) {
+        omr_set_result(c, "DRIVER or PROFILE is required");
+        return OMR_ERROR;
+    }
+    om_clear(&g->machine);
+    g->have_machine = 0;
+    if (driver && driver[0] && om_load(&g->machine, driver, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the driver did not load");
+        return OMR_ERROR;
+    }
+    if (profile && profile[0] && om_load(&g->machine, profile, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the profile did not load");
+        return OMR_ERROR;
+    }
+    if (g->machine.family != OM_PRINTER) {
+        omr_set_result(c, "not a printer");
+        om_clear(&g->machine);
+        return OMR_ERROR;
+    }
+    g->have_machine = 1;
+    changed(g);
+    omr_set_result(c, g->machine.name[0] ? g->machine.name : (profile && profile[0] ? profile : driver));
+    return OMR_OK;
+}
+
 static int cmd_gcode(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
@@ -1558,6 +1589,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PULL", "MM/A FACE/N/K", "pull a face by a distance", cmd_pull},
     {sizeof(omr_verb), "CHAMFER", "MM/A FACE/N/K", "chamfer a face's edges", cmd_chamfer},
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},
+    {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "pick the printer from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "GCODE", "FILE/A", "slice the shown parts and write G-code", cmd_gcode},
     {sizeof(omr_verb), "MEASURE", "X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K", "the distance between two points",
      cmd_measure},

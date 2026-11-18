@@ -1315,6 +1315,28 @@ static void on_bool(olui *ui, const olui_event *ev, void *userdata)
     say(ui, line);
 }
 
+/* The printer the port picked, shown in the list when it is one of ours.
+ * The settings are held to it, as picking it in the list does. */
+static void show_printer(olui *ui)
+{
+    olui_el *sel;
+    int i;
+    if (!ui || !rexx.have_machine || !rexx.machine.name[0]) return;
+    sel = olui_find(ui, "machine");
+    if (!sel) return;
+    for (i = 0; i < printers.n; i++) {
+        gs_settings s;
+        char why[160];
+        if (strcmp(printers.at[i].name, rexx.machine.name) != 0) continue;
+        if (olui_select_index(sel) == i) return;
+        olui_select_set(ui, sel, i);
+        why[0] = 0;
+        omv_settings_fit(ui, &rexx.machine, &s, why, (int)sizeof why);
+        if (why[0]) say(ui, why);
+        return;
+    }
+}
+
 /* The printer picked, loaded; or -1 and why. */
 static int printer(olui *ui, om_machine *m, char *err, int errlen)
 {
@@ -1646,6 +1668,7 @@ int main(int argc, char **argv)
             if (olui_find(ui, "sect")) olui_set_checked(ui, olui_find(ui, "sect"), section_on);
             if (olui_find(ui, "sectz"))
                 olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + (section_z < 0.f ? -0.5f : 0.5f)));
+            show_printer(ui);
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             refresh(ui);
