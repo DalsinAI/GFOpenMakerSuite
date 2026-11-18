@@ -273,6 +273,16 @@ the height in millimetres, held to 0 to 220 and to a tenth, and turns
 the section on, as the height field. `ON` is `1` or `0`. RC 10 if `ON`
 or `Z` is not a number.
 
+### TOOL
+
+Template: `TOOL NAME/A`
+
+The tool buttons. `NAME` is `orbit`, `move`, `rot` (or `rotate`),
+`scale`, `measure`, `pull` or `draw` (or `sketch`). `pull` needs a
+face already picked, as the Drag button. None of these changes the
+part, so none is an undo step. RC 10 if the name is not one of those,
+or Pull has no face.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`

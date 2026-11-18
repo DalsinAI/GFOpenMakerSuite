@@ -255,6 +255,18 @@ int main(void)
            "SECTION holds at 0 mm");
     expect(run(&g, "SECTION ON 0", &io) == 0 && io.rc == OMR_OK && g.section == 0 && strstr(buf, "off"), "SECTION off");
     expect(run(&g, "SECTION Z no", &io) == 0 && io.rc == OMR_ERROR && g.section == 0, "SECTION wants a number");
+    expect(run(&g, "TOOL NAME orbit", &io) == 0 && io.rc == OMR_OK && g.tool == 0 && strstr(buf, "Orbit"), "TOOL orbit");
+    expect(run(&g, "TOOL NAME move", &io) == 0 && io.rc == OMR_OK && g.tool == 1 && strstr(buf, "Move"), "TOOL move");
+    expect(run(&g, "TOOL NAME rotate", &io) == 0 && io.rc == OMR_OK && g.tool == 2, "TOOL rotate");
+    expect(run(&g, "TOOL NAME scale", &io) == 0 && io.rc == OMR_OK && g.tool == 3, "TOOL scale");
+    expect(run(&g, "TOOL NAME measure", &io) == 0 && io.rc == OMR_OK && g.tool == 4, "TOOL measure");
+    expect(run(&g, "TOOL NAME pull", &io) == 0 && io.rc == OMR_ERROR && g.tool == 4 && strstr(buf, "face"),
+           "TOOL pull wants a face");
+    g.face = 0;
+    expect(run(&g, "TOOL NAME pull", &io) == 0 && io.rc == OMR_OK && g.tool == 5 && strstr(buf, "Pull"), "TOOL pull");
+    expect(run(&g, "TOOL NAME draw", &io) == 0 && io.rc == OMR_OK && g.tool == 6 && strstr(buf, "Draw"), "TOOL draw");
+    expect(run(&g, "TOOL NAME sketch", &io) == 0 && io.rc == OMR_OK && g.tool == 6, "TOOL sketch is draw");
+    expect(run(&g, "TOOL NAME lathe", &io) == 0 && io.rc == OMR_ERROR && g.tool == 6, "TOOL refuses an unknown tool");
 
     gs_parts_free(ps);
     ge_steps_free(steps);
