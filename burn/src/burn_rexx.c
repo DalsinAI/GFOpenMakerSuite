@@ -815,6 +815,37 @@ static int cmd_layer(void *c, void *g0)
     return OMR_OK;
 }
 
+static int cmd_machine(void *c, void *g0)
+{
+    gb_rexx *g = app(g0);
+    const char *driver = omr_arg(c, "DRIVER"), *profile = omr_arg(c, "PROFILE");
+    char err[160];
+    err[0] = 0;
+    if ((!driver || !driver[0]) && (!profile || !profile[0])) {
+        omr_set_result(c, "DRIVER or PROFILE is required");
+        return OMR_ERROR;
+    }
+    om_clear(&g->machine);
+    g->have_machine = 0;
+    if (driver && driver[0] && om_load(&g->machine, driver, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the driver did not load");
+        return OMR_ERROR;
+    }
+    if (profile && profile[0] && om_load(&g->machine, profile, err, (int)sizeof err)) {
+        omr_set_result(c, err[0] ? err : "the profile did not load");
+        return OMR_ERROR;
+    }
+    if (g->machine.family != OM_LASER) {
+        omr_set_result(c, "not a laser");
+        om_clear(&g->machine);
+        return OMR_ERROR;
+    }
+    g->have_machine = 1;
+    dirty(g);
+    omr_set_result(c, g->machine.name[0] ? g->machine.name : (profile && profile[0] ? profile : driver));
+    return OMR_OK;
+}
+
 static int cmd_material(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
@@ -1050,6 +1081,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "LAYER", "INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K",
      "Set one layer's overrides", cmd_layer},
     {sizeof(omr_verb), "MATERIAL", "FILE/A", "Load a materials profile", cmd_material},
+    {sizeof(omr_verb), "MACHINE", "DRIVER/K PROFILE/K", "Pick the laser from a driver and profile", cmd_machine},
     {sizeof(omr_verb), "LASER", "POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K",
      "The job's default power, speed and passes", cmd_laser},
     {sizeof(omr_verb), "MODE", "NAME/A", "The job's default mode: line, fill or offset", cmd_mode},
