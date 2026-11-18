@@ -144,6 +144,15 @@ int main(void)
            "HELP lists LAYER");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    expect(run(&g, "MACHINE", &io) == 0 && io.rc == OMR_ERROR, "MACHINE needs a file");
+    expect(run(&g, "MACHINE DRIVER machines/printer/marlin/driver.om PROFILE machines/printer/marlin/profiles/generic-220.om",
+               &io) == 0 &&
+               io.rc == OMR_ERROR && !g.have_machine,
+           "MACHINE refuses a printer");
+    expect(run(&g, "MACHINE DRIVER machines/laser/grbl/driver.om PROFILE machines/laser/grbl/profiles/generic-diode-400.om",
+               &io) == 0 &&
+               io.rc == OMR_OK && g.have_machine && g.machine.family == OM_LASER && buf[0],
+           "MACHINE the generic diode");
     expect(run(&g, "GET KEY power", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "50") == 0, "GET power");
     expect(run(&g, "SET KEY power VALUE 80", &io) == 0 && io.rc == OMR_OK && strstr(buf, "80"), "SET power");
     expect(run(&g, "GET KEY power", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "80") == 0, "GET after SET");

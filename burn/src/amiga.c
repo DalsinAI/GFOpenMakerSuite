@@ -477,6 +477,7 @@ int main(int argc, char **argv)
             strncpy(svg_path, rexx.file, sizeof svg_path - 1);
             svg_path[sizeof svg_path - 1] = 0;
             rexx_sync(ui);
+            if (rexx.have_machine) omv_machines_show(ui, "machine", &lasers, rexx.machine.name);
             if (rexx.quit) goto done;
         }
         if (!(got & mask)) continue;

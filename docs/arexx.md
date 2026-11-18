@@ -537,7 +537,9 @@ separated, the same as `order=` on the command and the window's Up and Dn.
 An empty `order` is the file order. Layers left out follow, in file order.
 The port keeps the list when the window rebuilds the job. Opening a
 drawing clears it. `cuts_last` still sorts the burn when it is on; turn
-it off to burn in that list order.
+it off to burn in that list order. `MACHINE DRIVER PROFILE` picks the
+laser, as the window's list. A printer is refused. When that laser is
+in the list, the list keeps it.
 
 ### LAYER
 
