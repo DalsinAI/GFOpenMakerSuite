@@ -633,7 +633,7 @@ static int cmd_tool(void *c, void *g0)
 static int cmd_layers(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
-    int on, n, has_on, has_n;
+    int on, n, step, has_on, has_n, has_step;
     char buf[64];
     has_on = arg_i(c, "ON", &on);
     if (has_on < 0) {
@@ -645,13 +645,26 @@ static int cmd_layers(void *c, void *g0)
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
+    has_step = arg_i(c, "STEP", &step);
+    if (has_step < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
     if (has_n > 0) {
         if (n < 1) n = 1;
         if (n > 1000000) n = 1000000;
         g->layer_no = n;
     } else if (g->layer_no < 1) g->layer_no = 1;
+    if (has_step > 0) {
+        if (step > 1000000) step = 1000000;
+        if (step < -1000000) step = -1000000;
+        n = g->layer_no + step;
+        if (n < 1) n = 1;
+        if (n > 1000000) n = 1000000;
+        g->layer_no = n;
+    }
     if (has_on > 0) g->layers = on ? 1 : 0;
-    else if (has_n > 0) g->layers = 1;
+    else if (has_n > 0 || has_step > 0) g->layers = 1;
     else g->layers = !g->layers;
     if (!g->layers) {
         omr_set_result(c, "Layers are hidden.");
@@ -1695,7 +1708,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SNAP", "ON/N/K", "snap moves to 1 mm, 15 degrees and 0.1 scale", cmd_snap},
     {sizeof(omr_verb), "SECTION", "ON/N/K Z/K", "hide the picture above a height", cmd_section},
     {sizeof(omr_verb), "TOOL", "NAME/A", "orbit, move, rot, scale, measure, pull or draw", cmd_tool},
-    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K", "show a layer, and which one", cmd_layers},
+    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K STEP/N/K", "show a layer, and which one", cmd_layers},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},

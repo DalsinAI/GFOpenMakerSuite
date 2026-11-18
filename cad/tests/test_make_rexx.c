@@ -282,6 +282,13 @@ int main(void)
         expect(run(&g, "LAYERS INDEX 12", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 12 &&
                    strstr(buf, "Layer 12"),
                "LAYERS index");
+        expect(run(&g, "LAYERS STEP 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 13 && g.layers == 1,
+               "LAYERS next");
+        expect(run(&g, "LAYERS STEP -1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 12, "LAYERS prev");
+        expect(run(&g, "LAYERS INDEX 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1, "LAYERS back to 1");
+        expect(run(&g, "LAYERS STEP -5", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1 && g.layers == 1,
+               "LAYERS step holds at 1");
+        expect(run(&g, "LAYERS STEP no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 1, "LAYERS step wants a number");
         expect(run(&g, "LAYERS INDEX 0", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1 && g.layers == 1,
                "LAYERS index 0 is 1");
         expect(run(&g, "LAYERS INDEX -4", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1, "LAYERS holds at 1");
