@@ -802,18 +802,32 @@ static burn_layer *override_of(gb_rexx *g, int idx, unsigned colour, char *err, 
     return L;
 }
 
+/* The list's row for document layer at (0-based): the job, then that
+ * layer's overrides. Same numbers the window's spinners show. */
+static void layer_row(gb_rexx *g, int at, char *buf, int len)
+{
+    burn_layer ly;
+    burn_layer_of(g->opts, g->doc, at, &ly);
+    snprintf(buf, (size_t)len, "%.0f %.1f %d %s %d %.2f %.2f %d %.2f", (double)ly.power, (double)ly.speed, ly.passes,
+             burn_mode_name(ly.mode), ly.on ? 1 : 0, (double)ly.interval, (double)ly.kerf, ly.tabs, (double)ly.tabw);
+}
+
 static int cmd_layer(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
     const char *colour_s = omr_arg(c, "COLOUR"), *mode_s = omr_arg(c, "MODE");
-    char err[160];
+    char err[160], buf[96];
     burn_layer *L;
-    int idx = 0, has_idx, on = 0, passes = 0, has;
+    int idx = 0, has_idx, on = 0, passes = 0, tabs = 0, has, mode = 0, at, setting;
     unsigned colour = GV_NONE;
-    float power = 0, speed = 0, interval = 0;
+    float power = 0, speed = 0, interval = 0, kerf = 0, tabw = 0;
     err[0] = 0;
     if (!has_doc(g)) {
         omr_set_result(c, "Open a drawing first");
+        return OMR_ERROR;
+    }
+    if (!g->opts) {
+        omr_set_result(c, "no document");
         return OMR_ERROR;
     }
     has_idx = arg_i(c, "INDEX", &idx);
@@ -842,64 +856,115 @@ static int cmd_layer(void *c, void *g0)
             return OMR_ERROR;
         }
     }
-    L = override_of(g, has_idx > 0 ? idx : 0, colour, err, (int)sizeof err);
-    if (!L) {
-        omr_set_result(c, err);
-        return OMR_ERROR;
-    }
     has = arg_f(c, "POWER", &power);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
-    }
-    if (has > 0) {
-        L->power = hold(power, 0.f, 100.f);
-        L->set |= BURN_SET_POWER;
     }
     has = arg_f(c, "SPEED", &speed);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) {
-        L->speed = hold(speed, 0.1f, 500.f);
-        L->set |= BURN_SET_SPEED;
-    }
     has = arg_i(c, "PASSES", &passes);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
-    }
-    if (has > 0) {
-        L->passes = passes < 1 ? 1 : passes;
-        L->set |= BURN_SET_PASSES;
     }
     has = arg_i(c, "ON", &on);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) {
-        L->on = on ? 1 : 0;
-        L->set |= BURN_SET_ON;
-    }
     if (mode_s) {
-        int mode = burn_mode_parse(mode_s);
+        mode = burn_mode_parse(mode_s);
         if (mode < 0) {
             omr_set_result(c, "MODE is line, fill or offset");
             return OMR_ERROR;
         }
-        L->mode = mode;
-        L->set |= BURN_SET_MODE;
     }
     has = arg_f(c, "INTERVAL", &interval);
     if (has < 0) {
         omr_set_result(c, "not a number");
         return OMR_ERROR;
     }
-    if (has > 0) {
+    has = arg_f(c, "KERF", &kerf);
+    if (has < 0 || (has > 0 && kerf < 0.f)) {
+        omr_set_result(c, has < 0 ? "not a number" : "kerf is 0 or more, in mm");
+        return OMR_ERROR;
+    }
+    has = arg_i(c, "TABS", &tabs);
+    if (has < 0 || (has > 0 && tabs < 0)) {
+        omr_set_result(c, "tabs is a whole number, 0 to 32");
+        return OMR_ERROR;
+    }
+    has = arg_f(c, "TABW", &tabw);
+    if (has < 0 || (has > 0 && tabw < 0.f)) {
+        omr_set_result(c, has < 0 ? "not a number" : "tab width is 0 or more, in mm");
+        return OMR_ERROR;
+    }
+    setting = arg_f(c, "POWER", &power) > 0 || arg_f(c, "SPEED", &speed) > 0 || arg_i(c, "PASSES", &passes) > 0 ||
+              arg_i(c, "ON", &on) > 0 || mode_s || arg_f(c, "INTERVAL", &interval) > 0 || arg_f(c, "KERF", &kerf) > 0 ||
+              arg_i(c, "TABS", &tabs) > 0 || arg_f(c, "TABW", &tabw) > 0;
+    at = idx - 1;
+    if (has_idx <= 0) {
+        int i;
+        at = -1;
+        for (i = 0; i < g->doc->nlayer; i++)
+            if (g->doc->layer[i].colour == colour) {
+                at = i;
+                break;
+            }
+    }
+    if (!setting) {
+        if (at < 0) {
+            omr_set_result(c, "no such layer");
+            return OMR_ERROR;
+        }
+        layer_row(g, at, buf, (int)sizeof buf);
+        omr_set_result(c, buf);
+        return OMR_OK;
+    }
+    L = override_of(g, has_idx > 0 ? idx : 0, colour, err, (int)sizeof err);
+    if (!L) {
+        omr_set_result(c, err);
+        return OMR_ERROR;
+    }
+    if (arg_f(c, "POWER", &power) > 0) {
+        L->power = hold(power, 0.f, 100.f);
+        L->set |= BURN_SET_POWER;
+    }
+    if (arg_f(c, "SPEED", &speed) > 0) {
+        L->speed = hold(speed, 0.1f, 500.f);
+        L->set |= BURN_SET_SPEED;
+    }
+    if (arg_i(c, "PASSES", &passes) > 0) {
+        L->passes = passes < 1 ? 1 : passes;
+        L->set |= BURN_SET_PASSES;
+    }
+    if (arg_i(c, "ON", &on) > 0) {
+        L->on = on ? 1 : 0;
+        L->set |= BURN_SET_ON;
+    }
+    if (mode_s) {
+        L->mode = mode;
+        L->set |= BURN_SET_MODE;
+    }
+    if (arg_f(c, "INTERVAL", &interval) > 0) {
         L->interval = hold(interval, 0.01f, 50.f);
         L->set |= BURN_SET_INTERVAL;
+    }
+    if (arg_f(c, "KERF", &kerf) > 0) {
+        L->kerf = hold(kerf, 0.f, 20.f);
+        L->set |= BURN_SET_KERF;
+    }
+    if (arg_i(c, "TABS", &tabs) > 0) {
+        L->tabs = tabs > 32 ? 32 : tabs;
+        L->set |= BURN_SET_TABS;
+    }
+    if (arg_f(c, "TABW", &tabw) > 0) {
+        L->tabw = hold(tabw, 0.f, 20.f);
+        L->set |= BURN_SET_TABW;
     }
     g->opts->layer = g->store;
     dirty(g);
@@ -1233,8 +1298,9 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "GET", "KEY/K STEM/K VAR/K", "Read a job setting", cmd_get},
     {sizeof(omr_verb), "SET", "KEY/A VALUE/A", "Set a job setting", cmd_set},
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the file, whether it is dirty, kind and mode", cmd_status},
-    {sizeof(omr_verb), "LAYER", "INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K",
-     "Set one layer's overrides", cmd_layer},
+    {sizeof(omr_verb), "LAYER",
+     "INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K KERF/K TABS/N/K TABW/K",
+     "one layer's row, as the list", cmd_layer},
     {sizeof(omr_verb), "ORDER", "INDEX/N/A STEP/N/A", "move a layer up or down, as Up and Dn", cmd_order},
     {sizeof(omr_verb), "MATERIAL", "FILE/A", "Load a materials profile", cmd_material},
     {sizeof(omr_verb), "MACHINE", "DRIVER/K PROFILE/K", "Pick the laser from a driver and profile", cmd_machine},

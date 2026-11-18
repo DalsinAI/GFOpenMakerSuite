@@ -175,6 +175,8 @@ int main(void)
            "SET order before a drawing");
     expect(run(&g, "ORDER INDEX 1 STEP -1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "Open a drawing first"),
            "ORDER before a drawing");
+    expect(run(&g, "LAYER INDEX 1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "Open a drawing first"),
+           "LAYER before a drawing");
     expect(run(&g, "LASER POWER 40 SPEED 15 CONSTANT 1", &io) == 0 && io.rc == OMR_OK && opts.power == 40.f &&
                opts.speed == 15.f && opts.constant == 1,
            "LASER");
@@ -183,6 +185,14 @@ int main(void)
     expect(run(&g, "OPEN FILE core/tests/data/rect-10mm.svg", &io) == 0 && io.rc == OMR_OK && have_doc &&
                g.dirty == 0 && doc.n >= 1,
            "OPEN svg");
+    {
+        int dirty = g.dirty, n = opts.nlayer;
+        expect(doc.nlayer >= 1 && run(&g, "LAYER INDEX 1", &io) == 0 && io.rc == OMR_OK &&
+                   !strcmp(buf, "50 20.0 1 line 1 0.20 0.00 0 1.00") && g.dirty == dirty && opts.nlayer == n,
+               "LAYER reads the row and does not dirty");
+        expect(run(&g, "LAYER INDEX 1 KERF -1", &io) == 0 && io.rc == OMR_ERROR && opts.nlayer == n,
+               "a negative kerf is refused");
+    }
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "rect-10mm.svg") &&
                omr_host_var("ST.KIND") && strstr(omr_host_var("ST.KIND"), "SVG") && omr_host_var("ST.LAYERS") &&
                atoi(omr_host_var("ST.LAYERS")) >= 1,
@@ -227,6 +237,20 @@ int main(void)
     expect(run(&g, "SET KEY tabs VALUE 0", &io) == 0 && io.rc == OMR_OK && opts.tabs == 0 && store[0].tabs == 0,
            "tabs back to none");
     expect(run(&g, "SET KEY tabw VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.tabw == 1.f, "tab width back to 1");
+    {
+        int n = opts.nlayer;
+        expect(run(&g, "LAYER INDEX 1 KERF 0.15", &io) == 0 && io.rc == OMR_OK && store[0].kerf == 0.15f &&
+                   (store[0].set & BURN_SET_KERF) && opts.kerf == 0.f && opts.nlayer == n,
+               "LAYER kerf is that row, not the job");
+        expect(run(&g, "LAYER INDEX 1", &io) == 0 && io.rc == OMR_OK && strstr(buf, " 0.15 "), "LAYER reads that kerf");
+        expect(run(&g, "LAYER INDEX 1 TABS 3 TABW 0.4", &io) == 0 && io.rc == OMR_OK && store[0].tabs == 3 &&
+                   store[0].tabw == 0.4f && opts.tabs == 0 && opts.tabw == 1.f,
+               "LAYER tabs are that row");
+        expect(run(&g, "LAYER INDEX 1 TABS 40", &io) == 0 && io.rc == OMR_OK && store[0].tabs == 32, "tabs are held to 32");
+        expect(run(&g, "LAYER INDEX 1 KERF 0 TABS 0 TABW 1", &io) == 0 && io.rc == OMR_OK && store[0].kerf == 0.f &&
+                   store[0].tabs == 0 && store[0].tabw == 1.f,
+               "that row's kerf and tabs back to none");
+    }
     expect(run(&g, "LAYER INDEX 9 POWER 10", &io) == 0 && io.rc == OMR_ERROR, "LAYER missing");
 
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2 && g.machine.name[0] &&
@@ -276,6 +300,12 @@ int main(void)
 
     expect(run(&g, "OPEN FILE burn/tests/data/two-rects.svg", &io) == 0 && io.rc == OMR_OK && doc.nlayer >= 2,
            "OPEN two-rects");
+    expect(run(&g, "LAYER INDEX 1 KERF 0.15", &io) == 0 && io.rc == OMR_OK && opts.nlayer == 1 && store[0].kerf == 0.15f &&
+               opts.kerf == 0.f,
+           "LAYER kerf stays on the first row");
+    expect(run(&g, "LAYER INDEX 2", &io) == 0 && io.rc == OMR_OK && strstr(buf, " 0.00 0 1.00") && opts.nlayer == 1,
+           "the other row keeps the job kerf");
+    expect(run(&g, "LAYER INDEX 1 KERF 0", &io) == 0 && io.rc == OMR_OK && store[0].kerf == 0.f, "that kerf back to none");
     expect(run(&g, "SET KEY order VALUE 2,1", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "2,1") && opts.nseq == 2 &&
                opts.seq && opts.seq[0] == 1 && opts.seq[1] == 0 && g.have_order,
            "SET order 2,1");
