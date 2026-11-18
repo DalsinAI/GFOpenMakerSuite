@@ -407,6 +407,10 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, NULL, "FILAMENT", nbuf);
     snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced && (j->how & GC_FELL_BACK)) ? 1 : 0);
     stem_put(c, NULL, "ROUGH", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", g->layers ? 1 : 0);
+    stem_put(c, NULL, "PICTURE", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", g->layer_no < 1 ? 1 : g->layer_no);
+    stem_put(c, NULL, "LAYER", nbuf);
     return OMR_OK;
 }
 
