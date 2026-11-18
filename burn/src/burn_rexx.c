@@ -141,6 +141,7 @@ static int cmd_open(void *c, void *g0)
         burn_defaults(g->opts);
         g->opts->layer = g->store;
         g->opts->nlayer = 0;
+        gb_rexx_keep(g);
     }
     if (burn_is_image(file)) {
         if (!g->pic || burn_image_load(g->pic, file, err, (int)sizeof err) ||
@@ -210,7 +211,8 @@ static int cmd_hide(void *c, void *g0)
 }
 
 static const char *const job_keys[] = {"power",  "speed",    "travel", "passes",   "constant",
-                                       "s100",   "mode",     "interval", "cuts_last", "start", "end", NULL};
+                                       "s100",   "mode",     "interval", "cuts_last", "start", "end",
+                                       "invert", "width", NULL};
 
 static int key_of(const char *s)
 {
@@ -258,6 +260,12 @@ static void key_value(const burn_opts *o, int k, char *buf, int len)
         break;
     case 10:
         snprintf(buf, (size_t)len, "%s", o->end ? o->end : "");
+        break;
+    case 11:
+        snprintf(buf, (size_t)len, "%d", o->invert ? 1 : 0);
+        break;
+    case 12:
+        snprintf(buf, (size_t)len, "%g", (double)o->width);
         break;
     default:
         break;
@@ -314,6 +322,21 @@ static int set_key(burn_opts *o, int k, const char *value, char *err, int errlen
             return -1;
         }
         o->mode = mode;
+        return 0;
+    case 11:
+        if (flag01(value, &n)) {
+            snprintf(err, (size_t)errlen, "use 0 or 1");
+            return -1;
+        }
+        o->invert = n;
+        return 0;
+    case 12:
+        f = (float)strtod(value, &end);
+        if (!end || end == value || f < 0.f) {
+            snprintf(err, (size_t)errlen, "width is 0 or more, in mm");
+            return -1;
+        }
+        o->width = hold(f, 0.f, 2000.f);
         return 0;
     default:
         snprintf(err, (size_t)errlen, "unknown key");
@@ -400,6 +423,8 @@ static int cmd_set(void *c, void *g0)
         omr_set_result(c, err);
         return OMR_ERROR;
     }
+    if (k == 11) g->invert = g->opts->invert;
+    if (k == 12) g->width = g->opts->width;
     dirty(g);
     key_value(g->opts, k, buf, (int)sizeof buf);
     omr_set_result(c, buf);
@@ -821,6 +846,15 @@ void gb_rexx_init(gb_rexx *g)
     if (!g) return;
     memset(g, 0, sizeof *g);
     g->size = (int)sizeof *g;
+}
+
+void gb_rexx_keep(gb_rexx *g)
+{
+    if (!g || !g->opts) return;
+    g->opts->start = g->start[0] ? g->start : NULL;
+    g->opts->end = g->end[0] ? g->end : NULL;
+    g->opts->invert = g->invert;
+    g->opts->width = g->width;
 }
 
 const omr_verb *gb_rexx_verbs(void) { return verbs; }

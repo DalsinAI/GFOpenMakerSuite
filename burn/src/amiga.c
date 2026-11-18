@@ -90,8 +90,7 @@ static void read_opts(olui *ui)
     burn_ui_read(ui, &opts, layers, 64);
     opts.nseq = burn_ui_order(ui, layer_seq, 64);
     opts.seq = opts.nseq ? layer_seq : NULL;
-    if (rexx.start[0]) opts.start = rexx.start;
-    if (rexx.end[0]) opts.end = rexx.end;
+    gb_rexx_keep(&rexx);
 }
 
 static void on_shift(olui *ui, const olui_event *ev, void *userdata)

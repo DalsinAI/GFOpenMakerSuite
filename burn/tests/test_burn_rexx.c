@@ -164,6 +164,19 @@ int main(void)
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.KIND") &&
                strstr(omr_host_var("ST.KIND"), "Picture"),
            "STATUS KIND Picture");
+    expect(run(&g, "SET KEY invert VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.invert == 1 && g.invert == 1,
+           "SET invert");
+    expect(run(&g, "SET KEY invert VALUE 2", &io) == 0 && io.rc == OMR_ERROR, "invert is 0 or 1");
+    expect(opts.invert == 1, "a refused invert left 1 in place");
+    expect(run(&g, "SET KEY width VALUE 16", &io) == 0 && io.rc == OMR_OK && opts.width == 16.f && g.width == 16.f,
+           "SET width 16 mm");
+    expect(run(&g, "SET KEY width VALUE -1", &io) == 0 && io.rc == OMR_ERROR, "a negative width is refused");
+    burn_defaults(&opts);
+    gb_rexx_keep(&g);
+    expect(opts.invert == 1 && opts.width == 16.f && opts.start && !strcmp(opts.start, "M117 hello"),
+           "the port keeps invert, width and the lines after the window rebuilds the job");
+    expect(run(&g, "SAVE FILE build/rexx-bars.gcode", &io) == 0 && io.rc == OMR_OK, "SAVE the picture");
+    expect(file_has("build/rexx-bars.gcode", "X16"), "invert and a 16 mm width reach the far edge");
 
     expect(run(&g, "OPEN FILE no-such.svg", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
     g.dirty = 1;
