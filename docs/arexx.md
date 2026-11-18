@@ -738,7 +738,7 @@ or `drill`), `x`, `y`, `start`, `end`. A number is held to that field's range on
 window. `start` and `end` are lines of your own, after the machine's start
 and before its end. The window has no field for them. `STATUS` adds `MODE`,
 `KIND` (`SVG`, `DXF` or `File`, the window's drawing label) and `MILL`
-(the mill's name, or empty).
+(the mill's name, or empty). `stem.X` and `stem.Y` are the place fields.
 `MILL DRIVER PROFILE` picks the mill, as the window's list. A printer is
 refused. When that mill is in the list, the list keeps it.
 `LOOK` is `top`, `front`, `side` or `frame`. Frame is the view at open:

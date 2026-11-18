@@ -356,6 +356,18 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "MODE", mode);
     stem_put(c, "KIND", drawing_kind(g->file));
     stem_put(c, "MILL", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
+    {
+        char pbuf[32];
+        if (g->opts) {
+            key_text(g->opts, key_of("x"), pbuf, (int)sizeof pbuf);
+            stem_put(c, "X", pbuf);
+            key_text(g->opts, key_of("y"), pbuf, (int)sizeof pbuf);
+            stem_put(c, "Y", pbuf);
+        } else {
+            stem_put(c, "X", "");
+            stem_put(c, "Y", "");
+        }
+    }
     return OMR_OK;
 }
 
