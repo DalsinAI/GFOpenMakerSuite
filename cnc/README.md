@@ -18,4 +18,5 @@ plunge are millimetres a second, written as millimetres a minute.
 The window is `src/amiga.c`, binary GFOpenCNC. Open an SVG or a DXF,
 pick Profile, Pocket or Drill, Preview the cut, and Save G-code for the
 mill picked. It fits 640 by 480 inside and is resizable. The view is the
-toolpath, drawn with the pens. ARexx follows.
+toolpath, drawn with the pens. ARexx is `GFOPENCNC.1`: the shared
+commands, and the cut's keys. There is no preview command yet.
