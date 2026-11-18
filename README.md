@@ -130,7 +130,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-GFOpenCNC's port has no PREVIEW. The laser window does not take your own start and end lines; the profile's do.
+The laser window does not take your own start and end lines; the profile's do.
 
 ## Building
 

@@ -70,6 +70,8 @@ int main(void)
     expect(run(&g, "ACTIVATE", &io) == 0 && io.rc == OMR_OK, "ACTIVATE with no window");
     expect(run(&g, "HIDE", &io) == 0 && io.rc == OMR_OK, "HIDE with no window");
     expect(run(&g, "OPEN", &io) == 0 && io.rc == OMR_ERROR, "OPEN with no FILE is refused");
+    expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "drawing"),
+           "PREVIEW with no drawing is refused");
     expect(run(&g, "OPEN FILE work:missing.svg", &io) == 0 && io.rc == OMR_ERROR && buf[0],
            "a missing drawing says why");
     expect(have_doc == 0, "a failed open leaves the document closed");
@@ -98,6 +100,18 @@ int main(void)
                !strcmp(omr_host_var("ST.DIRTY"), "1") && omr_host_var("ST.MODE") &&
                !strcmp(omr_host_var("ST.MODE"), "pocket"),
            "STATUS is the port, the file, dirty, and the mode");
+    expect(run(&g, "SET KEY tool VALUE 3", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3"), "tool 3 for a preview");
+    expect(run(&g, "SET KEY mode VALUE profile", &io) == 0 && io.rc == OMR_OK, "profile for a preview");
+    expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW plans the cut");
+    expect(run(&g, "PREVIEW FILE build/cnc-rexx.ppm", &io) == 0 && io.rc == OMR_OK && strstr(buf, "cnc-rexx.ppm"),
+           "PREVIEW FILE");
+    {
+        FILE *f = fopen("build/cnc-rexx.ppm", "rb");
+        char mag[3] = {0};
+        int ok = f && fread(mag, 1, 2, f) == 2 && mag[0] == 'P' && mag[1] == '6';
+        if (f) fclose(f);
+        expect(ok, "PREVIEW wrote a PPM");
+    }
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && !g.quit, "QUIT refuses a dirty document");
     expect(run(&g, "SAVE FILE build/cnc-rexx-none.nc", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "no mill"),
            "SAVE with no mill is refused");
@@ -119,7 +133,8 @@ int main(void)
     g.quit = 0;
     g.dirty = 1;
     expect(run(&g, "QUIT FORCE", &io) == 0 && io.rc == OMR_OK && g.quit, "QUIT FORCE discards a dirty document");
-    expect(run(&g, "HELP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPEN") && strstr(buf, "SAVE"),
+    expect(run(&g, "HELP", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPEN") && strstr(buf, "SAVE") &&
+               strstr(buf, "PREVIEW"),
            "HELP lists the commands");
     gv_doc_free(&doc);
     gt_free(&path);
