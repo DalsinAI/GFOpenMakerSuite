@@ -101,6 +101,11 @@ int main(void)
            "STATUS has no project to name");
     expect(run(&g, "ADD KIND laser FILE x NAME Plate", &io) == 0 && io.rc == OMR_ERROR, "ADD with no project");
     expect(run(&g, "PICK ITEM 1", &io) == 0 && io.rc == OMR_ERROR, "PICK with no project");
+    expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2 && !strcmp(buf, "Side."),
+           "LOOK side");
+    expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && !strcmp(buf, "Framed."),
+           "LOOK frame");
+    expect(run(&g, "LOOK NAME under", &io) == 0 && io.rc == OMR_ERROR && g.look == 3, "LOOK wants a view");
 
     cwd = getcwd(NULL, 0);
     expect(cwd != NULL && join2(dir, (int)sizeof dir, cwd ? cwd : ".", "/build/ws-rexx-proj") == 0, "the working directory");

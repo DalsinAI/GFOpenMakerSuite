@@ -589,6 +589,28 @@ static int cmd_recent(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const look_names[] = {"top", "front", "side", "frame"};
+static const char *const look_said[] = {"Top.", "Front.", "Side.", "Framed."};
+
+/* Top, front, side, or the view at open. The picture changes. The project does not. */
+static int cmd_look(void *c, void *g0)
+{
+    gw_rexx *g = app(g0);
+    const char *name = omr_arg(c, "NAME");
+    int which = -1, i;
+    if (name) {
+        for (i = 0; i < 4; i++)
+            if (eqi(name, look_names[i])) which = i;
+    }
+    if (which < 0) {
+        omr_set_result(c, "NAME is top, front, side or frame");
+        return OMR_ERROR;
+    }
+    g->look = which;
+    omr_set_result(c, look_said[which]);
+    return OMR_OK;
+}
+
 static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty project", cmd_quit},
@@ -608,6 +630,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "OPENITEM", "ITEM/A", "Open an item in its app", cmd_openitem},
     {sizeof(omr_verb), "SEND", "APP/A CMD/F/A", "Pass a command to another app's port", cmd_send},
     {sizeof(omr_verb), "RECENT", "STEM/K VAR/K", "The recent projects", cmd_recent},
+    {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
 };
 
 void gw_rexx_init(gw_rexx *g)
@@ -615,6 +638,7 @@ void gw_rexx_init(gw_rexx *g)
     if (!g) return;
     memset(g, 0, sizeof *g);
     g->size = (int)sizeof *g;
+    g->look = -1;
 }
 
 const omr_verb *gw_rexx_verbs(void) { return verbs; }
