@@ -1762,6 +1762,39 @@ static int cmd_facts(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The Face row's PLA, and a mark when the part hangs off the plate. */
+static int cmd_mass(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_parts *ps = list(g);
+    gs_mesh *m;
+    gs_facts f;
+    char mass[48], nbuf[32];
+    int off;
+    if (!ps) {
+        omr_set_result(c, "no document");
+        return OMR_ERROR;
+    }
+    m = picked(g);
+    if (!m || !m->n) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    ge_mass_line(mass, (int)sizeof mass, m);
+    if (!mass[0]) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    omr_set_result(c, mass);
+    if (gm_facts(m, &f) == 0) {
+        snprintf(nbuf, sizeof nbuf, "%.3f", (double)(f.volume / 1000.f * 1.24f));
+        stem_put(c, "ST", "MASS", nbuf);
+    }
+    off = m->min.x < -0.2f || m->max.x > GS_BED + 0.2f || m->min.y < -0.2f || m->max.y > GS_BED + 0.2f || m->min.z < -0.4f;
+    stem_put(c, "ST", "OFF", off ? "1" : "0");
+    return OMR_OK;
+}
+
 static int cmd_version(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
@@ -1824,6 +1857,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "MEASURE", "X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K", "the distance between two points",
      cmd_measure},
     {sizeof(omr_verb), "FACTS", "PART/N/K STEM/K VAR/K", "a part's volume, surface, size and triangles", cmd_facts},
+    {sizeof(omr_verb), "MASS", "STEM/K VAR/K", "the picked part's PLA, and when it hangs off the plate", cmd_mass},
 };
 
 void gm_rexx_init(gm_rexx *g)

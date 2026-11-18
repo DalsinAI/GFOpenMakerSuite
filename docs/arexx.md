@@ -518,6 +518,17 @@ picked part, or `PART` (1-based). `RESULT` is the same line the window
 shows. `STEM` has `stem.VOLUME`, `stem.SURFACE`, `stem.X`, `stem.Y`,
 `stem.Z`, `stem.TRIANGLES`.
 
+### MASS
+
+Template: `MASS STEM/K VAR/K`
+
+The Face row's PLA, for the picked part, at 1.24 g/cm³. `RESULT` is the
+same line the window shows: the grams, and `off the plate` when the part
+hangs off the 220 mm plate or sits below the bed. `STEM` has `stem.MASS`
+(grams) and `stem.OFF` (`1` or `0`). It does not change the part, and it
+is not an undo step. The face index is `STATUS`'s `stem.FACE`. RC 10 if
+there is no part.
+
 ## OpenMakeSlicer (port `OPENMAKESLICER.1`)
 
 The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes

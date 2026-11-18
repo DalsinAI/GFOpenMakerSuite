@@ -125,6 +125,21 @@ int main(void)
     expect(run(&g, "FACTS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "triangles") &&
                omr_host_var("ST.TRIANGLES") && atoi(omr_host_var("ST.TRIANGLES")) > 0,
            "FACTS");
+    {
+        int dirty = g.dirty, back = ge_steps_back(steps);
+        const char *off;
+        expect(run(&g, "MASS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, " g") && !strstr(buf, "off the plate"),
+               "MASS on the plate");
+        off = omr_host_var("ST.OFF");
+        expect(off && !strcmp(off, "0") && omr_host_var("ST.MASS") && atof(omr_host_var("ST.MASS")) > 1.0,
+               "MASS stem, on the plate");
+        expect(g.dirty == dirty && ge_steps_back(steps) == back && g.face == -1, "MASS is not an undo step");
+    }
+    expect(run(&g, "PLACE X 400", &io) == 0 && io.rc == OMR_OK, "PLACE the part off the plate");
+    expect(run(&g, "MASS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "off the plate") && omr_host_var("ST.OFF") &&
+               !strcmp(omr_host_var("ST.OFF"), "1"),
+           "MASS marks a part off the plate");
+    expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK, "UNDO the place");
     expect(run(&g, "MEASURE X1 0 Y1 0 Z1 0 X2 10 Y2 0 Z2 0 STEM ST", &io) == 0 && io.rc == OMR_OK &&
                strstr(buf, "10.0") && omr_host_var("ST.DISTANCE") && strstr(omr_host_var("ST.DISTANCE"), "10"),
            "MEASURE 10 mm");
