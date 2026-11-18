@@ -36,6 +36,21 @@ static int load_laser(om_machine *m, char *err, int errlen)
            om_load(m, "machines/laser/grbl/profiles/generic-diode-400.om", err, errlen);
 }
 
+static int file_has(const char *path, const char *what)
+{
+    FILE *f = fopen(path, "r");
+    char line[240];
+    int ok = 0;
+    if (!f) return 0;
+    while (fgets(line, (int)sizeof line, f))
+        if (strstr(line, what)) {
+            ok = 1;
+            break;
+        }
+    fclose(f);
+    return ok;
+}
+
 static int gcode_has_move(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -127,8 +142,17 @@ int main(void)
         expect(ok, "PREVIEW wrote a PPM");
     }
 
+    expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK && opts.start &&
+               !strcmp(opts.start, "M117 hello"),
+           "SET start");
+    expect(run(&g, "GET KEY start", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "M117 hello"), "GET start");
+    expect(run(&g, "SET KEY end VALUE \"M300 S10\"", &io) == 0 && io.rc == OMR_OK && opts.end &&
+               !strcmp(opts.end, "M300 S10"),
+           "SET end");
     expect(run(&g, "SAVE FILE build/rexx-burn.gcode", &io) == 0 && io.rc == OMR_OK && g.dirty == 0, "SAVE");
-    expect(gcode_has_move("build/rexx-burn.gcode"), "SAVE wrote moves");
+    expect(gcode_has_move("build/rexx-burn.gcode") && file_has("build/rexx-burn.gcode", "M117 hello") &&
+               file_has("build/rexx-burn.gcode", "M300 S10"),
+           "SAVE wrote the cut and the user's lines");
     expect(run(&g, "FRAME FILE build/rexx-frame.gcode", &io) == 0 && io.rc == OMR_OK, "FRAME");
     expect(gcode_has_move("build/rexx-frame.gcode"), "FRAME wrote moves");
 
