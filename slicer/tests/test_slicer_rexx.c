@@ -2,6 +2,8 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "slicer_rexx.h"
 
+#include "gs_gcode.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,6 +166,8 @@ int main(void)
                job.tasks == 2 && g.fresh == 1 && strstr(buf, "layers") && omr_host_var("ST.LAYERS") &&
                atoi(omr_host_var("ST.LAYERS")) > 0,
            "SLICE");
+    expect(omr_host_var("ST.ROUGH") && !strcmp(omr_host_var("ST.ROUGH"), (job.how & GC_FELL_BACK) ? "1" : "0"),
+           "SLICE says when the time is short");
     {
         int dirty = g.dirty, n = job.path.nlayers;
         expect(n > 4, "the cube has more than four layers");
