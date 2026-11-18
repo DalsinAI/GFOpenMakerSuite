@@ -111,7 +111,7 @@ int main(void)
                !strcmp(omr_host_var("ST.5.KIND"), "electronics") && omr_host_var("ST.5.APP") &&
                !strcmp(omr_host_var("ST.5.APP"), "gfamigakicad") && omr_host_var("ST.5.PORT") &&
                !strcmp(omr_host_var("ST.5.PORT"), ""),
-           "KINDS names the Add buttons");
+           "KINDS names the Add list");
     expect(run(&g, "PICK ITEM 1", &io) == 0 && io.rc == OMR_ERROR, "PICK with no project");
     expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2 && !strcmp(buf, "Side."),
            "LOOK side");
