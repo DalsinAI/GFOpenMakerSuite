@@ -669,13 +669,17 @@ in the list, the list keeps it.
 
 ### LAYER
 
-Template: `LAYER INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K`
+Template: `LAYER INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K KERF/K TABS/N/K TABW/K`
 
-Sets one layer. Identify it with `INDEX` (1-based in the document's layer
-list) or `COLOUR` (`#rrggbb`). The other keywords are that layer's
-overrides, as the window and `layer=` on the command. `MODE` is `line`,
-`fill` or `offset`. `ON` is `1` or `0`. RC 10 if there is no such layer,
-or if a value is bad, with why in `RESULT`.
+Sets one layer, or reads the row the list shows. Identify it with `INDEX`
+(1-based in the document's layer list) or `COLOUR` (`#rrggbb`). With none
+of the other keywords, `RESULT` is that row and the job is not marked
+dirty: power, speed, passes, mode, on, gap, kerf, tabs and tab width, in
+that order, the same numbers as the spinners. `KERF`, `TABS` and `TABW`
+set that one row, as its spinners, not every row. `TABW` `0` is shown as
+1 mm, the same as the job. The other keywords are that layer's overrides.
+`MODE` is `line`, `fill` or `offset`. `ON` is `1` or `0`. RC 10 if there
+is no such layer, or if a value is bad, with why in `RESULT`.
 
 ### MATERIAL
 
