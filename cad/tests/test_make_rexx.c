@@ -2,6 +2,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "make_rexx.h"
 
+#include "gs_gcode.h"
 #include "gs_model.h"
 #include "om_machine.h"
 
@@ -92,8 +93,10 @@ int main(void)
     expect(run(&g, "GCODE FILE build/rexx-box.gcode", &io) == 0 && io.rc == OMR_OK, "GCODE");
     {
         int dirty = g.dirty, back = ge_steps_back(steps);
-        expect(run(&g, "SLICE", &io) == 0 && io.rc == OMR_OK && g.sliced == 1 && g.slice_layers > 0 &&
-                   g.slice_moves > 0 && g.slice_tasks >= 1 && g.slice_tasks <= 64 && strstr(buf, "layers"),
+        expect(run(&g, "SLICE STEM ST", &io) == 0 && io.rc == OMR_OK && g.sliced == 1 && g.slice_layers > 0 &&
+                   g.slice_moves > 0 && g.slice_tasks >= 1 && g.slice_tasks <= 64 && strstr(buf, "layers") &&
+                   omr_host_var("ST.ROUGH") &&
+                   !strcmp(omr_host_var("ST.ROUGH"), (g.slice_how & GC_FELL_BACK) ? "1" : "0"),
                "SLICE");
         expect(g.dirty == dirty && ge_steps_back(steps) == back, "SLICE is not an undo step");
     }

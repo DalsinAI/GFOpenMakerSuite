@@ -512,12 +512,13 @@ made on one task a core, held from 1 to 64, the same as `SLICE`.
 
 ### SLICE
 
-Template: `SLICE`
+Template: `SLICE STEM/K VAR/K`
 
 Slices the shown parts with the current print settings, as the window's
 Slice button. The layers are made on one task a core, held from 1 to 64.
 `RESULT` is the layers, the moves, the time and the
-filament. The window shows that toolpath. It does not write a file, and
+filament. `STEM` has `stem.ROUGH` (`1` when the time is short, the window's
+"over", or `0`). The window shows that toolpath. It does not write a file, and
 it does not change the part, so it is not an undo step. A new layer
 height from `SET` is the height the picture is cut at, held to 0.08 mm
 to 0.8 mm. RC 10 if there is nothing to slice.
