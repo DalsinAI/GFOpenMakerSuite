@@ -628,6 +628,39 @@ static int cmd_tool(void *c, void *g0)
     return OMR_OK;
 }
 
+/* Show a layer, and which one. The picture changes. The part does not. */
+static int cmd_layers(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    int on, n, has_on, has_n;
+    char buf[64];
+    has_on = arg_i(c, "ON", &on);
+    if (has_on < 0) {
+        omr_set_result(c, "use 0 or 1");
+        return OMR_ERROR;
+    }
+    has_n = arg_i(c, "INDEX", &n);
+    if (has_n < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (has_n > 0) {
+        if (n < 1) n = 1;
+        if (n > 1000000) n = 1000000;
+        g->layer_no = n;
+    } else if (g->layer_no < 1) g->layer_no = 1;
+    if (has_on > 0) g->layers = on ? 1 : 0;
+    else if (has_n > 0) g->layers = 1;
+    else g->layers = !g->layers;
+    if (!g->layers) {
+        omr_set_result(c, "Layers are hidden.");
+        return OMR_OK;
+    }
+    snprintf(buf, sizeof buf, "Layer %d.", g->layer_no);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int write_stl(gm_rexx *g, omr_cmd *c, const char *file)
 {
     gs_mesh *m = picked(g);
@@ -1597,6 +1630,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "SNAP", "ON/N/K", "snap moves to 1 mm, 15 degrees and 0.1 scale", cmd_snap},
     {sizeof(omr_verb), "SECTION", "ON/N/K Z/K", "hide the picture above a height", cmd_section},
     {sizeof(omr_verb), "TOOL", "NAME/A", "orbit, move, rot, scale, measure, pull or draw", cmd_tool},
+    {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K", "show a layer, and which one", cmd_layers},
     {sizeof(omr_verb), "SAVE", "FILE/K", "write the picked part as an STL", cmd_save},
     {sizeof(omr_verb), "ACTIVATE", "", "bring the window to the front", cmd_activate},
     {sizeof(omr_verb), "HIDE", "", "send the window to the back", cmd_hide},
@@ -1642,6 +1676,7 @@ void gm_rexx_init(gm_rexx *g)
     g->face = -1;
     g->look = -1;
     g->tool = -1;
+    g->layer_no = 1;
     g->version = "GFOpenMake 0.1.0";
     gs_settings_default(&g->set);
 }

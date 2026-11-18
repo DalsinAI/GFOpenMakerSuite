@@ -36,6 +36,8 @@ typedef struct gm_rexx {
     int section; /* 0 off, 1: hide the picture above section_z */
     float section_z;
     int tool; /* -1: leave it. 0 orbit, 1 move, 2 rot, 3 scale, 4 measure, 5 pull, 6 draw */
+    int layers;   /* 0 hide the layer picture, 1 show it */
+    int layer_no; /* 1-based layer the slider shows */
 } gm_rexx;
 
 #define GM_REXX_PORT "GFOPENMAKE"

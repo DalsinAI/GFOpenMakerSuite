@@ -283,6 +283,18 @@ face already picked, as the Drag button. None of these changes the
 part, so none is an undo step. RC 10 if the name is not one of those,
 or Pull has no face.
 
+### LAYERS
+
+Template: `LAYERS ON/N/K INDEX/N/K`
+
+The Layers group: show one layer of the picture, and which one. It does
+not cut the part, and it is not an undo step. With neither `ON` nor
+`INDEX`, it toggles, as the Show a layer checkbox. `INDEX` is the layer,
+1 for the first, and turns the picture on, as the slider, Prev and Next.
+A number below 1 is 1. The window holds a higher number to the layers of
+the part. `ON` is `1` or `0` (any other number is on). RC 10 if `ON` or
+`INDEX` is not a number.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`

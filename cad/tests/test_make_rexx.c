@@ -267,6 +267,26 @@ int main(void)
     expect(run(&g, "TOOL NAME draw", &io) == 0 && io.rc == OMR_OK && g.tool == 6 && strstr(buf, "Draw"), "TOOL draw");
     expect(run(&g, "TOOL NAME sketch", &io) == 0 && io.rc == OMR_OK && g.tool == 6, "TOOL sketch is draw");
     expect(run(&g, "TOOL NAME lathe", &io) == 0 && io.rc == OMR_ERROR && g.tool == 6, "TOOL refuses an unknown tool");
+    {
+        int back = ge_steps_back(steps), dirty = g.dirty;
+        expect(g.layers == 0 && g.layer_no == 1, "layers start hidden, on layer 1");
+        expect(run(&g, "LAYERS", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 1 && strstr(buf, "Layer 1"),
+               "LAYERS turns the picture on");
+        expect(run(&g, "LAYERS INDEX 12", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 12 &&
+                   strstr(buf, "Layer 12"),
+               "LAYERS index");
+        expect(run(&g, "LAYERS INDEX 0", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1 && g.layers == 1,
+               "LAYERS index 0 is 1");
+        expect(run(&g, "LAYERS INDEX -4", &io) == 0 && io.rc == OMR_OK && g.layer_no == 1, "LAYERS holds at 1");
+        expect(run(&g, "LAYERS ON 0", &io) == 0 && io.rc == OMR_OK && g.layers == 0 && strstr(buf, "hidden"),
+               "LAYERS hides the picture");
+        expect(run(&g, "LAYERS INDEX 4", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 4,
+               "an index shows that layer");
+        expect(run(&g, "LAYERS ON no", &io) == 0 && io.rc == OMR_ERROR && g.layers == 1 && g.layer_no == 4,
+               "LAYERS wants a number");
+        expect(run(&g, "LAYERS INDEX no", &io) == 0 && io.rc == OMR_ERROR && g.layer_no == 4, "LAYERS index wants a number");
+        expect(g.dirty == dirty && ge_steps_back(steps) == back, "LAYERS is not an undo step");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);
