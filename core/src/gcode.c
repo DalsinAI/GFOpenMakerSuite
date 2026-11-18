@@ -401,6 +401,8 @@ static void laser_more_of(const gc_laser_more *x, gc_laser_more *to)
     if (!x) return;
     if (x->size >= (int)(offsetof(gc_laser_more, l) + sizeof x->l)) to->l = x->l;
     if (x->size >= (int)(offsetof(gc_laser_more, speed) + sizeof x->speed)) to->speed = x->speed;
+    if (x->size >= (int)(offsetof(gc_laser_more, start) + sizeof x->start)) to->start = x->start;
+    if (x->size >= (int)(offsetof(gc_laser_more, end) + sizeof x->end)) to->end = x->end;
 }
 
 static float laser_s100(const gc_laser *l)
@@ -444,6 +446,8 @@ typedef struct {
     int spindle; /* 1 after M3/M4, 0 after M5 */
     int s;       /* last S written, -1 none */
     int f;       /* last F written, 0 none */
+    const char *start; /* after the machine's start; NULL: none */
+    const char *end;   /* before the machine's end; NULL: none */
 } lwriter;
 
 static void lsay(lwriter *w, const char *line)
@@ -536,6 +540,7 @@ static int lrun(lwriter *w, const gt_path *p, const om_machine *m, char *err, in
         }
         lsay(w, "; GFOpenMake laser\n");
         lcode(w, code);
+        if (w->start && w->start[0]) lcode(w, w->start);
         lsay(w, "M5\n");
         lwrite_s(w, 0);
     }
@@ -545,6 +550,7 @@ static int lrun(lwriter *w, const gt_path *p, const om_machine *m, char *err, in
         lwrite_s(w, 0);
         lsay(w, "M5\n");
         w->spindle = 0;
+        if (w->end && w->end[0]) lcode(w, w->end);
         if (om_code(m->end, 0.f, 0.f, code, (int)sizeof code)) {
             snprintf(err, (size_t)errlen, "the machine's end code is too long");
             if (pl) {
@@ -663,6 +669,12 @@ int gc_laser_write_more(gc_put put, void *ud, const gt_path *p, const om_machine
     w.l = l;
     w.speeds = speeds;
     w.st = st ? st : &mine;
+    {
+        gc_laser_more own;
+        laser_more_of(x, &own);
+        w.start = own.start;
+        w.end = own.end;
+    }
     if (lrun(&w, p, m, err, errlen)) return -1;
     if (w.bad) {
         snprintf(err, (size_t)errlen, "the G-code could not be written");

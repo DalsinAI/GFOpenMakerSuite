@@ -432,6 +432,31 @@ int main(void)
             expect(gc_laser_write_more(into, &sk, &lp, &laser, &more, &lst, err, (int)sizeof err) == 0 &&
                        strstr(sk.buf, " F600\n") && laser_safe(sk.buf, why, (int)sizeof why),
                    "a per-move speed of 10 mm/s is F600");
+            more.start = "M117 hello";
+            more.end = "M300 S10";
+            memset(&sk, 0, sizeof sk);
+            sk.room = (long)sizeof sk.buf;
+            expect(gc_laser_write_more(into, &sk, &lp, &laser, &more, &lst, err, (int)sizeof err) == 0, "the user's lines");
+            {
+                const char *hello = strstr(sk.buf, "M117 hello\n");
+                const char *beep = strstr(sk.buf, "M300 S10\n");
+                const char *g90 = strstr(sk.buf, "G90");
+                const char *home = strstr(sk.buf, "G0 X0 Y0");
+                expect(hello && g90 && hello > g90, "the user's start after the machine's");
+                expect(beep && home && beep < home, "the user's end before the machine's");
+                expect(laser_safe(sk.buf, why, (int)sizeof why), why[0] ? why : "still off on travels and at the end");
+            }
+            {
+                gc_laser_more old = more;
+                old.size = (int)offsetof(gc_laser_more, start);
+                old.start = "M117 hello";
+                old.end = "M300 S10";
+                memset(&sk, 0, sizeof sk);
+                sk.room = (long)sizeof sk.buf;
+                expect(gc_laser_write_more(into, &sk, &lp, &laser, &old, &lst, err, (int)sizeof err) == 0 &&
+                           !strstr(sk.buf, "M117") && !strstr(sk.buf, "M300") && strstr(sk.buf, "G0 X0 Y0"),
+                       "a gc_laser_more cut short of start and end: the machine's code only");
+            }
         }
 
         expect(gc_laser_write_to(into, &sk, &lp, &m, &L, NULL, err, (int)sizeof err) == -1 &&

@@ -67,6 +67,8 @@ typedef struct {
     float tabw;   /* mm width of each tab; 0: 1 */
     float x, y;   /* mm to move the drawing on the bed; 0: leave it */
     float rot;    /* degrees CCW around the drawing's box centre; 0: none */
+    const char *start; /* the user's own lines, after the machine's start; NULL: none */
+    const char *end;   /* the user's own lines, before the machine's end; NULL: none */
 } burn_opts;
 
 void burn_defaults(burn_opts *o);

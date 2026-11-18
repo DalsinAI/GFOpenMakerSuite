@@ -977,6 +977,8 @@ int burn_write_path(const gt_path *p, const float *speed, const char *gcode, con
     }
     gc_laser_more_defaults(&more, &L);
     more.speed = speed;
+    if (opts_have(o, offsetof(burn_opts, start), sizeof o->start) && o->start && o->start[0]) more.start = o->start;
+    if (opts_have(o, offsetof(burn_opts, end), sizeof o->end) && o->end && o->end[0]) more.end = o->end;
     gc_laser_job_more(p, m, &more, &job);
     if (om_check(m, &job, why, (int)sizeof why) & ~OM_TOO_FAST) {
         snprintf(err, (size_t)errlen, "%.60s cannot burn this: %s", m->name, why);

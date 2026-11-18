@@ -5,6 +5,7 @@
 #include "burn_image.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -166,6 +167,25 @@ int main(void)
                !strstr(g, "M3\n") && strstr(g, "S500") && strstr(g, "M5") && strstr(g, "G0 X0 Y0") &&
                strstr(g, "G1 ") && st.moves == 5,
            "M4, S500 at 50%, start and end, five moves");
+    free(g);
+    burn_defaults(&o);
+    o.start = "M117 hello";
+    o.end = "M300 S10";
+    expect(burn_write("core/tests/data/rect-10mm.svg", "build/rect-own.gcode", &m, &o, &st, err, (int)sizeof err) == 0,
+           "wrote the square with the user's lines");
+    g = slurp("build/rect-own.gcode");
+    {
+        const char *hello = g ? strstr(g, "M117 hello\n") : NULL;
+        const char *beep = g ? strstr(g, "M300 S10\n") : NULL;
+        const char *g94 = g ? strstr(g, "G94") : NULL;
+        const char *home = g ? strstr(g, "G0 X0 Y0") : NULL;
+        expect(hello && g94 && hello > g94 && beep && home && beep < home, "START after the machine, END before it");
+    }
+    free(g);
+    o.size = (int)offsetof(burn_opts, start);
+    expect(burn_write("core/tests/data/rect-10mm.svg", "build/rect-short.gcode", &m, &o, &st, err, (int)sizeof err) == 0 &&
+               (g = slurp("build/rect-short.gcode")) && !strstr(g, "M117") && !strstr(g, "M300") && strstr(g, "G21"),
+           "a burn_opts cut short of start and end: the machine's code only");
     /* No S on a G0 line. */
     if (g) {
         const char *s = g;

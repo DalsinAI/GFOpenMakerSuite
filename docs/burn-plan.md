@@ -154,7 +154,7 @@ The first window has:
 Text that is still a font, PNG or JPEG pictures, pictures inside an SVG,
 Ruida, sending over serial or the network, a rotary axis, air assist as a
 live control, galvo marking heads, and the user's own start and end G-code
-in the window (the profile already has start and end).
+in the window (the shell's `START=` and `END=` do, and the profile already has start and end).
 
 ### Pictures
 

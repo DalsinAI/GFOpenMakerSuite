@@ -97,12 +97,15 @@ typedef struct {
 
 void gc_laser_defaults(gc_laser *l);
 
-/* More than gc_laser says: l itself, and a speed for each move. A
- * program sets size to sizeof (gc_laser_more) as it was built. */
+/* More than gc_laser says: l itself, a speed for each move, and the
+ * user's own lines. A program sets size to sizeof (gc_laser_more) as it
+ * was built: fields past it are as gc_laser_more_defaults gives them. */
 typedef struct {
     int size;
     const gc_laser *l;
     const float *speed; /* p->n speeds, mm/s; 0 or NULL: l->speed */
+    const char *start;  /* the user's own lines, after the machine's start; NULL: none */
+    const char *end;    /* the user's own lines, before the machine's end; NULL: none */
 } gc_laser_more;
 
 void gc_laser_more_defaults(gc_laser_more *x, const gc_laser *l);
