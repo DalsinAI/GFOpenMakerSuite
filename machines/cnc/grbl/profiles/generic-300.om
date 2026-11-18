@@ -1,0 +1,10 @@
+# A generic mill with a 300 mm table. Change these to the machine's own
+# numbers. Not any maker's.
+name = Generic Grbl Mill 300
+area = 300 300 80
+speed = 80 80 20 0
+accel = 500 500 200 0
+# Grbl uses junction deviation, not a jerk, so 0: a time estimate
+# stops at a corner.
+jerk = 0 0 0 0
+rpm = 24000

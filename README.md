@@ -12,7 +12,7 @@ as the fallback.
 | `cad/` | The solid editor, and its browser bench in `cad/bench/` | OpenMakeCad |
 | `slicer/` | STL to G-code for printers | OpenMakeSlicer |
 | `burn/` | A laser app: `openmake-burn` and the OpenMakeBurn window (SVG to Grbl G-code); the plan is [docs/burn-plan.md](docs/burn-plan.md) | OpenMakeBurn |
-| `cnc/` | A CNC app, not started | OpenMakeCNC |
+| `cnc/` | A mill: `openmake-cnc` writes a profile, a pocket or a drill from an SVG or a DXF. The window is not in yet | OpenMakeCNC |
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
 | `workshop/` | A project drawer for one product: CAD, print, laser, CNC and KiCad work together; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
@@ -126,8 +126,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-Support, and start or end G-code of your own. A skirt can still be a
-rectangle rather than the outline. Slice lays the toolpath back on the
+Support, and start or end G-code of your own. The mill writes a profile, a pocket or a drill; it has no window yet. Slice lays the toolpath back on the
 solid, in the plate's frame. The slicer's own view is still the close-up.
 
 ## Building

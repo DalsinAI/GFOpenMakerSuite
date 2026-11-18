@@ -1,0 +1,19 @@
+# Grbl on a mill. Written from Grbl's public G-code documentation
+# (gnea/grbl, "Grbl v1.1 Commands"), no firmware source.
+#
+# G21 is mm, G90 absolute, G94 mm per minute (Grbl's feed). M3 turns the
+# spindle on clockwise and M5 turns it off; S is the speed, written by
+# the job. $H homes, when the machine has endstops; it is not in the
+# start code, so a job can begin from the origin you set. $ settings
+# stay in the controller.
+family = cnc
+dialect = grbl
+send = file
+features = spindle homing
+start = G21 ; mm
+start += G90 ; absolute
+start += G94 ; mm per minute
+start += M5 ; spindle off
+end = M5
+end += G0 Z5
+end += G0 X0 Y0

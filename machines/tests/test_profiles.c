@@ -46,6 +46,15 @@ static const struct {
 };
 #define LASERS ((int)(sizeof lasers / sizeof lasers[0]))
 
+static const struct {
+    const char *driver, *profile, *name;
+    float x, y, z, rpm;
+    unsigned features, send;
+} mills[] = {
+    {"grbl", "generic-300", "Generic Grbl Mill 300", 300, 300, 80, 24000, OM_SPINDLE | OM_HOMING, OM_SEND_FILE},
+};
+#define MILLS ((int)(sizeof mills / sizeof mills[0]))
+
 /* Each profile file in the tree is one of the known printers or lasers. */
 static int count_in(const char *family, const char *const *drivers, int ndrivers, int (*is_known)(const char *, const char *, int))
 {
@@ -89,11 +98,23 @@ static int laser_known(const char *driver, const char *file, int len)
     return 0;
 }
 
+static int mill_known(const char *driver, const char *file, int len)
+{
+    int k;
+    for (k = 0; k < MILLS; k++)
+        if (!strcmp(mills[k].driver, driver) && !strncmp(mills[k].profile, file, len - 3) &&
+            (int)strlen(mills[k].profile) == len - 3)
+            return 1;
+    return 0;
+}
+
 static int count_files(void)
 {
     static const char *const printers[] = {"marlin", "klipper", "reprap"};
     static const char *const ldrv[] = {"grbl"};
-    return count_in("printer", printers, 3, printer_known) + count_in("laser", ldrv, 1, laser_known);
+    static const char *const cdrv[] = {"grbl"};
+    return count_in("printer", printers, 3, printer_known) + count_in("laser", ldrv, 1, laser_known) +
+           count_in("cnc", cdrv, 1, mill_known);
 }
 
 int main(void)
@@ -169,7 +190,37 @@ int main(void)
                    what);
         }
     }
-    expect(count_files() == KNOWN + LASERS, "every profile in the tree is here");
+    {
+        int k;
+        for (k = 0; k < MILLS; k++) {
+            om_machine m;
+            char path[160], err[160], code[OM_CODE], what[200];
+            om_clear(&m);
+            err[0] = 0;
+            snprintf(path, sizeof path, "machines/cnc/%s/driver.om", mills[k].driver);
+            expect(om_load(&m, path, err, (int)sizeof err) == 0, path);
+            snprintf(path, sizeof path, "machines/cnc/%s/profiles/%s.om", mills[k].driver, mills[k].profile);
+            snprintf(what, sizeof what, "%s loads over its driver", path);
+            expect(om_load(&m, path, err, (int)sizeof err) == 0, what);
+            if (err[0]) printf("%s\n", err);
+            snprintf(what, sizeof what, "%s: its name, a mill, the %s dialect", mills[k].profile, mills[k].driver);
+            expect(!strcmp(m.name, mills[k].name) && m.family == OM_CNC && !strcmp(m.dialect, mills[k].driver), what);
+            snprintf(what, sizeof what, "%s: %g by %g by %g mm, spindle %g", mills[k].profile, (double)mills[k].x,
+                     (double)mills[k].y, (double)mills[k].z, (double)mills[k].rpm);
+            expect(m.area[0] == mills[k].x && m.area[1] == mills[k].y && m.area[2] == mills[k].z && m.rpm == mills[k].rpm,
+                   what);
+            snprintf(what, sizeof what, "%s: its features and how a job is sent", mills[k].profile);
+            expect(m.features == mills[k].features && m.send == mills[k].send, what);
+            snprintf(what, sizeof what, "%s: the start is mm, absolute, spindle off", mills[k].profile);
+            expect(om_code(m.start, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "G21") &&
+                       strstr(code, "G90") && strstr(code, "M5") && !strstr(code, "M104"),
+                   what);
+            snprintf(what, sizeof what, "%s: the end stops the spindle and lifts", mills[k].profile);
+            expect(om_code(m.end, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "M5") && strstr(code, "G0 Z5"),
+                   what);
+        }
+    }
+    expect(count_files() == KNOWN + LASERS + MILLS, "every profile in the tree is here");
     if (failed) {
         printf("%d failed\n", failed);
         return 1;
