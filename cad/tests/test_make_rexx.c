@@ -63,7 +63,12 @@ int main(void)
                !strcmp(omr_host_var("ST.COLOUR"), "brass") && omr_host_var("ST.NAME") &&
                !strcmp(omr_host_var("ST.NAME"), "Box") && omr_host_var("ST.SLICED") &&
                !strcmp(omr_host_var("ST.SLICED"), "0") && omr_host_var("ST.LAYERS") &&
-               !strcmp(omr_host_var("ST.LAYERS"), "0"),
+               !strcmp(omr_host_var("ST.LAYERS"), "0") && omr_host_var("ST.SHADE") &&
+               !strcmp(omr_host_var("ST.SHADE"), "metal") && omr_host_var("ST.SNAP") &&
+               !strcmp(omr_host_var("ST.SNAP"), "0") && omr_host_var("ST.SECTION") &&
+               !strcmp(omr_host_var("ST.SECTION"), "0") && omr_host_var("ST.PICTURE") &&
+               !strcmp(omr_host_var("ST.PICTURE"), "0") && omr_host_var("ST.LAYER") &&
+               !strcmp(omr_host_var("ST.LAYER"), "1"),
            "STATUS says the part is shown, in brass, named Box");
     expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Hidden"), "SHOW hides it");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
@@ -353,8 +358,14 @@ int main(void)
     expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && strstr(buf, "Framed"), "LOOK frame");
     expect(run(&g, "LOOK NAME under", &io) == 0 && io.rc == OMR_ERROR && g.look == 3, "LOOK refuses an unknown view");
     expect(run(&g, "SHADE NAME clay", &io) == 0 && io.rc == OMR_OK && g.shade == 1 && strstr(buf, "Clay"), "SHADE clay");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHADE") &&
+               !strcmp(omr_host_var("ST.SHADE"), "clay"),
+           "STATUS says the picture is clay");
     expect(run(&g, "SHADE NAME plum", &io) == 0 && io.rc == OMR_ERROR && g.shade == 1, "SHADE refuses an unknown picture");
     expect(run(&g, "SNAP", &io) == 0 && io.rc == OMR_OK && g.snap == 1 && strstr(buf, "1 mm"), "SNAP turns on");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SNAP") &&
+               !strcmp(omr_host_var("ST.SNAP"), "1"),
+           "STATUS says snap is on");
     expect(run(&g, "SNAP ON 0", &io) == 0 && io.rc == OMR_OK && g.snap == 0 && strstr(buf, "off"), "SNAP off");
     expect(run(&g, "SNAP ON no", &io) == 0 && io.rc == OMR_ERROR && g.snap == 0, "SNAP wants a number");
     expect(run(&g, "SECTION", &io) == 0 && io.rc == OMR_OK && g.section == 1 && strstr(buf, "Section at 0.0"),
@@ -362,6 +373,10 @@ int main(void)
     expect(run(&g, "SECTION Z 12.34", &io) == 0 && io.rc == OMR_OK && g.section == 1 && g.section_z > 12.2f &&
                g.section_z < 12.4f && strstr(buf, "12.3"),
            "SECTION at 12.3 mm");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SECTION") &&
+               !strcmp(omr_host_var("ST.SECTION"), "1") && omr_host_var("ST.SECTIONZ") &&
+               !strcmp(omr_host_var("ST.SECTIONZ"), "12.3"),
+           "STATUS says the section");
     expect(run(&g, "SECTION Z 400", &io) == 0 && io.rc == OMR_OK && g.section_z == 220.f, "SECTION holds at 220 mm");
     expect(run(&g, "SECTION Z -4", &io) == 0 && io.rc == OMR_OK && g.section_z == 0.f && g.section == 1,
            "SECTION holds at 0 mm");
@@ -387,6 +402,10 @@ int main(void)
         expect(run(&g, "LAYERS INDEX 12", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 12 &&
                    strstr(buf, "Layer 12"),
                "LAYERS index");
+        expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICTURE") &&
+                   !strcmp(omr_host_var("ST.PICTURE"), "1") && omr_host_var("ST.LAYER") &&
+                   !strcmp(omr_host_var("ST.LAYER"), "12"),
+               "STATUS says the layer picture");
         expect(run(&g, "LAYERS STEP 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 13 && g.layers == 1,
                "LAYERS next");
         expect(run(&g, "LAYERS STEP -1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 12, "LAYERS prev");

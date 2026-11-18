@@ -963,6 +963,17 @@ static int cmd_status(void *c, void *g0)
         stem_put(c, "ST", "FILAMENT", sbuf);
         snprintf(sbuf, sizeof sbuf, "%d", (g->sliced && (g->slice_how & GC_FELL_BACK)) ? 1 : 0);
         stem_put(c, "ST", "ROUGH", sbuf);
+        stem_put(c, "ST", "SHADE", (g->shade >= 0 && g->shade < 3) ? shade_names[g->shade] : "");
+        snprintf(sbuf, sizeof sbuf, "%d", g->snap ? 1 : 0);
+        stem_put(c, "ST", "SNAP", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", g->section ? 1 : 0);
+        stem_put(c, "ST", "SECTION", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%.1f", (double)g->section_z);
+        stem_put(c, "ST", "SECTIONZ", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", g->layers ? 1 : 0);
+        stem_put(c, "ST", "PICTURE", sbuf);
+        snprintf(sbuf, sizeof sbuf, "%d", g->layer_no < 1 ? 1 : g->layer_no);
+        stem_put(c, "ST", "LAYER", sbuf);
     }
     return OMR_OK;
 }
