@@ -14,5 +14,7 @@ The machine is the generic 300 mm Grbl mill in `machines/cnc/grbl` unless
 `DRIVER=` or `PROFILE=` name another. Lengths are millimetres. Feed and
 plunge are millimetres a second, written as millimetres a minute.
 
-The window is not in yet. It will share OpenMakeCore's toolpaths and
-preview with the slicer and the laser app.
+The window is `src/amiga.c`, binary GFOpenCNC. Open an SVG or a DXF,
+pick Profile, Pocket or Drill, Preview the cut, and Save G-code for the
+mill picked. It fits 640 by 480 inside and is resizable. The view is the
+toolpath, drawn with the pens. ARexx follows.
