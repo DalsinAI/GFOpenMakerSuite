@@ -47,6 +47,8 @@ gfopenslicer in.stl out.gcode SETTINGS=settings/standard pattern=grid around=bri
 `SETTINGS=` names a print settings profile (`settings/standard` is the
 built-in defaults, written out to copy); any of its keys can be given as
 `key=value` after it. The older `LAYER=`, `INFILL=`, `SKIRT=` ... still work.
+`START=` and `END=` are lines of your own, after the machine's start and
+before its end. The heat, the home and M84 stay.
 
 ## Where the view comes from
 
@@ -126,7 +128,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-Support, and start or end G-code of your own. The mill's window is GFOpenCNC. Slice lays the toolpath back on the
+Support. The mill's window is GFOpenCNC. Slice lays the toolpath back on the
 solid, in the plate's frame. The slicer's own view is still the close-up.
 
 ## Building

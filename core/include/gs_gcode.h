@@ -69,6 +69,8 @@ typedef struct {
     int size;
     const gc_opts *o;
     float first;                /* mm/s: no line on the first layer faster (travels are not held); 0: none */
+    const char *start;          /* the user's own lines, after the machine's start; NULL: none */
+    const char *end;            /* the user's own lines, before the machine's end; NULL: none */
 } gc_more;
 
 void gc_more_defaults(gc_more *x, const gc_opts *o);

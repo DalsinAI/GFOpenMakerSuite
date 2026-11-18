@@ -249,6 +249,28 @@ int main(void)
         part.size = (int)sizeof part.size;
         expect(gc_write_more(into, &k, &p, &m, &part, &xs, err, (int)sizeof err) == -1 && strstr(err, "too short"),
                "too short for its options: refused");
+        /* The user's own lines sit after the machine's start and before its end. */
+        x.first = 0.f;
+        x.start = "M117 hello";
+        x.end = "M300 S10";
+        k.n = 0;
+        expect(gc_write_more(into, &k, &p, &m, &x, &xs, err, (int)sizeof err) == 0, "written with the user's own lines");
+        {
+            const char *hello = strstr(k.buf, "M117 hello\n");
+            const char *beep = strstr(k.buf, "M300 S10\n");
+            const char *home = strstr(k.buf, "G28");
+            const char *end = strstr(k.buf, "M84");
+            expect(hello && home && hello > home, "the user's start after the machine's");
+            expect(beep && end && beep < end && k.n >= 4 && strcmp(k.buf + k.n - 4, "M84\n") == 0,
+                   "the user's end before M84, and M84 last");
+            expect(!strstr(k.buf, "\n\n"), "still no empty lines");
+        }
+        part = x;
+        part.size = (int)offsetof(gc_more, start);
+        k.n = 0;
+        expect(gc_write_more(into, &k, &p, &m, &part, &xs, err, (int)sizeof err) == 0 && !strstr(k.buf, "M117") &&
+                   !strstr(k.buf, "M300") && strstr(k.buf, "M84"),
+               "a gc_more cut short of start and end: the machine's code only");
     }
 
     {

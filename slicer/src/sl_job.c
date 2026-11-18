@@ -14,6 +14,13 @@ void sl_init(sl_job *j)
     gt_init(&j->path);
 }
 
+void sl_own(sl_job *j, const char *start, const char *end)
+{
+    if (!j) return;
+    if (start) snprintf(j->start, sizeof j->start, "%s", start);
+    if (end) snprintf(j->end, sizeof j->end, "%s", end);
+}
+
 static void drop_slice(sl_job *j)
 {
     gt_free(&j->path);
@@ -97,6 +104,8 @@ int sl_write(sl_job *j, const char *out, const om_machine *m, char *err, int err
     }
     gs_settings_opts(&j->set, &o, &g);
     gs_settings_gc_more(&j->set, &g, &gx);
+    if (j->start[0]) gx.start = j->start;
+    if (j->end[0]) gx.end = j->end;
     gc_job(&j->path, m, &g, &job);
     if (om_check(m, &job, why, (int)sizeof why) & ~OM_TOO_FAST) {
         snprintf(err, (size_t)errlen, "%.60s cannot print this: %s", m->name, why);

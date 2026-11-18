@@ -93,6 +93,20 @@ int main(void)
            "at the hotend it was sliced at, the first layer at 15 mm/s");
     free(one);
 
+    sl_own(&j, "M117 hello", "M300 S10");
+    expect(sl_write(&j, "build/sl-job-own.gcode", &m, err, (int)sizeof err) == 0, "written with the user's lines");
+    one = slurp("build/sl-job-own.gcode", &n1);
+    expect(one && strstr(one, "M117 hello\n") && strstr(one, "G28") && strstr(one, "M117 hello\n") > strstr(one, "G28") &&
+               strstr(one, "M300 S10\n") && strstr(one, "M84") && strstr(one, "M300 S10\n") < strstr(one, "M84") &&
+               !strstr(one, "\n\n"),
+           "after the machine's start, before M84, no empty line");
+    free(one);
+    sl_own(&j, "", NULL);
+    expect(sl_write(&j, "build/sl-job-own.gcode", &m, err, (int)sizeof err) == 0, "start cleared, end kept");
+    one = slurp("build/sl-job-own.gcode", &n1);
+    expect(one && !strstr(one, "M117") && strstr(one, "M300 S10\n"), "an empty start clears it; NULL leaves the end");
+    free(one);
+
     remove("build/sl-job-tiny.gcode");
     expect(sl_write(&j, "build/sl-job-tiny.gcode", &tiny, err, (int)sizeof err) == -1 &&
                !strncmp(err, "Tiny 50 cannot print this: ", 27),

@@ -18,10 +18,15 @@ typedef struct {
     gs_settings set;           /* what it was sliced with, the layer height held */
     int have_part, sliced;
     int tasks;                 /* the tasks the last slice ran on */
+    char start[240], end[240]; /* the user's own G-code, around the machine's */
 } sl_job;
 
 void sl_init(sl_job *j);
 void sl_free(sl_job *j);
+
+/* Lines of the user's own, after the machine's start and before its end.
+ * NULL leaves that one as it was. An empty string clears it. */
+void sl_own(sl_job *j, const char *start, const char *end);
 
 /* stl, repaired, set centred on a bed_x by bed_y bed; any slice dropped.
  * 0, or -1 with why in err (the part kept as it was). */
