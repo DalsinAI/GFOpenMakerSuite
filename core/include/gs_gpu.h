@@ -39,6 +39,12 @@ int gs_gpu_walls_plate(const gl_walls *wl, const gs_mesh *m, const gs_cam *cam, 
  * with no grid when part. Returns how many vertices, or -1 (cap too small). */
 int gs_gpu_toolpath(const gt_path *p, const gs_cam *cam, int upto, int part, int w, int h, uint32_t *verts, int cap);
 
+/* The same moves, in the solid's plate frame, a little nearer than the
+ * face they sit on so they show on it and a face in front still covers
+ * them. Draw them after the solid's vertices. Returns how many, or -1. */
+int gs_gpu_toolpath_on(const gt_path *p, const gs_mesh *solid, const gs_cam *cam, int upto, int w, int h,
+                       uint32_t *verts, int cap);
+
 /* The stream that clears an ARGB32 picture and a Z32 depth, draws the bed
  * grid (grid != 0), then the vertices. picture_bpr is the picture's row
  * stride in bytes. Addresses are the Amiga's, already 32-bit.
