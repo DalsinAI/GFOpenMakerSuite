@@ -38,6 +38,13 @@ typedef struct gm_rexx {
     int tool; /* -1: leave it. 0 orbit, 1 move, 2 rot, 3 scale, 4 measure, 5 pull, 6 draw */
     int layers;   /* 0 hide the layer picture, 1 show it */
     int layer_no; /* 1-based layer the slider shows */
+    void *slice_into; /* gt_path *; NULL throws the toolpath away. The window's picture. */
+    int sliced;       /* 1: SLICE just filled that picture */
+    int slice_layers;
+    int slice_moves;
+    float slice_seconds;
+    float slice_filament;
+    int slice_how; /* gc_estimate_more's flags */
 } gm_rexx;
 
 #define GM_REXX_PORT "GFOPENMAKE"

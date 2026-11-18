@@ -1613,6 +1613,7 @@ int main(int argc, char **argv)
     rexx.parts = &parts;
     rexx.steps = steps;
     rexx.version = "GFOpenMake 0.1.0";
+    rexx.slice_into = &sliced;
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;
     rexx.win = w;
@@ -1640,6 +1641,7 @@ int main(int argc, char **argv)
             rexx.section_z = section_z;
             rexx.layers = show_layer ? 1 : 0;
             rexx.layer_no = layer_no < 1 ? 1 : layer_no;
+            rexx.sliced = 0;
             snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
             settings(ui, &rexx.set);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
@@ -1670,6 +1672,22 @@ int main(int argc, char **argv)
             if (olui_find(ui, "sectz"))
                 olui_set_number(ui, olui_find(ui, "sectz"), (int)(section_z * 10.f + (section_z < 0.f ? -0.5f : 0.5f)));
             show_printer(ui);
+            {
+                float h = rexx.set.layer_h;
+                if (h < GL_MIN_H) h = GL_MIN_H;
+                if (h > GL_MAX_H) h = GL_MAX_H;
+                if (h < layer_h - 0.0001f || h > layer_h + 0.0001f) {
+                    if (!rexx.sliced) drop_slice();
+                    layer_h = h;
+                }
+            }
+            if (rexx.sliced) {
+                has_slice = 1;
+                slice_st.seconds = rexx.slice_seconds;
+                slice_st.filament = rexx.slice_filament;
+                slice_st.moves = rexx.slice_moves;
+                slice_how = rexx.slice_how;
+            }
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             refresh(ui);
