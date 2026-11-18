@@ -38,6 +38,12 @@ void gs_cam_look(gs_cam *c, int which);
  * is left alone. */
 void gs_cam_frame(gs_cam *c, const gs_mesh *m, int w, int h);
 
+/* How the solid is drawn. 0 metal (the shaded metals), 1 clay (one matte
+ * colour, the light barely turns it), 2 wire (the edges, not the faces).
+ * The painters read it. Metal until this is called. */
+void gs_view_shade(int s);
+int gs_view_shade_get(void);
+
 /* How gs_view_solid fitted this mesh into the picture. Depth is the
  * painter's: a larger z is closer. */
 typedef struct {

@@ -419,6 +419,77 @@ int main(void)
         gs_mesh_free(&two);
         gs_mesh_free(&b2);
     }
+    {
+        /* Metal keeps the turned metals. Clay is the same metal, barely turned.
+         * Wire is the edges. */
+        gs_mesh cube;
+        gs_cam cam;
+        gs_tint brass;
+        unsigned char *pic;
+        uint32_t *verts;
+        int i, lo, hi, metal_n, clay_n, wire_n, metal_span, clay_span, nv;
+        const int W = 640, H = 480;
+        memset(&cube, 0, sizeof cube);
+        expect(gm_cube(&cube, 90.f, 90.f, 0.f, 40.f, 40.f, 40.f) == 0, "a cube to shade");
+        gs_cam_home(&cam);
+        pic = (unsigned char *)calloc((size_t)W * (size_t)H * 3, 1);
+        brass.n = cube.n;
+        brass.rgb = 0xC4783AUL;
+        gs_view_shade(0);
+        expect(pic && gs_view_bed_tint(&cube, &cam, &brass, 1, pic, W, H) == 0, "the metal picture");
+        lo = 255;
+        hi = 0;
+        metal_n = 0;
+        for (i = 0; i < W * H; i++) {
+            unsigned char *p = pic + (size_t)i * 3;
+            if (p[0] == 20 && p[1] == 22 && p[2] == 28) continue;
+            if (p[0] == 70 && p[1] == 78 && p[2] == 92) continue;
+            metal_n++;
+            if (p[0] < lo) lo = p[0];
+            if (p[0] > hi) hi = p[0];
+        }
+        metal_span = hi - lo;
+        gs_view_shade(1);
+        expect(gs_view_bed_tint(&cube, &cam, &brass, 1, pic, W, H) == 0, "the clay picture");
+        lo = 255;
+        hi = 0;
+        clay_n = 0;
+        for (i = 0; i < W * H; i++) {
+            unsigned char *p = pic + (size_t)i * 3;
+            if (p[0] == 20 && p[1] == 22 && p[2] == 28) continue;
+            if (p[0] == 70 && p[1] == 78 && p[2] == 92) continue;
+            clay_n++;
+            if (p[0] < lo) lo = p[0];
+            if (p[0] > hi) hi = p[0];
+        }
+        clay_span = hi - lo;
+        gs_view_shade(2);
+        expect(gs_view_bed_tint(&cube, &cam, &brass, 1, pic, W, H) == 0, "the wire picture");
+        wire_n = 0;
+        for (i = 0; i < W * H; i++) {
+            unsigned char *p = pic + (size_t)i * 3;
+            if (p[0] == 20 && p[1] == 22 && p[2] == 28) continue;
+            if (p[0] == 70 && p[1] == 78 && p[2] == 92) continue;
+            wire_n++;
+        }
+        expect(metal_n > 1000 && clay_n * 2 > metal_n, "clay still fills the solid");
+        expect(clay_span + 15 < metal_span, "clay's light barely turns the metal");
+        expect(wire_n > 40 && wire_n * 4 < metal_n, "wire is the edges, not the faces");
+        verts = (uint32_t *)calloc((size_t)cube.n * 18 * 6, sizeof *verts);
+        expect(verts && gs_gpu_vertices_plate(&cube, &cam, W, H, verts, 8) == -1, "wire needs room for the edges");
+        nv = gs_gpu_vertices_plate(&cube, &cam, W, H, verts, cube.n * 18);
+        expect(nv == cube.n * 18, "six words an edge, three edges a face");
+        gs_view_shade(0);
+        nv = gs_gpu_vertices_plate(&cube, &cam, W, H, verts, cube.n * 3);
+        expect(nv == cube.n * 3, "metal is the faces again");
+        free(verts);
+        free(pic);
+        gs_mesh_free(&cube);
+    }
+    if (fails) {
+        fprintf(stderr, "%d failed\n", fails);
+        return 1;
+    }
     printf("gpu ok\n");
     return 0;
 }
