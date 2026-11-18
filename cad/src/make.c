@@ -178,13 +178,15 @@ static int draw_gpu(int x, int y, int w, int h)
     if (!gpu_on || !omv_gpu_size(&gpu, w, h)) return 0;
     rebuild_shown();
     vm = view_of();
-    if (has_slice) {
-        /* The toolpath alone, fitted to the part, with no grid. */
-        if (!omv_gpu_room(&gpu, sliced.n * 6 + 6)) return 0;
-        nv = gs_gpu_toolpath(&sliced, &cam, show_layer ? layer_no : 0, 1, w, h, gpu.verts, gpu.vert_cap);
-    } else {
+    {
+        /* The solid, and when there is a slice its moves in the same frame,
+         * so the lines sit on the part. The close-up of the toolpath alone
+         * is the slicer's view, not this one. */
         int nt = section_on ? 0 : ntints;
-        verts_fit((show_layer ? walls.n * 6 : 0) + (sketch_live ? sketch_ghost.n * 3 : 0));
+        int extra = (sketch_live ? sketch_ghost.n * 3 : 0);
+        if (has_slice) extra += sliced.n * 6 + 6;
+        else if (show_layer) extra += walls.n * 6;
+        verts_fit(extra);
         if (sketch_live && sketch_ghost.n && !section_on && nt < GS_PARTS_MAX + 1) {
             tints[nt].n = sketch_ghost.n;
             tints[nt].rgb = sketch_op == GM_FROM_TOP ? 0xe85d4cUL : sketch_op == GM_ON_TOP ? 0x3e7a45UL : 0x0067c0UL;
@@ -192,15 +194,20 @@ static int draw_gpu(int x, int y, int w, int h)
         }
         nv = gs_gpu_vertices_plate_tint(vm, &cam, w, h, section_on ? NULL : tints, nt, gpu.verts, gpu.vert_cap);
     }
-    if (nv < 3) return 0;
-    /* The layer's walls go after the part's, in the same batch. */
-    if (!has_slice && show_layer && walls.n) {
+    if (nv < 0) nv = 0;
+    if (!has_slice && show_layer && walls.n && nv + walls.n * 6 <= gpu.vert_cap) {
         int nw2 = gs_gpu_walls_plate(&walls, &shown, &cam, w, h, gpu.verts + nv * 6, gpu.vert_cap - nv);
         if (nw2 > 0) nv += nw2;
     }
+    if (has_slice && nv + 6 <= gpu.vert_cap) {
+        int nt = gs_gpu_toolpath_on(&sliced, vm, &cam, show_layer ? layer_no : 0, w, h, gpu.verts + nv * 6,
+                                    gpu.vert_cap - nv);
+        if (nt > 0) nv += nt;
+    }
+    if (nv < 3) return 0;
     nw = gs_gpu_stream_plate(gpu.stream, gpu.stream_cap, (uint32_t)(uintptr_t)gpu.verts, nv,
                              (uint32_t)(uintptr_t)gpu.rs->rs_Pixels, (int)gpu.rs->rs_BytesPerRow,
-                             (uint32_t)(uintptr_t)gpu.depth, w, h, vm, &cam, has_slice ? 0 : draw_grid, 1);
+                             (uint32_t)(uintptr_t)gpu.depth, w, h, vm, &cam, draw_grid, 1);
     if (!omv_gpu_show(&gpu, nw, win->RPort, x, y)) return 0;
     presented = 1;
     return 1;
@@ -225,11 +232,12 @@ static void draw_pens(int x, int y, int w, int h)
     vh = h;
     rebuild_shown();
     vm = view_of();
-    if (has_slice ? gt_paint_part(&sliced, &cam, show_layer ? layer_no : 0, rgb, w, h) : gs_view_bed(vm, &cam, rgb, w, h)) {
+    if (gs_view_bed(vm, &cam, rgb, w, h)) {
         free(rgb);
         return;
     }
-    if (!has_slice && show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
+    if (has_slice) gt_paint_on(&sliced, vm, &cam, show_layer ? layer_no : 0, rgb, w, h);
+    else if (show_layer) gl_paint(&walls, &shown, &cam, rgb, w, h);
     /* The pens keep the way-coloured picture, not the metals: four pens
      * cannot hold six metals, and a dark metal's faces would go to the
      * background's pen. Grey goes to the three greys, the walls' blue to
@@ -675,6 +683,32 @@ static void on_look(olui *ui, const olui_event *ev, void *userdata)
         say(ui, which == 0 ? "Top." : which == 1 ? "Front." : "Side.");
     }
     olui_repaint(ui, olui_find(ui, "view"), NULL);
+}
+
+static void take_added(olui *ui, gs_mesh box, const char *name);
+
+/* File's Shelf: the chosen example, on the bed, as the bench's library. */
+static void on_shelf(olui *ui, const olui_event *ev, void *userdata)
+{
+    gs_mesh next;
+    char err[160], line[96];
+    int i = olui_select_index(olui_find(ui, "shelfsel"));
+    const char *name = ge_shelf_name(i);
+    (void)ev;
+    (void)userdata;
+    if (gs_parts_count(parts) >= GS_PARTS_MAX) {
+        say(ui, "Twenty-four parts is the limit.");
+        return;
+    }
+    err[0] = 0;
+    memset(&next, 0, sizeof next);
+    if (!name || ge_shelf_load(&next, i, err, (int)sizeof err)) {
+        say(ui, err[0] ? err : "Could not open that example");
+        return;
+    }
+    take_added(ui, next, name);
+    snprintf(line, sizeof line, "%s is on the bed.", name);
+    say(ui, line);
 }
 
 /* The slider is 1 to 100 along the layers that are drawn. With Section
@@ -1399,6 +1433,7 @@ int main(int argc, char **argv)
     olui_on(ui, "drop", OLUI_CLICK, on_drop, NULL);
     olui_on(ui, "centre", OLUI_CLICK, on_centre, NULL);
     olui_on(ui, "lay", OLUI_CLICK, on_lay, NULL);
+    olui_on(ui, "shelf", OLUI_CLICK, on_shelf, NULL);
     olui_on(ui, "vtop", OLUI_CLICK, on_look, (void *)(intptr_t)0);
     olui_on(ui, "vfront", OLUI_CLICK, on_look, (void *)(intptr_t)1);
     olui_on(ui, "vside", OLUI_CLICK, on_look, (void *)(intptr_t)2);
@@ -1425,6 +1460,9 @@ int main(int argc, char **argv)
         olui_select_add(ui, olui_find(ui, "xkind"), "Round", "Round");
         olui_select_add(ui, olui_find(ui, "xkind"), "Slot", "Slot");
         olui_select_set(ui, olui_find(ui, "xkind"), 0);
+        for (k = 0; k < ge_shelf_count(); k++)
+            olui_select_add(ui, olui_find(ui, "shelfsel"), ge_shelf_name(k), ge_shelf_name(k));
+        olui_select_set(ui, olui_find(ui, "shelfsel"), 0);
     }
     olui_on(ui, "xadd", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_BED);
     olui_on(ui, "xon", OLUI_CLICK, on_extrude, (void *)(intptr_t)GM_ON_TOP);

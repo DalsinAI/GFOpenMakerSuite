@@ -35,14 +35,14 @@ static int measure(void *userdata, const char *utf8, size_t length, const ol_sty
 /* Every button make.c hands to olui_on: the Model tab's, the Parts tab's
  * from PARTS_BUTTONS on, then the Print tab's from PRINT_BUTTONS on. */
 static const char *const buttons[] = {
-    "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay",
+    "open", "save", "undo", "redo", "orbit", "move", "rot", "scale", "measure", "drop", "centre", "lay", "shelf",
     "vtop", "vfront", "vside", "vframe",
     "add", "join", "cut", "meet", "pshow", "pdel", "c0", "c1", "c2", "c3", "c4", "c5",
     "dup", "linex", "liney", "ring", "mirror", "turn", "stack", "solo",
     "prev", "next", "slice", "gcode"
 };
-#define PARTS_BUTTONS 16
-#define PRINT_BUTTONS 36
+#define PARTS_BUTTONS 17
+#define PRINT_BUTTONS 37
 #define TAB_OF(i) ((i) >= PRINT_BUTTONS ? GM_TAB_PRINT : (i) >= PARTS_BUTTONS ? GM_TAB_PARTS : GM_TAB_MODEL)
 
 /* The Print tab's other controls: the Layers group's, and the Slice
@@ -172,6 +172,16 @@ int main(void)
             /* Measure beside Rotate and Scale, wide enough for its name. */
             expect(box[7].y == box[6].y && box[8].y == box[6].y && box[8].x > box[7].x && box[8].w >= 7 * 8,
                    "Measure is in the Tool group's second row, after Scale");
+            {
+                olui_el *shelf = olui_find(ui, "shelfsel");
+                olui_rect r, side, st;
+                olui_box(ui, olui_find(ui, "side"), &side);
+                olui_box(ui, olui_find(ui, "status"), &st);
+                expect(shelf && !strcmp(olui_tag(shelf), "select") && olui_box(ui, shelf, &r) && inside(&r, w, h) &&
+                           r.x >= side.x && r.x + r.w <= side.x + side.w && r.w >= 90 &&
+                           r.y + r.h <= st.y && !overlap(&r, &box[12]),
+                       "the shelf list is beside Shelf, in the side, above the status line");
+            }
             {
                 /* Place: a row for X, Y and Z, its Size then its At, as the bench's
                  * Size and place, with room for "-999.9" beside the arrows. */

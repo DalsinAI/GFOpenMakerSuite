@@ -56,6 +56,13 @@ int ge_open(gs_mesh *m, const char *path, char *err, int errlen);
  * 0, or -1 with why in err. */
 int ge_start(gs_mesh *m, const char *path, char *err, int errlen);
 
+/* The bench's shelf, the files in examples/cad/. ge_shelf_load reads one
+ * and drops it on the plate, as ge_open does. It tries the path from this
+ * tree, then the same path under PROGDIR:. 0, or -1 with why in err. */
+int ge_shelf_count(void);
+const char *ge_shelf_name(int i);
+int ge_shelf_load(gs_mesh *m, int i, char *err, int errlen);
+
 /* The editor's two parts: the stock, and an added part to combine with it.
  * on_added: the added part is the one selected. */
 typedef struct {

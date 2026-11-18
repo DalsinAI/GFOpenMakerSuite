@@ -93,6 +93,27 @@ int main(void)
         expect(lit > 10 * nall, "the part fills the picture");
         expect(top > lit / 4, "the top layer in front of the ones below it");
     }
+    {
+        static unsigned char solid[W * H * 3], over[W * H * 3];
+        int i, changed = 0, kept = 0, ink = 0;
+        gs_cam cam;
+        gs_cam_home(&cam);
+        expect(gs_view_bed(&box, &cam, solid, W, H) == 0, "the solid");
+        memcpy(over, solid, sizeof over);
+        expect(gt_paint_on(&p, &box, &cam, 0, over, W, H) == 0, "the toolpath on the solid");
+        expect(gt_paint_on(&p, &box, &cam, 0, NULL, W, H) == -1, "no picture to lay the toolpath on");
+        for (i = 0; i < W * H; i++) {
+            const unsigned char *a = solid + i * 3, *b = over + i * 3;
+            if (!memcmp(a, b, 3)) kept++;
+            else {
+                changed++;
+                if (b[1] > b[0] + 20 || b[0] > 80) ink++;
+            }
+        }
+        printf("on the solid: %d pixels of toolpath, %d of the picture left\n", changed, kept);
+        expect(changed > 100 && kept > changed && ink > changed / 2,
+               "the lines sit on the solid, and the solid is still there");
+    }
     gt_free(&p);
     gs_mesh_free(&box);
     if (fails) {

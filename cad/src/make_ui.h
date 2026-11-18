@@ -22,7 +22,8 @@
  * borders: the name and version are in the title bar, not a heading row,
  * and the groups are a row shorter where they can be. The side is five
  * tabs, titles of five letters so the strip fits the side in Topaz 8:
- * Model (File, Tool, Place), Parts (Make: Add, Join, Cut, Intersect; and
+ * Model (File, Tool, Place). File's Shelf puts one of the examples in
+ * examples/cad/ on the bed. Parts (Make: Add, Join, Cut, Intersect; and
  * the bench's parts list: the list, the picked part's name, its six
  * metals, Hide and Delete; Arrange: Copy, Line X and Y, Ring, Mirror,
  * Turn, Stack and Solo), Holes (the bench's bolt circle, hole row,
@@ -67,6 +68,7 @@ static const char gm_markup_a[] =
     "<fieldset><legend>File</legend>"
     "<row><button id=\"open\">Open</button><button id=\"save\" class=\"primary\">Save STL</button></row>"
     "<row><button id=\"undo\">Undo</button><button id=\"redo\">Redo</button></row>"
+    "<row><select id=\"shelfsel\"></select><button id=\"shelf\" title=\"Put the chosen example on the bed\">Shelf</button></row>"
     "</fieldset>"
     "<fieldset><legend>Tool</legend>"
     "<row><button id=\"orbit\">Orbit</button><button id=\"move\">Move</button></row>"
