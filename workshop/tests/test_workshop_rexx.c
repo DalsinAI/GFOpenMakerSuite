@@ -153,6 +153,13 @@ int main(void)
     expect(run(&g, "OPENITEM ITEM 1", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN.1") &&
                strstr(opened, "rect-10mm.svg"),
            "OPENITEM sends OPEN when the port is up");
+    {
+        char used[64], why[160];
+        opened[0] = 0;
+        expect(gw_open_item(&w, 0, used, (int)sizeof used, why, (int)sizeof why) == 0 && !strcmp(used, "OPENMAKEBURN.1") &&
+                   strstr(opened, "rect-10mm.svg"),
+               "Launch uses the port when it is up");
+    }
     expect(run(&g, "SEND APP BURN CMD VERSION", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OpenMakeBurn"), "SEND");
     expect(run(&g, "SEND APP KICAD CMD VERSION", &io) == 0 && io.rc == OMR_ERROR, "SEND to an app with no port");
     if (burn) omr_close(burn);

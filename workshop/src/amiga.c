@@ -300,14 +300,14 @@ static void on_rename(olui *ui, const olui_event *ev, void *userdata)
 
 static void on_launch(olui *ui, const olui_event *ev, void *userdata)
 {
-    char err[160];
+    char err[160], used[64];
     (void)ev;
     (void)userdata;
-    if (workshop_launch(&ws, err, (int)sizeof err)) {
-        say_err(ui, err);
+    if (gw_open_item(&ws, ws.picked, used, (int)sizeof used, err, (int)sizeof err)) {
+        say_err(ui, err[0] ? err : "the app did not start");
         return;
     }
-    snprintf(ws.status, sizeof ws.status, "Opened in %s", workshop_launch_last(&ws)[0] ? workshop_launch_last(&ws) : "the app");
+    snprintf(ws.status, sizeof ws.status, "Opened in %s", used[0] ? used : "the app");
     omv_say(ui, ws.status);
 }
 

@@ -27,4 +27,10 @@ void gw_rexx_init(gw_rexx *g);
 const omr_verb *gw_rexx_verbs(void);
 int gw_rexx_nverbs(void);
 
+/* Open a 0-based item the way OPENITEM does, and the way the window's
+ * Launch button does. On success, used receives the port that took the
+ * file, or the program name when that kind has no port. 0, or an RC
+ * (10 or 20) with why in err. */
+int gw_open_item(workshop *w, int index, char *used, int usedlen, char *err, int errlen);
+
 #endif
