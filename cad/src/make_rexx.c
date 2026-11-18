@@ -1296,6 +1296,53 @@ static int cmd_size(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The Scale tool's step: the picked part multiplied about its middle. */
+static int cmd_scale(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_mesh *m = picked(g);
+    float by = 0.f, pos[3], size[3];
+    char buf[64];
+    int has;
+    if (!m || !m->n) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    has = arg_f(c, "BY", &by);
+    if (has < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (has <= 0) {
+        omr_set_result(c, "BY is required");
+        return OMR_ERROR;
+    }
+    if (!(by > 0.f)) {
+        omr_set_result(c, "BY is a size above 0");
+        return OMR_ERROR;
+    }
+    if (g->snap) {
+        by = floorf(by * 10.f + 0.5f) / 10.f;
+        if (by < 0.1f) by = 0.1f;
+    }
+    if (by > 0.999f && by < 1.001f) {
+        omr_set_result(c, "Already that size.");
+        return OMR_OK;
+    }
+    ge_where(m, pos, size);
+    if (by * size[0] < 0.1f || by * size[1] < 0.1f || by * size[2] < 0.1f) {
+        omr_set_result(c, "That part is too thin to size that way.");
+        return OMR_ERROR;
+    }
+    remember(g);
+    ge_scale(m, by, by, by);
+    g->face = -1;
+    changed(g);
+    snprintf(buf, sizeof buf, "Scaled by %g.", (double)by);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int cmd_hole(void *c, void *g0)
 {
     gm_rexx *g = app(g0);
@@ -1877,6 +1924,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "PLACE", "X/K Y/K Z/K", "place the picked part", cmd_place},
     {sizeof(omr_verb), "WHERE", "STEM/K VAR/K", "the picked part's size and where it sits", cmd_where},
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
+    {sizeof(omr_verb), "SCALE", "BY/A", "multiply the picked part about its middle", cmd_scale},
     {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
     {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},
     {sizeof(omr_verb), "COPY", "", "one copy of the picked part, 6 mm on in X", cmd_copy},

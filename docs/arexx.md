@@ -374,6 +374,16 @@ Sizes the picked part's box. `X`, `Y`, `Z` are the box in millimetres on
 those axes; or `AXIS` (`x`, `y` or `z`) and `MM` scale evenly to that
 length, as the window's Size.
 
+### SCALE
+
+Template: `SCALE BY/A`
+
+Multiplies the picked part evenly about its middle, as one step of the
+Scale tool. `BY` is the factor. With Snap on, it is held to the nearest
+tenth, and not below 0.1. A factor of 1 is not an undo step. `RESULT`
+says the factor. RC 10 if there is no part, `BY` is missing or not a
+size above 0, or the part would be thinner than 0.1 mm.
+
 ### HOLE
 
 Template: `HOLE KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K`

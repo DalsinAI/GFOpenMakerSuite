@@ -127,6 +127,31 @@ int main(void)
                "WHERE stem is the Place fields");
         expect(g.dirty == dirty && ge_steps_back(steps) == back, "WHERE is not an undo step");
     }
+    expect(run(&g, "SCALE", &io) == 0 && io.rc == OMR_ERROR, "SCALE needs a factor");
+    expect(run(&g, "SCALE BY no", &io) == 0 && io.rc == OMR_ERROR, "SCALE wants a number");
+    expect(run(&g, "SCALE BY 0", &io) == 0 && io.rc == OMR_ERROR, "SCALE refuses 0");
+    expect(run(&g, "SCALE BY 0.001", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "thin"),
+           "SCALE refuses a part under 0.1 mm");
+    {
+        int back = ge_steps_back(steps);
+        expect(run(&g, "SCALE BY 1", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Already"), "SCALE by 1 is not a step");
+        expect(ge_steps_back(steps) == back, "SCALE by 1 did not take a step");
+    }
+    expect(run(&g, "SCALE BY 2", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Scaled by 2"), "SCALE doubles the part");
+    expect(run(&g, "WHERE STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SX") &&
+               !strcmp(omr_host_var("ST.SX"), "40.0") && omr_host_var("ST.X") && !strcmp(omr_host_var("ST.X"), "10.0"),
+           "SCALE keeps the middle and doubles the box");
+    expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK, "UNDO the scale");
+    expect(run(&g, "WHERE STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SX") &&
+               !strcmp(omr_host_var("ST.SX"), "20.0"),
+           "UNDO restored the box");
+    expect(run(&g, "SNAP", &io) == 0 && io.rc == OMR_OK && g.snap == 1, "SNAP for a scale");
+    expect(run(&g, "SCALE BY 1.24", &io) == 0 && io.rc == OMR_OK && strstr(buf, "1.2"), "SNAP holds a scale to a tenth");
+    expect(run(&g, "WHERE STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SX") &&
+               !strcmp(omr_host_var("ST.SX"), "24.0"),
+           "the box is 24 mm");
+    expect(run(&g, "SNAP ON 0", &io) == 0 && io.rc == OMR_OK && g.snap == 0, "SNAP off after the scale");
+    expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK, "UNDO the snapped scale");
 
     ge_where(gs_parts_mesh(ps, 0), pos, size);
     expect(run(&g, "MOVE X 5", &io) == 0 && io.rc == OMR_OK, "MOVE X 5");
