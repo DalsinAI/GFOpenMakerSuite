@@ -101,6 +101,15 @@ int main(void)
         expect(burn_materials_scan(&stocks, "materials/laser") == 0 && stocks.n == 3, "the materials library");
         expect(burn_ui_materials_fill(ui, "material", &stocks) == 3, "the picker lists them");
         expect(burn_ui_materials_chosen(ui, "material", &stocks) < 0, "None is first");
+        expect(burn_ui_materials_show(ui, "material", &stocks, "Card") == 1, "the picker shows Card");
+        {
+            int i = burn_ui_materials_chosen(ui, "material", &stocks);
+            expect(i >= 0 && !strcmp(stocks.at[i].name, "Card"), "Card is the chosen profile");
+            expect(burn_ui_materials_show(ui, "material", &stocks, "Card") == 0, "Card is already shown");
+            expect(burn_ui_materials_show(ui, "material", &stocks, "No such sheet") == 0 &&
+                       burn_ui_materials_chosen(ui, "material", &stocks) == i,
+                   "an unknown material leaves the picker");
+        }
         burn_materials_free(&stocks);
     }
 

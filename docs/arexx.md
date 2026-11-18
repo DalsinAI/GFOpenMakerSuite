@@ -648,6 +648,7 @@ The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture. `SAVE`
 writes Grbl laser G-code. `RESULT` is the file. `STEM` has `stem.MOVES`
 and `stem.SECONDS`, the figures the window shows after Save. `STATUS` also has `stem.KIND` (`SVG`, `DXF` or
 `Picture`), `stem.LAYERS`, `stem.MODE` and `stem.MACHINE` (the laser's name, or empty).
+`stem.MATERIAL` is the materials profile the list is showing, or empty.
 `stem.X`, `stem.Y` and `stem.ROT` are the place fields. `GET` and `SET` also take `invert`
 (1 burns the white of a picture) and `width` (the picture's width in
 millimetres; 0 uses the fill gap). The window has no field for them. The
@@ -686,8 +687,12 @@ is no such layer, or if a value is bad, with why in `RESULT`.
 Template: `MATERIAL FILE/A`
 
 Loads a starting-point materials profile (`materials/laser/card.om` and
-the rest). Power, speed and the other keys after it can still be changed
-with `LASER` or `SET`.
+the rest). `RESULT` is that profile's name. The window's list keeps it
+when the name is one of the picker's. Power, speed, passes, mode and the
+fill gap are written onto every layer row, as picking that profile does.
+`STATUS` names it (`stem.MATERIAL`). Power, speed and the other keys after
+it can still be changed with `LASER` or `SET`. Opening a drawing leaves
+the name, as the list does.
 
 ### LASER
 

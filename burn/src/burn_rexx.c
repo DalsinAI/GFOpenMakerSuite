@@ -735,6 +735,7 @@ static int cmd_status(void *c, void *g0)
         key_value(g->opts, key_of("rot"), pbuf, (int)sizeof pbuf);
         stem_put(c, NULL, "ROT", pbuf);
     }
+    stem_put(c, NULL, "MATERIAL", g->material);
     return OMR_OK;
 }
 
@@ -1023,6 +1024,16 @@ static int cmd_material(void *c, void *g0)
         return OMR_ERROR;
     }
     burn_material_apply(&mat, g->opts);
+    {
+        unsigned mask = 0;
+        if (mat.set & BURN_SET_POWER) mask |= 1u;
+        if (mat.set & BURN_SET_SPEED) mask |= 2u;
+        if (mat.set & BURN_SET_PASSES) mask |= 4u;
+        if (mat.set & BURN_SET_MODE) mask |= 8u;
+        if (mat.set & BURN_SET_INTERVAL) mask |= 16u;
+        layers_job(g, mask);
+    }
+    snprintf(g->material, sizeof g->material, "%s", mat.name);
     dirty(g);
     omr_set_result(c, mat.name[0] ? mat.name : file);
     return OMR_OK;

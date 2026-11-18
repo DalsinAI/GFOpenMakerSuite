@@ -44,6 +44,7 @@ typedef struct gb_rexx {
     void *win;
     void *ui;
     int look; /* -1: leave the camera. 0 top, 1 front, 2 side, 3 frame (the view at open) */
+    char material[64]; /* the profile the list shows; empty is None */
 } gb_rexx;
 
 #define GB_REXX_PORT "OPENMAKEBURN"
