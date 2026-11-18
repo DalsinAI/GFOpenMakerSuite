@@ -218,6 +218,15 @@ placed and sized from the stock, as the window. `X`, `Y`, `Z` place it
 (the middle of its box in X and Y, its bottom in Z); `W`, `D`, `H` size
 its box. `RESULT` is the new part's 1-based index and its name.
 
+### SHAPES
+
+Template: `SHAPES STEM/K`
+
+Names the shapes in the window's Add list, in that order: Box, Cylinder,
+Sphere, Cone, Torus, Wedge and Slot. `RESULT` is how many. `STEM`, when
+given, has `stem.0` (that count) and `stem.1` onwards the names. It does
+not add a part, and it is not an undo step.
+
 ### SHELF
 
 Template: `SHELF NAME/K INDEX/N/K LIST/S STEM/K`
