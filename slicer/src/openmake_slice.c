@@ -9,8 +9,8 @@
  * The print settings: a profile, the older names over it, key=value over
  * those (sl_args.h). START and END are the user's own lines, after the
  * machine's start and before its end. They do not replace the heat, the
- * home, or M84. SUPPORT=1 adds one wall under an overhang steeper than
- * 45 degrees, from the bed up to it.
+ * home, or M84. SUPPORT=1 adds one wall, and a line every four widths,
+ * under an overhang steeper than 45 degrees, from the bed up to it.
  * TASKS: the layers made on that many tasks at once (gp_part_par); the
  * G-code is the same on any number. By default one a core (gs_par_cores).
  * PREVIEW also draws the toolpath (gt_paint) to a PPM picture: ZOOM times

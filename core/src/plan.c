@@ -122,9 +122,10 @@ static int overhang(const gs_mesh *m, float h, int k, gl_loops *out)
     return rc ? -1 : 0;
 }
 
-/* One wall at this layer under every overhang above it that the part here
- * does not already hold. The wall is a brim line: gc_opts has a speed for
- * each kind, and a new kind would change that struct. */
+/* One wall, and a line every four widths, at this layer under every overhang
+ * above it that the part here does not already hold. The wall is a brim line
+ * and the fill is infill: gc_opts has a speed for each kind, and a new kind
+ * would change that struct. */
 static int support_wall(gt_path *p, const gs_mesh *m, float h, float w, int n, float z, const gl_loops *part)
 {
     int layers = gl_layers(m, h), k, rc = 0;
@@ -149,7 +150,7 @@ static int support_wall(gt_path *p, const gs_mesh *m, float h, float w, int n, f
         memset(&bag, 0, sizeof bag);
         rc = add_loops(&bag, &acc, 0) || add_loops(&bag, part, 1) || gl_union(&bag, &need);
         gl_loops_free(&bag);
-        if (!rc && need.n) rc = ring(p, &need, w * 0.5f, GT_BRIM, 1, z, w);
+        if (!rc && need.n) rc = ring(p, &need, w * 0.5f, GT_BRIM, 1, z, w) || gt_fill(p, &need, NULL, 0, z, w, 4, 0);
     }
     gl_loops_free(&acc);
     gl_loops_free(&need);

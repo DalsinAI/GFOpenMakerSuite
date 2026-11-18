@@ -220,13 +220,14 @@ int main(void)
 
     {
         /* A 20 mm base, 2 mm tall, and a slab on it from x 10 to 30: 10 mm of
-         * that slab hangs past the base. Support is one wall under the hang. */
+         * that slab hangs past the base. Support is a wall and a sparse fill
+         * under the hang. */
         gs_mesh base, slab, ledge;
         gp_opts so;
         gp_more x, old;
         gt_path p;
-        int i, past;
-        float len;
+        int i, past, hung;
+        float len, inf;
         memset(&base, 0, sizeof base);
         memset(&slab, 0, sizeof slab);
         memset(&ledge, 0, sizeof ledge);
@@ -252,19 +253,26 @@ int main(void)
         gt_init(&p);
         expect(gp_layer_more(&p, &ledge, &so, &x, 1) == 0, "the first layer, with support");
         len = gt_length(&p, GT_BRIM);
+        inf = gt_length(&p, GT_INFILL);
         past = 1;
-        for (i = 0; i < p.n; i++)
-            if (p.m[i].kind == GT_BRIM) {
-                if (p.m[i].x < 20.f || p.m[i].x > 30.f || p.m[i].y < 4.f || p.m[i].y > 16.f) past = 0;
-            }
-        expect(len > 30.f && len < 50.f && past, "one wall under the hang, not under the base");
-        printf("support: %.1f mm under the ledge\n", len);
+        hung = 0;
+        for (i = 0; i < p.n; i++) {
+            if (p.m[i].kind == GT_BRIM &&
+                (p.m[i].x < 20.f || p.m[i].x > 30.f || p.m[i].y < 4.f || p.m[i].y > 16.f))
+                past = 0;
+            if (i && p.m[i].kind == GT_INFILL && p.m[i - 1].x >= 20.2f && p.m[i].x >= 20.2f && p.m[i - 1].x <= 30.1f &&
+                p.m[i].x <= 30.1f && p.m[i].y > 4.f && p.m[i].y < 16.f && fabsf(p.m[i].x - p.m[i - 1].x) > 5.f)
+                hung = 1;
+        }
+        expect(len > 30.f && len < 50.f && inf > 20.f && past && hung, "a wall and a fill under the hang, not under the base");
+        printf("support: wall %.1f mm, fill %.1f mm\n", len, inf);
         gt_free(&p);
         gt_init(&p);
         expect(gp_layer_more(&p, &ledge, &so, &x, 5) == 0 && gt_length(&p, GT_BRIM) > 30.f, "still there on the last base layer");
         gt_free(&p);
         gt_init(&p);
-        expect(gp_layer_more(&p, &ledge, &so, &x, 6) == 0 && gt_length(&p, GT_BRIM) == 0.f, "the slab holds itself: no wall in it");
+        expect(gp_layer_more(&p, &ledge, &so, &x, 6) == 0 && gt_length(&p, GT_BRIM) == 0.f && gt_length(&p, GT_INFILL) < 30.f,
+               "the slab holds itself: no support in it");
         gt_free(&p);
         x.support = 0;
         gt_init(&p);
