@@ -61,7 +61,9 @@ int main(void)
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
                !strcmp(omr_host_var("ST.SHOWN"), "1") && omr_host_var("ST.COLOUR") &&
                !strcmp(omr_host_var("ST.COLOUR"), "brass") && omr_host_var("ST.NAME") &&
-               !strcmp(omr_host_var("ST.NAME"), "Box"),
+               !strcmp(omr_host_var("ST.NAME"), "Box") && omr_host_var("ST.SLICED") &&
+               !strcmp(omr_host_var("ST.SLICED"), "0") && omr_host_var("ST.LAYERS") &&
+               !strcmp(omr_host_var("ST.LAYERS"), "0"),
            "STATUS says the part is shown, in brass, named Box");
     expect(run(&g, "SHOW ON 0", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Hidden"), "SHOW hides it");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.SHOWN") &&
@@ -99,6 +101,17 @@ int main(void)
                    !strcmp(omr_host_var("ST.ROUGH"), (g.slice_how & GC_FELL_BACK) ? "1" : "0"),
                "SLICE");
         expect(g.dirty == dirty && ge_steps_back(steps) == back, "SLICE is not an undo step");
+        expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOPENMAKE.1") &&
+                   omr_host_var("ST.SLICED") && !strcmp(omr_host_var("ST.SLICED"), "1") &&
+                   omr_host_var("ST.LAYERS") && atoi(omr_host_var("ST.LAYERS")) == g.slice_layers &&
+                   omr_host_var("ST.MOVES") && atoi(omr_host_var("ST.MOVES")) == g.slice_moves &&
+                   omr_host_var("ST.SECONDS") && atof(omr_host_var("ST.SECONDS")) > 0.0 &&
+                   omr_host_var("ST.FILAMENT") && atof(omr_host_var("ST.FILAMENT")) > 0.0 &&
+                   omr_host_var("ST.ROUGH") &&
+                   !strcmp(omr_host_var("ST.ROUGH"), (g.slice_how & GC_FELL_BACK) ? "1" : "0") &&
+                   omr_host_var("ST.NAME") && !strcmp(omr_host_var("ST.NAME"), "Box"),
+               "STATUS says the slice the window is showing");
+        expect(g.dirty == dirty && ge_steps_back(steps) == back, "STATUS is not an undo step");
     }
     {
         FILE *f = fopen("build/rexx-box.gcode", "r");
