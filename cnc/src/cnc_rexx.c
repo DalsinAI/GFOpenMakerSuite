@@ -424,6 +424,28 @@ static int cmd_mill(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const look_names[] = {"top", "front", "side", "frame"};
+static const char *const look_said[] = {"Top.", "Front.", "Side.", "Framed."};
+
+/* Top, front, side, or the view at open. The picture changes. The cut does not. */
+static int cmd_look(void *c, void *g0)
+{
+    oc_rexx *g = app(g0);
+    const char *name = omr_arg(c, "NAME");
+    int which = -1, i;
+    if (name) {
+        for (i = 0; i < 4; i++)
+            if (eqi(name, look_names[i])) which = i;
+    }
+    if (which < 0) {
+        omr_set_result(c, "NAME is top, front, side or frame");
+        return OMR_ERROR;
+    }
+    g->look = which;
+    omr_set_result(c, look_said[which]);
+    return OMR_OK;
+}
+
 static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty document", cmd_quit},
@@ -436,6 +458,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the file, whether it is dirty, and the mode", cmd_status},
     {sizeof(omr_verb), "PREVIEW", "FILE/K", "Plan the cut; with FILE, write a PPM of it", cmd_preview},
     {sizeof(omr_verb), "MILL", "DRIVER/K PROFILE/K", "Pick the mill from a driver and profile", cmd_mill},
+    {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
 };
 
 void oc_rexx_init(oc_rexx *g)
@@ -443,6 +466,7 @@ void oc_rexx_init(oc_rexx *g)
     if (!g) return;
     memset(g, 0, sizeof *g);
     g->size = (int)sizeof *g;
+    g->look = -1;
 }
 
 const omr_verb *oc_rexx_verbs(void) { return verbs; }

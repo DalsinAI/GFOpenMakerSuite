@@ -29,6 +29,7 @@ typedef struct oc_rexx {
     void *ui;
     char start[240]; /* the user's own lines; opts->start points here when set */
     char end[240];
+    int look; /* -1: leave the camera. 0 top, 1 front, 2 side, 3 frame (the view at open) */
 } oc_rexx;
 
 #define OC_REXX_PORT "GFOPENCNC"
