@@ -127,7 +127,9 @@ int main(void)
                strcmp(omr_host_var("ST.LOADED"), "1") == 0 && omr_host_var("ST.SLICED") &&
                strcmp(omr_host_var("ST.SLICED"), "0") == 0 && omr_host_var("ST.MOVES") &&
                !strcmp(omr_host_var("ST.MOVES"), "0") && omr_host_var("ST.ROUGH") &&
-               !strcmp(omr_host_var("ST.ROUGH"), "0"),
+               !strcmp(omr_host_var("ST.ROUGH"), "0") && omr_host_var("ST.PICTURE") &&
+               !strcmp(omr_host_var("ST.PICTURE"), "0") && omr_host_var("ST.LAYER") &&
+               !strcmp(omr_host_var("ST.LAYER"), "1"),
            "STATUS LOADED");
     expect(run(&g, "LOAD FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part, "LOAD stl");
 
@@ -185,6 +187,10 @@ int main(void)
         expect(run(&g, "LAYERS INDEX 4", &io) == 0 && io.rc == OMR_OK && g.layers == 1 && g.layer_no == 4 &&
                    strstr(buf, "Layers 1 to 4"),
                "LAYERS index");
+        expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICTURE") &&
+                   !strcmp(omr_host_var("ST.PICTURE"), "1") && omr_host_var("ST.LAYER") &&
+                   !strcmp(omr_host_var("ST.LAYER"), "4"),
+               "STATUS says layers 1 to 4");
         expect(run(&g, "LAYERS STEP 1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 5 && g.layers == 1, "LAYERS next");
         expect(run(&g, "LAYERS STEP -1", &io) == 0 && io.rc == OMR_OK && g.layer_no == 4, "LAYERS prev");
         expect(run(&g, "LAYERS INDEX 1000000", &io) == 0 && io.rc == OMR_OK && g.layer_no == n && g.layers == 1,
