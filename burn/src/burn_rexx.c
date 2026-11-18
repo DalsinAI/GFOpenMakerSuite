@@ -7,6 +7,7 @@
 #include "gs_gcode.h"
 #include "gs_toolpath.h"
 #include "gs_view.h"
+#include "omview_machines.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1004,6 +1005,44 @@ static int cmd_machine(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The picker's list. DIR is the machines drawer the window scans.
+ * It does not load a laser and it does not mark the job dirty. */
+static int cmd_machines(void *c, void *g0)
+{
+    gb_rexx *g = app(g0);
+    const char *dir = omr_arg(c, "DIR");
+    omv_machines lib;
+    char nbuf[16];
+    int i;
+    (void)g;
+#if defined(AMIGA) || defined(__amigaos__)
+    if (!dir || !dir[0]) dir = "PROGDIR:machines";
+#else
+    if (!dir || !dir[0]) dir = "machines";
+#endif
+    memset(&lib, 0, sizeof lib);
+    if (omv_machines_scan(&lib, dir, "laser") < 0) {
+        omv_machines_free(&lib);
+        omr_set_result(c, "out of memory");
+        return OMR_ERROR;
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    stem_put(c, NULL, "0", nbuf);
+    for (i = 0; i < lib.n; i++) {
+        char tail[24];
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, NULL, nbuf, lib.at[i].name);
+        snprintf(tail, sizeof tail, "%d.DRIVER", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].driver);
+        snprintf(tail, sizeof tail, "%d.PROFILE", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].profile);
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    omr_set_result(c, nbuf);
+    omv_machines_free(&lib);
+    return OMR_OK;
+}
+
 static int cmd_material(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
@@ -1353,6 +1392,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "MATERIAL", "FILE/A", "Load a materials profile", cmd_material},
     {sizeof(omr_verb), "MATERIALS", "DIR/K STEM/K", "the materials the picker lists", cmd_materials},
     {sizeof(omr_verb), "MACHINE", "DRIVER/K PROFILE/K", "Pick the laser from a driver and profile", cmd_machine},
+    {sizeof(omr_verb), "MACHINES", "DIR/K STEM/K", "the lasers the picker lists", cmd_machines},
     {sizeof(omr_verb), "LASER", "POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K",
      "The job's default power, speed and passes", cmd_laser},
     {sizeof(omr_verb), "MODE", "NAME/A", "The job's default mode: line, fill or offset", cmd_mode},

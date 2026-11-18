@@ -686,7 +686,8 @@ The port keeps the list when the window rebuilds the job. Opening a
 drawing clears it. `cuts_last` still sorts the burn when it is on; turn
 it off to burn in that list order. `MACHINE DRIVER PROFILE` picks the
 laser, as the window's list. A printer is refused. When that laser is
-in the list, the list keeps it.
+in the list, the list keeps it. `MACHINES` names that list and does not
+load one.
 
 ### LAYER
 
@@ -724,6 +725,18 @@ on the Amiga, the same drawer the window scans). `RESULT` is how many.
 `STEM` has `stem.0` (that count), `stem.1` the first name, `stem.1.PATH`
 its file, and so on. It does not load a profile, and it does not mark the
 job dirty. An empty drawer is `0`.
+
+### MACHINES
+
+Template: `MACHINES DIR/K STEM/K`
+
+Names the lasers the window's list shows. `DIR` is the machines drawer
+(`machines` on the host, `PROGDIR:machines` on the Amiga), the same root
+the window scans. `RESULT` is how many. `STEM`, when given, has `stem.0`
+(that count), `stem.1` onwards the names, `stem.1.DRIVER` and
+`stem.1.PROFILE` the two files `MACHINE` takes. It does not load one, and
+it does not mark the job dirty. A missing drawer is `0`. Out of memory
+is RC 10.
 
 ### LASER
 

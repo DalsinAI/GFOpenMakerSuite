@@ -182,10 +182,12 @@ $(BUILD)/test_burn_ui: burn/tests/test_burn_ui.c burn/src/markup.h burn/src/burn
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 # OpenMakeBurn's ARexx commands (burn/src/burn_rexx.c), on the host stub.
-$(BUILD)/test_burn_rexx: burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c $(BURN_JOB) core/src/toolpath_paint.c core/src/view.c core/src/solid.c burn/src/burn_rexx.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/src -Imachines/include -Iburn/include -Iburn/src -o $@ \
-	    burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c $(BURN_JOB) \
-	    core/src/toolpath_paint.c core/src/view.c core/src/solid.c -lm
+$(BUILD)/test_burn_rexx: burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c $(BURN_JOB) core/ui/machines_ui.c core/ui/omview_machines.h core/src/toolpath_paint.c core/src/view.c core/src/solid.c burn/src/burn_rexx.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/src -Icore/ui -Imachines/include -Iburn/include -Iburn/src -I$(LAYOUT)/include -o $@ \
+	    burn/tests/test_burn_rexx.c burn/src/burn_rexx.c core/src/rexx.c core/ui/machines_ui.c $(BURN_JOB) \
+	    core/src/toolpath_paint.c core/src/view.c core/src/solid.c \
+	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
+	    $(LAYOUT)/build/libopenlayout.a -lm
 
 
 $(BUILD)/burn_preview: burn/tools/preview.c burn/src/markup.h burn/src/burn_ui.c $(BURN_JOB) core/ui/view_gpu.c core/src/gpu.c core/src/toolpath_paint.c | $(BUILD)
