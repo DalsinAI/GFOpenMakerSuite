@@ -161,9 +161,11 @@ print settings (`layer-height`, `line-width`, `walls`, `infill`,
 `first-layer-speed`, `hotend`, `bed`, `filament`, `around`, `loops`,
 `distance`, `retract`, `retract-speed`). In OpenMakeBurn they are the
 job's keys (`power`, `speed`, `travel`, `passes`, `constant`, `s100`,
-`mode`, `interval`, `cuts_last`, `start`, `end`). `start` and `end` are
+`mode`, `interval`, `cuts_last`, `start`, `end`, `invert`, `width`). `start` and `end` are
 lines of your own, after the machine's start and before its end. Quote a
-line that has a space. Workshop's keys are `name` and `notes`.
+line that has a space. `invert` is 1 to burn the white of a picture, and
+`width` is that picture's width in millimetres (0 uses the fill gap). The
+window has no field for those four. Workshop's keys are `name` and `notes`.
 
 With no `KEY`, `STEM` receives every key: `stem.0` is how many, `stem.1`
 the first key, `stem.1.VALUE` its value, and so on. With `KEY`, `RESULT`
@@ -384,7 +386,10 @@ been sliced yet.
 
 The laser window. `OPEN` reads an SVG, a DXF or a Netpbm picture. `SAVE`
 writes Grbl laser G-code. `STATUS` also has `stem.KIND` (`SVG`, `DXF` or
-`Picture`), `stem.LAYERS` and `stem.MODE`.
+`Picture`), `stem.LAYERS` and `stem.MODE`. `GET` and `SET` also take `invert`
+(1 burns the white of a picture) and `width` (the picture's width in
+millimetres; 0 uses the fill gap). The window has no field for them. The
+port keeps them when the window rebuilds the job.
 
 ### LAYER
 
