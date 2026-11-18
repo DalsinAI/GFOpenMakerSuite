@@ -571,6 +571,79 @@ static int parse_order(gb_rexx *g, const char *value, char *err, int errlen)
     return 0;
 }
 
+/* Up and Dn: move one layer in the burn order. INDEX is that layer, 1-based.
+ * STEP -1 is Up, 1 is Dn. A step that cannot move leaves the list. */
+static int cmd_order(void *c, void *g0)
+{
+    gb_rexx *g = app(g0);
+    int index = 0, step = 0, has_i, has_s, n, i, at = -1, L, tmp, moved = 0;
+    int seq[64];
+    char buf[240];
+    if (!g->opts) {
+        omr_set_result(c, "no document");
+        return OMR_ERROR;
+    }
+    has_i = arg_i(c, "INDEX", &index);
+    has_s = arg_i(c, "STEP", &step);
+    if (has_i < 0 || has_s < 0) {
+        omr_set_result(c, "not a number");
+        return OMR_ERROR;
+    }
+    if (has_i <= 0 || has_s <= 0) {
+        omr_set_result(c, "INDEX and STEP are required");
+        return OMR_ERROR;
+    }
+    if (step != -1 && step != 1) {
+        omr_set_result(c, "STEP is -1 or 1");
+        return OMR_ERROR;
+    }
+    if (!has_doc(g)) {
+        omr_set_result(c, "Open a drawing first");
+        return OMR_ERROR;
+    }
+    n = g->doc->nlayer;
+    if (index < 1 || index > n) {
+        omr_set_result(c, "no such layer");
+        return OMR_ERROR;
+    }
+    if (n > 64) n = 64;
+    if (g->have_order && g->nseq > 0) {
+        int m = g->nseq > 64 ? 64 : g->nseq;
+        for (i = 0; i < m; i++) seq[i] = g->seq[i];
+        n = m;
+    } else {
+        for (i = 0; i < n; i++) seq[i] = i;
+    }
+    L = index - 1;
+    for (i = 0; i < n; i++)
+        if (seq[i] == L) at = i;
+    if (at >= 0 && step < 0 && at > 0) {
+        tmp = seq[at];
+        seq[at] = seq[at - 1];
+        seq[at - 1] = tmp;
+        moved = 1;
+    } else if (at >= 0 && step > 0 && at + 1 < n) {
+        tmp = seq[at];
+        seq[at] = seq[at + 1];
+        seq[at + 1] = tmp;
+        moved = 1;
+    }
+    if (!moved) {
+        key_value(g->opts, key_of("order"), buf, (int)sizeof buf);
+        omr_set_result(c, buf);
+        return OMR_OK;
+    }
+    memcpy(g->seq, seq, (size_t)n * sizeof seq[0]);
+    g->nseq = n;
+    g->have_order = 1;
+    g->opts->seq = g->seq;
+    g->opts->nseq = n;
+    dirty(g);
+    key_value(g->opts, key_of("order"), buf, (int)sizeof buf);
+    omr_set_result(c, buf);
+    return OMR_OK;
+}
+
 static int cmd_set(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
@@ -1162,6 +1235,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the file, whether it is dirty, kind and mode", cmd_status},
     {sizeof(omr_verb), "LAYER", "INDEX/N/K COLOUR/K POWER/K SPEED/K PASSES/N/K ON/N/K MODE/K INTERVAL/K",
      "Set one layer's overrides", cmd_layer},
+    {sizeof(omr_verb), "ORDER", "INDEX/N/A STEP/N/A", "move a layer up or down, as Up and Dn", cmd_order},
     {sizeof(omr_verb), "MATERIAL", "FILE/A", "Load a materials profile", cmd_material},
     {sizeof(omr_verb), "MACHINE", "DRIVER/K PROFILE/K", "Pick the laser from a driver and profile", cmd_machine},
     {sizeof(omr_verb), "LASER", "POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K",

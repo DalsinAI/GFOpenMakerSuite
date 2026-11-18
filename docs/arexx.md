@@ -659,7 +659,8 @@ the first row back as the job. `SET kerf`, `SET tabs` and `SET tabw` do
 the same for the holding tabs. `travel` and `s100` have no row; the port
 keeps them across a rebuild. `order` is the layer list, 1-based and comma
 separated, the same as `order=` on the command and the window's Up and Dn.
-An empty `order` is the file order. Layers left out follow, in file order.
+`ORDER INDEX STEP` moves one layer, as those buttons: `STEP` `-1` is Up
+and `1` is Dn, and `INDEX` is that layer, 1-based. An empty `order` is the file order. Layers left out follow, in file order.
 The port keeps the list when the window rebuilds the job. Opening a
 drawing clears it. `cuts_last` still sorts the burn when it is on; turn
 it off to burn in that list order. `MACHINE DRIVER PROFILE` picks the
