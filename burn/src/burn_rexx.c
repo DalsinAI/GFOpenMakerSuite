@@ -1068,6 +1068,28 @@ static int cmd_frame(void *c, void *g0)
     return OMR_OK;
 }
 
+static const char *const look_names[] = {"top", "front", "side", "frame"};
+static const char *const look_said[] = {"Top.", "Front.", "Side.", "Framed."};
+
+/* Top, front, side, or the view at open. Not the Frame button. The picture changes. */
+static int cmd_look(void *c, void *g0)
+{
+    gb_rexx *g = app(g0);
+    const char *name = omr_arg(c, "NAME");
+    int which = -1, i;
+    if (name) {
+        for (i = 0; i < 4; i++)
+            if (eqi(name, look_names[i])) which = i;
+    }
+    if (which < 0) {
+        omr_set_result(c, "NAME is top, front, side or frame");
+        return OMR_ERROR;
+    }
+    g->look = which;
+    omr_set_result(c, look_said[which]);
+    return OMR_OK;
+}
+
 static const omr_verb verbs[] = {
     {sizeof(omr_verb), "VERSION", "", "The program name and version", cmd_version},
     {sizeof(omr_verb), "QUIT", "FORCE/S", "Close the window; FORCE discards a dirty document", cmd_quit},
@@ -1087,6 +1109,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "MODE", "NAME/A", "The job's default mode: line, fill or offset", cmd_mode},
     {sizeof(omr_verb), "PREVIEW", "FILE/K", "Build the job's preview; with FILE, write a PPM", cmd_preview},
     {sizeof(omr_verb), "FRAME", "FILE/A", "Write a travel around the job with the laser off", cmd_frame},
+    {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
 };
 
 void gb_rexx_init(gb_rexx *g)
@@ -1094,6 +1117,7 @@ void gb_rexx_init(gb_rexx *g)
     if (!g) return;
     memset(g, 0, sizeof *g);
     g->size = (int)sizeof *g;
+    g->look = -1;
 }
 
 void gb_rexx_keep(gb_rexx *g)

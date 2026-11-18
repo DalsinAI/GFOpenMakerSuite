@@ -473,7 +473,12 @@ int main(int argc, char **argv)
             snprintf(rexx.file, sizeof rexx.file, "%s", svg_path);
             read_opts(ui);
             rexx.have_machine = laser(ui, &rexx.machine, why, (int)sizeof why) == 0;
+            rexx.look = -1;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gb_rexx_verbs(), gb_rexx_nverbs(), &rexx);
+            if (rexx.look >= 0 && rexx.look <= 3) {
+                if (rexx.look == 3) gs_cam_home(&cam);
+                else gs_cam_look(&cam, rexx.look);
+            }
             strncpy(svg_path, rexx.file, sizeof svg_path - 1);
             svg_path[sizeof svg_path - 1] = 0;
             rexx_sync(ui);

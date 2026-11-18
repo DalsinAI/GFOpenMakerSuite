@@ -305,6 +305,16 @@ int main(void)
     gb_rexx_keep(&g);
     expect(opts.travel == 200.f && opts.s100 == 500.f && opts.start && !strcmp(opts.start, "M117 hello"),
            "a rebuild keeps travel, S at 100%, and the start line");
+    {
+        int dirty = g.dirty;
+        expect(g.look == -1, "the view is left alone until LOOK");
+        expect(run(&g, "LOOK NAME top", &io) == 0 && io.rc == OMR_OK && g.look == 0 && strstr(buf, "Top"), "LOOK top");
+        expect(run(&g, "LOOK NAME side", &io) == 0 && io.rc == OMR_OK && g.look == 2, "LOOK side");
+        expect(run(&g, "LOOK NAME frame", &io) == 0 && io.rc == OMR_OK && g.look == 3 && strstr(buf, "Framed"),
+               "LOOK frame is the view, not the Frame button");
+        expect(run(&g, "LOOK NAME under", &io) == 0 && io.rc == OMR_ERROR && g.look == 3, "LOOK refuses an unknown view");
+        expect(g.dirty == dirty, "LOOK does not dirty");
+    }
     g.dirty = 1;
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && g.quit == 0, "QUIT refuses a dirty document");
     expect(run(&g, "QUIT FORCE", &io) == 0 && io.rc == OMR_OK && g.quit == 1, "QUIT FORCE");
