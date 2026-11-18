@@ -329,6 +329,11 @@ int main(void)
     expect(!strcmp(olui_get_text(olui_find(ui, "notes")), "A shelf bracket"), "the notes are in the field");
     expect(has_text(list, "CAD") && has_text(list, "Body  cad/body.stl"), "the CAD group holds Body");
     expect(has_text(list, "Laser") && has_text(list, "Plate  laser/plate.svg"), "the Laser group holds Plate");
+    w.project.items[1].from = 1;
+    workshop_ui_refresh(ui, &w);
+    expect(has_text(list, "Plate  laser/plate.svg  from 1"), "an item made from another shows from");
+    expect(has_text(list, "Body  cad/body.stl") && !has_text(list, "Body  cad/body.stl  from"),
+           "an item with no from stays as the name and the file");
     expect(has_text(list, "Electronics") && has_text(list, "Board  Widget.kicad_pro"),
            "Electronics holds the KiCad file, referenced in place");
     expect(has_text(list, "render") && has_text(list, "Shot  body.stl"), "an unknown kind gets its own group");

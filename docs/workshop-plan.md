@@ -385,8 +385,8 @@ should be otherwise:
   referenced in place. gfamigakicad is trusted with those files.
 - The binary is GFOpenWorkshop; the window title is GFOpenMakerWorkshop.
 - Recent projects are stored in `PROGDIR:workshop-recent.om`.
-- `from=` and `settings=` are stored in the first cut; the window may
-  show `from` modestly, and does not have to edit it.
+- `from=` and `settings=` are stored. The item line shows `from N` when
+  it is set. The window does not edit it, and it does not show `settings`.
 - `SEND` does not start the app; `OPENITEM` does.
 - Workshop adds existing KiCad projects only; it does not create them.
 - New asks for a drawer; there is no default projects folder yet.

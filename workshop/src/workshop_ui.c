@@ -91,7 +91,9 @@ static void fill_dark(unsigned char *rgb, int w, int h)
 
 static void item_line(char *line, int n, const gpr_item *it)
 {
-    snprintf(line, (size_t)n, "%s  %s", it->name[0] ? it->name : "(unnamed)", it->file);
+    const char *name = it->name[0] ? it->name : "(unnamed)";
+    if (it->from > 0) snprintf(line, (size_t)n, "%s  %s  from %d", name, it->file, it->from);
+    else snprintf(line, (size_t)n, "%s  %s", name, it->file);
 }
 
 static int already_group(const char *kind, const char *const *seen, int nseen)
@@ -116,7 +118,7 @@ static void fill_items(olui *ui, workshop *w)
         if (!group) continue;
         olui_item_open(ui, group, 1);
         for (i = 0; w->have && i < w->project.n; i++) {
-            char line[GPR_NAME_MAX + GPR_PATH_MAX + 4], iv[12];
+            char line[GPR_NAME_MAX + GPR_PATH_MAX + 24], iv[12];
             olui_el *el;
             if (!kind_is(w->project.items[i].kind, known_kinds[k])) continue;
             item_line(line, (int)sizeof line, &w->project.items[i]);
@@ -139,7 +141,7 @@ static void fill_items(olui *ui, workshop *w)
         if (!group) continue;
         olui_item_open(ui, group, 1);
         for (i = 0; i < w->project.n; i++) {
-            char line[GPR_NAME_MAX + GPR_PATH_MAX + 4], iv[12];
+            char line[GPR_NAME_MAX + GPR_PATH_MAX + 24], iv[12];
             olui_el *el;
             if (!kind_is(w->project.items[i].kind, kind)) continue;
             item_line(line, (int)sizeof line, &w->project.items[i]);
