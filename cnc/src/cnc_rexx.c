@@ -1,6 +1,6 @@
 /* GFOpenCNC's ARexx command table. The window Wait()s on GFOPENCNC.1
  * and dispatches through these verbs; host tests use omr_do_line.
- * The shared commands, and PREVIEW: the cut, and a PPM when FILE is given.
+ * The shared commands, and PREVIEW: the cut, the window's line, and a PPM when FILE is given.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "cnc_rexx.h"
 
@@ -372,7 +372,15 @@ static int cmd_preview(void *c, void *g0)
         return OMR_ERROR;
     }
     *g->have_path = 1;
-    if (file && file[0]) {
+    if (!file || !file[0]) {
+        char line[96];
+        const char *mill = (g->have_machine && g->machine.name[0]) ? g->machine.name : "";
+        snprintf(line, sizeof line, "%s, %s. %d moves, 0 s.", mill[0] ? mill : "No mill", cnc_mode_name(g->opts->mode),
+                 g->path->n);
+        omr_set_result(c, line);
+        return OMR_OK;
+    }
+    {
         enum { W = 320, H = 240 };
         unsigned char *rgb;
         gs_cam cam;

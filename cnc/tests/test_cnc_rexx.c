@@ -104,6 +104,11 @@ int main(void)
     expect(run(&g, "SET KEY tool VALUE 3", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3"), "tool 3 for a preview");
     expect(run(&g, "SET KEY mode VALUE profile", &io) == 0 && io.rc == OMR_OK, "profile for a preview");
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW plans the cut");
+    {
+        char want[96];
+        snprintf(want, sizeof want, "No mill, profile. %d moves, 0 s.", path.n);
+        expect(!strcmp(buf, want), "PREVIEW says the window's line");
+    }
     expect(run(&g, "PREVIEW FILE build/cnc-rexx.ppm", &io) == 0 && io.rc == OMR_OK && strstr(buf, "cnc-rexx.ppm"),
            "PREVIEW FILE");
     {
@@ -124,6 +129,9 @@ int main(void)
     expect(run(&g, "MILL DRIVER machines/cnc/grbl/driver.om PROFILE machines/cnc/grbl/profiles/generic-300.om", &io) == 0 &&
                io.rc == OMR_OK && g.have_machine && g.machine.family == OM_CNC && buf[0],
            "MILL the generic mill");
+    expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] && strstr(buf, g.machine.name) &&
+               strstr(buf, "profile.") && strstr(buf, "moves, 0 s."),
+           "PREVIEW names the mill");
     {
         opts.mode = CNC_PROFILE;
         opts.tool = 0.f;
