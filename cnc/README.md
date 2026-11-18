@@ -22,5 +22,5 @@ The window is `src/amiga.c`, binary GFOpenCNC. Open an SVG or a DXF,
 pick Profile, Pocket or Drill, Preview the cut, and Save G-code for the
 mill picked. It fits 640 by 480 inside and is resizable. The view is the
 toolpath, drawn with the pens. ARexx is `GFOPENCNC.1`: the shared
-commands, the cut's keys, `MILL` (the mill list), and `PREVIEW` (the cut, the window's line, and a PPM when `FILE`
+commands, the cut's keys, `MILL` (the mill list; `MILLS` names it and does not load one), and `PREVIEW` (the cut, the window's line, and a PPM when `FILE`
 is given).

@@ -131,6 +131,20 @@ int main(void)
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && !g.quit, "QUIT refuses a dirty document");
     expect(run(&g, "SAVE FILE build/cnc-rexx-none.nc", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "no mill"),
            "SAVE with no mill is refused");
+    {
+        int dirty = g.dirty;
+        expect(run(&g, "MILLS STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "2") && g.dirty == dirty &&
+                   omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "2") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "Generic Grbl Mill 300") && omr_host_var("ST.1.DRIVER") &&
+                   strstr(omr_host_var("ST.1.DRIVER"), "grbl/driver.om") && omr_host_var("ST.1.PROFILE") &&
+                   strstr(omr_host_var("ST.1.PROFILE"), "grbl/profiles/generic-300.om") && omr_host_var("ST.2") &&
+                   !strcmp(omr_host_var("ST.2"), "Generic LinuxCNC Mill 300") && omr_host_var("ST.2.DRIVER") &&
+                   strstr(omr_host_var("ST.2.DRIVER"), "linuxcnc/driver.om"),
+               "MILLS names the picker");
+        expect(run(&g, "MILLS DIR machines/no-such", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "0") &&
+                   g.dirty == dirty,
+               "MILLS of a missing drawer is none");
+    }
     expect(run(&g, "MILL", &io) == 0 && io.rc == OMR_ERROR, "MILL needs a file");
     expect(run(&g, "MILL DRIVER machines/printer/marlin/driver.om PROFILE machines/printer/marlin/profiles/generic-220.om",
                &io) == 0 &&
