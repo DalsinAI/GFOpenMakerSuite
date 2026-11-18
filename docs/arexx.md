@@ -567,7 +567,7 @@ G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
 `stem.MOVES`, `stem.TIME`, `stem.FILAMENT` and `stem.ROUGH` (`1` when the
 time is short, the window's "over"). The layer bar is `stem.PICTURE`
 (`1` when layers 1 to a layer are drawn) and `stem.LAYER` (that layer).
-`GET` and `SET` take the print settings,
+`stem.PRINTER` is the printer's name, or empty. `GET` and `SET` take the print settings,
 and also `support`, `start`, `end` and `tasks` by name. `support`, `start`
 and `end` are the Settings side of the window, the same as `SUPPORT=`,
 `START=` and `END=` on the command. `support` is `1` or `0`. `start` and

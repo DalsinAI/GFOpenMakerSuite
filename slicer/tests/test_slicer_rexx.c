@@ -129,7 +129,8 @@ int main(void)
                !strcmp(omr_host_var("ST.MOVES"), "0") && omr_host_var("ST.ROUGH") &&
                !strcmp(omr_host_var("ST.ROUGH"), "0") && omr_host_var("ST.PICTURE") &&
                !strcmp(omr_host_var("ST.PICTURE"), "0") && omr_host_var("ST.LAYER") &&
-               !strcmp(omr_host_var("ST.LAYER"), "1"),
+               !strcmp(omr_host_var("ST.LAYER"), "1") && omr_host_var("ST.PRINTER") &&
+               !strcmp(omr_host_var("ST.PRINTER"), ""),
            "STATUS LOADED");
     expect(run(&g, "LOAD FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part, "LOAD stl");
 
@@ -146,6 +147,9 @@ int main(void)
                 &io) == 0 &&
                io.rc == OMR_OK,
            "PRINTER Marlin again");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
+               omr_host_var("ST.PRINTER") && !strcmp(omr_host_var("ST.PRINTER"), g.machine.name),
+           "STATUS names the printer");
 
     expect(run(&g, "GET KEY support", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0") == 0, "GET support");
     expect(run(&g, "SET KEY support VALUE 1", &io) == 0 && io.rc == OMR_OK && job.support == 1, "SET support");
