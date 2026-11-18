@@ -106,6 +106,18 @@ int main(void)
            "HELP lists SLICE");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKESLICER.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    expect(run(&g, "PRINTERS STEM ST", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "5") == 0 && g.dirty == 0 &&
+               omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "5") && omr_host_var("ST.1") &&
+               !strcmp(omr_host_var("ST.1"), "Generic Marlin 220") && omr_host_var("ST.1.DRIVER") &&
+               strstr(omr_host_var("ST.1.DRIVER"), "marlin/driver.om") && omr_host_var("ST.1.PROFILE") &&
+               strstr(omr_host_var("ST.1.PROFILE"), "generic-220.om") && omr_host_var("ST.2") &&
+               !strcmp(omr_host_var("ST.2"), "Generic RepRapFirmware 300") && omr_host_var("ST.3") &&
+               !strcmp(omr_host_var("ST.3"), "Creality Ender-3 V2") && omr_host_var("ST.4") &&
+               !strcmp(omr_host_var("ST.4"), "Original Prusa i3 MK3S+") && omr_host_var("ST.5") &&
+               !strcmp(omr_host_var("ST.5"), "Voron 2.4 300"),
+           "PRINTERS names the picker");
+    expect(run(&g, "PRINTERS DIR machines/no-such", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "0") == 0 && g.dirty == 0,
+           "PRINTERS of a missing drawer is none");
     expect(run(&g, "GET KEY tasks", &io) == 0 && io.rc == OMR_OK && strcmp(buf, "1") == 0, "GET tasks with no part");
     expect(run(&g, "SET KEY tasks VALUE 4", &io) == 0 && io.rc == OMR_OK && g.tasks == 4 && g.dirty == 0 &&
                strcmp(buf, "4") == 0,

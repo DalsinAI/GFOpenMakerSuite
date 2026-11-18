@@ -5,6 +5,7 @@
 
 #include "gs_gcode.h"
 #include "gs_plan.h"
+#include "omview_machines.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -475,6 +476,44 @@ static int cmd_printer(void *c, void *g0)
     return OMR_OK;
 }
 
+/* The picker's list. DIR is the machines drawer the window scans.
+ * It does not load a printer and it does not mark the job dirty. */
+static int cmd_printers(void *c, void *g0)
+{
+    os_rexx *g = app(g0);
+    const char *dir = omr_arg(c, "DIR");
+    omv_machines lib;
+    char nbuf[16];
+    int i;
+    (void)g;
+#if defined(AMIGA) || defined(__amigaos__)
+    if (!dir || !dir[0]) dir = "PROGDIR:machines";
+#else
+    if (!dir || !dir[0]) dir = "machines";
+#endif
+    memset(&lib, 0, sizeof lib);
+    if (omv_machines_scan(&lib, dir, "printer") < 0) {
+        omv_machines_free(&lib);
+        omr_set_result(c, "out of memory");
+        return OMR_ERROR;
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    stem_put(c, NULL, "0", nbuf);
+    for (i = 0; i < lib.n; i++) {
+        char tail[24];
+        snprintf(nbuf, sizeof nbuf, "%d", i + 1);
+        stem_put(c, NULL, nbuf, lib.at[i].name);
+        snprintf(tail, sizeof tail, "%d.DRIVER", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].driver);
+        snprintf(tail, sizeof tail, "%d.PROFILE", i + 1);
+        stem_put(c, NULL, tail, lib.at[i].profile);
+    }
+    snprintf(nbuf, sizeof nbuf, "%d", lib.n);
+    omr_set_result(c, nbuf);
+    omv_machines_free(&lib);
+    return OMR_OK;
+}
+
 /* Layers 1 to INDEX of the last slice. The picture changes. The part does not. */
 static int cmd_layers(void *c, void *g0)
 {
@@ -592,6 +631,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "LOAD", "FILE/A", "Open an STL, as OPEN", cmd_open},
     {sizeof(omr_verb), "PROFILE", "FILE/A", "Load a print-settings profile", cmd_profile},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "Pick the machine from a driver and profile", cmd_printer},
+    {sizeof(omr_verb), "PRINTERS", "DIR/K STEM/K", "the printers the picker lists", cmd_printers},
     {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "Slice the loaded part", cmd_slice},
     {sizeof(omr_verb), "LAYERS", "ON/N/K INDEX/N/K STEP/N/K", "show layers 1 to a layer", cmd_layers},
     {sizeof(omr_verb), "LOOK", "NAME/A", "top, front, side or frame", cmd_look},
