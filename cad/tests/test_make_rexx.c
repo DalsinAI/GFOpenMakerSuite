@@ -286,6 +286,19 @@ int main(void)
                "SHELF puts the angle bracket on the bed");
         expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the shelf part");
         expect(run(&g, "SHELF NAME \"no such thing\"", &io) == 0 && io.rc == OMR_ERROR, "SHELF refuses an unknown name");
+        {
+            int dirty = g.dirty;
+            char nbuf[16], one[16];
+            expect(run(&g, "SHELF LIST STEM ST", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n &&
+                       g.dirty == dirty && atoi(buf) == ge_shelf_count() && ge_shelf_count() > 1,
+                   "SHELF LIST does not add a part");
+            snprintf(nbuf, sizeof nbuf, "%d", ge_shelf_count());
+            snprintf(one, sizeof one, "%s", ge_shelf_name(0) ? ge_shelf_name(0) : "");
+            expect(omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), nbuf) && omr_host_var("ST.1") &&
+                       !strcmp(omr_host_var("ST.1"), one) && omr_host_var("ST.8") &&
+                       !strcmp(omr_host_var("ST.8"), "Angle bracket"),
+                   "SHELF LIST names the window's examples");
+        }
     }
     {
         int n = gs_parts_count(ps);
