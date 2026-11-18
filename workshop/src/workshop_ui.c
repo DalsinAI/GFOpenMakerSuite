@@ -6,6 +6,7 @@
 
 #include "gs.h"
 #include "gs_vec.h"
+#include "burn_image.h"
 
 #if defined(__amigaos__) || defined(AMIGA) || defined(__AMIGA__)
 #include <dos/dostags.h>
@@ -346,6 +347,49 @@ static int paint_gcode(const char *path, unsigned char *rgb, int w, int h, char 
     return 0;
 }
 
+/* The laser's Netpbm reader. Grey is 0 white and 1 black. The picture
+ * is fitted in the view, pixels kept square. */
+static int paint_netpbm(const char *path, unsigned char *rgb, int w, int h, char *err, int errlen)
+{
+    burn_image im;
+    int x0, y0, dw, dh, x, y;
+    burn_image_init(&im);
+    if (burn_image_load(&im, path, err, errlen)) {
+        burn_image_free(&im);
+        return -1;
+    }
+    if (im.cols < 1 || im.rows < 1 || !im.grey) {
+        burn_image_free(&im);
+        if (err && errlen > 0) snprintf(err, (size_t)errlen, "the picture could not be drawn");
+        return -1;
+    }
+    if (im.cols * h >= im.rows * w) {
+        dw = w;
+        dh = im.rows * w / im.cols;
+    } else {
+        dh = h;
+        dw = im.cols * h / im.rows;
+    }
+    if (dw < 1) dw = 1;
+    if (dh < 1) dh = 1;
+    x0 = (w - dw) / 2;
+    y0 = (h - dh) / 2;
+    for (y = 0; y < dh; y++) {
+        int sy = y * im.rows / dh;
+        for (x = 0; x < dw; x++) {
+            int sx = x * im.cols / dw;
+            float g = im.grey[sy * im.cols + sx];
+            int v;
+            if (g < 0.f) g = 0.f;
+            if (g > 1.f) g = 1.f;
+            v = (int)(255.f * (1.f - g) + 0.5f);
+            plot(rgb, w, h, x0 + x, y0 + y, (unsigned)((v << 16) | (v << 8) | v));
+        }
+    }
+    burn_image_free(&im);
+    return 0;
+}
+
 int workshop_ui_preview(const workshop *w, const gs_cam *cam, unsigned char *rgb, int width, int height, char *err,
                         int errlen)
 {
@@ -359,6 +403,8 @@ int workshop_ui_preview(const workshop *w, const gs_cam *cam, unsigned char *rgb
     if (ends_ci(path, ".svg") || ends_ci(path, ".dxf")) return paint_vec(path, rgb, width, height, err, errlen);
     if (ends_ci(path, ".gcode") || ends_ci(path, ".nc") || ends_ci(path, ".gc"))
         return paint_gcode(path, rgb, width, height, err, errlen);
+    if (ends_ci(path, ".pbm") || ends_ci(path, ".pgm") || ends_ci(path, ".ppm"))
+        return paint_netpbm(path, rgb, width, height, err, errlen);
     if (left_to_kicad(it, path)) {
         if (err && errlen > 0) snprintf(err, (size_t)errlen, "gfamigakicad opens this");
         return -1;

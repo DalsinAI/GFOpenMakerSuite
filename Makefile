@@ -116,7 +116,7 @@ $(BUILD)/test_profiles: machines/tests/test_profiles.c machines/src/machine.c ma
 	$(CC) $(CFLAGS) $(WARN) -Imachines/include -o $@ machines/tests/test_profiles.c machines/src/machine.c
 
 # OpenMakeBurn: an SVG to Grbl laser G-code (line mode).
-BURN_JOB = burn/src/burn_job.c burn/src/material.c burn/src/image.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
+BURN_JOB = burn/src/burn_job.c burn/src/material.c burn/src/image_load.c burn/src/image.c core/src/vec.c core/src/dxf.c core/src/gcode.c core/src/toolpath.c core/src/fill.c core/src/loops.c core/src/inset.c core/src/union.c machines/src/machine.c
 $(BUILD)/test_burn: burn/tests/test_burn.c burn/include/burn_job.h burn/include/burn_material.h $(BURN_JOB) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Imachines/include -Iburn/include -o $@ burn/tests/test_burn.c $(BURN_JOB) -lm
 
@@ -148,25 +148,25 @@ $(BUILD)/test_cnc_rexx: cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c cnc/src/cnc
 	    cnc/tests/test_cnc_rexx.c cnc/src/cnc_rexx.c core/src/rexx.c $(CNC_JOB) \
 	    core/src/toolpath_paint.c core/src/view.c core/src/solid.c -lm
 
-WS_UI = workshop/src/workshop_ui.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c
+WS_UI = workshop/src/workshop_ui.c burn/src/image_load.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c
 
 $(BUILD)/test_workshop_ui: workshop/tests/test_workshop_ui.c workshop/src/markup.h workshop/src/workshop_ui.h workshop/src/workshop_ui.c $(WS_UI) | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -I$(LAYOUT)/include -o $@ \
-	    workshop/tests/test_workshop_ui.c workshop/src/workshop_ui.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c \
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -Iburn/include -Imachines/include -I$(LAYOUT)/include -o $@ \
+	    workshop/tests/test_workshop_ui.c workshop/src/workshop_ui.c burn/src/image_load.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 # GFOpenMakerWorkshop's ARexx commands (workshop/src/workshop_rexx.c), on the host stub.
 $(BUILD)/test_workshop_rexx: workshop/tests/test_workshop_rexx.c workshop/src/workshop_rexx.c workshop/src/workshop_rexx.h core/src/rexx.c $(WS_UI) | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -I$(LAYOUT)/include -o $@ \
-	    workshop/tests/test_workshop_rexx.c workshop/src/workshop_rexx.c workshop/src/workshop_ui.c core/src/rexx.c \
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -Iburn/include -Imachines/include -I$(LAYOUT)/include -o $@ \
+	    workshop/tests/test_workshop_rexx.c workshop/src/workshop_rexx.c workshop/src/workshop_ui.c burn/src/image_load.c core/src/rexx.c \
 	    core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 
 $(BUILD)/workshop_preview: workshop/tools/preview.c workshop/src/markup.h workshop/src/workshop_ui.h workshop/src/workshop_ui.c $(WS_UI) | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -I$(LAYOUT)/include -o $@ \
-	    workshop/tools/preview.c workshop/src/workshop_ui.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c \
+	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/ui -Iworkshop/src -Iburn/include -Imachines/include -I$(LAYOUT)/include -o $@ \
+	    workshop/tools/preview.c workshop/src/workshop_ui.c burn/src/image_load.c core/src/project.c core/src/stl.c core/src/view.c core/src/solid.c core/src/vec.c core/src/dxf.c core/ui/view_ui.c \
 	    $(LAYOUT)/ui/olui.c $(LAYOUT)/ui/olui_css.c $(LAYOUT)/ui/olui_markup.c $(LAYOUT)/ui/olui_theme_none.c \
 	    $(LAYOUT)/build/libopenlayout.a -lm
 

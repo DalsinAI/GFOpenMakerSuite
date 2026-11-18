@@ -219,9 +219,11 @@ already draw it:
 - Laser SVG or DXF — `openmakevec` paths
 - G-code — `openmakeview`'s G-code lines, when the file is plain text
   G-code
-- Netpbm pictures — later, if the picture can be drawn cheaply
+- Netpbm — the laser's reader. Black is ink, white is paper, fitted in
+  the view
 - KiCad — not drawn. The status says gfamigakicad opens it.
-- CNC — later
+- CNC — the file is drawn the same way (a solid, strokes, a toolpath
+  or a picture). There is no separate mill picture
 
 Buttons: New, Open and Save for the project; Add, Remove, Rename, and
 Open in app for an item; a Recent picker of recently opened projects.
