@@ -353,6 +353,17 @@ Template: `PLACE X/K Y/K Z/K`
 Puts the picked part so the middle of its box in X and Y, and its bottom
 in Z, is at that point. At least one of `X`, `Y`, `Z` is required.
 
+### WHERE
+
+Template: `WHERE STEM/K VAR/K`
+
+The Place row, for the picked part: its box, and the middle of that box
+in X and Y with the bottom in Z. `RESULT` is `W x D x H mm at X, Y, Z`,
+in millimetres to a tenth, the same figures as the Size and At fields.
+`STEM` has `stem.SX`, `stem.SY`, `stem.SZ`, `stem.X`, `stem.Y` and
+`stem.Z`. It does not change the part, and it is not an undo step.
+RC 10 if there is no part.
+
 ### SIZE
 
 Template: `SIZE X/K Y/K Z/K AXIS/K MM/K`
