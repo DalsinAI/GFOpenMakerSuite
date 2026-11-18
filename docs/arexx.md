@@ -209,6 +209,16 @@ placed and sized from the stock, as the window. `X`, `Y`, `Z` place it
 (the middle of its box in X and Y, its bottom in Z); `W`, `D`, `H` size
 its box. `RESULT` is the new part's 1-based index and its name.
 
+### SHELF
+
+Template: `SHELF NAME/K INDEX/N/K`
+
+Puts one of the shelf examples (`examples/cad/`) on the bed, as the
+window's Shelf. `NAME` is the example's name (`Angle bracket`, `Knob`,
+and the rest). `INDEX` is 1-based in that same list. With neither, the
+first example is used. `RESULT` says it is on the bed. RC 10 if there
+is no such example, or the list is full.
+
 ### SELECT
 
 Template: `SELECT PART/N NAME/K`

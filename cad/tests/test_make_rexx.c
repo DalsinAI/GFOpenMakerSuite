@@ -179,6 +179,15 @@ int main(void)
         expect(hidden > 0, "a part is hidden");
         expect(run(&g, "SOLO", &io) == 0 && io.rc == OMR_OK && strstr(buf, "Every"), "SOLO again shows them all");
     }
+    {
+        int n = gs_parts_count(ps);
+        expect(run(&g, "SHELF NAME \"Angle bracket\"", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n + 1 &&
+                   strstr(buf, "Angle bracket") &&
+                   !strcmp(gs_parts_name(ps, gs_parts_picked(ps)), "Angle bracket"),
+               "SHELF puts the angle bracket on the bed");
+        expect(run(&g, "UNDO", &io) == 0 && io.rc == OMR_OK && gs_parts_count(ps) == n, "UNDO the shelf part");
+        expect(run(&g, "SHELF NAME \"no such thing\"", &io) == 0 && io.rc == OMR_ERROR, "SHELF refuses an unknown name");
+    }
 
     gs_parts_free(ps);
     ge_steps_free(steps);
