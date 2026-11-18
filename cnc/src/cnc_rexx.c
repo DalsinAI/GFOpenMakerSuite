@@ -355,6 +355,7 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "DIRTY", g->dirty ? "1" : "0");
     stem_put(c, "MODE", mode);
     stem_put(c, "KIND", drawing_kind(g->file));
+    stem_put(c, "MILL", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
     return OMR_OK;
 }
 

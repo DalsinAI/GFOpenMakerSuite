@@ -100,7 +100,8 @@ int main(void)
                strstr(buf, "rect-10mm.svg") && strstr(buf, "pocket") && omr_host_var("ST.DIRTY") &&
                !strcmp(omr_host_var("ST.DIRTY"), "1") && omr_host_var("ST.MODE") &&
                !strcmp(omr_host_var("ST.MODE"), "pocket") && omr_host_var("ST.KIND") &&
-               !strcmp(omr_host_var("ST.KIND"), "SVG"),
+               !strcmp(omr_host_var("ST.KIND"), "SVG") && omr_host_var("ST.MILL") &&
+               !strcmp(omr_host_var("ST.MILL"), ""),
            "STATUS is the port, the file, dirty, the mode and the drawing");
     expect(run(&g, "SET KEY tool VALUE 3", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3"), "tool 3 for a preview");
     expect(run(&g, "SET KEY mode VALUE profile", &io) == 0 && io.rc == OMR_OK, "profile for a preview");
@@ -130,6 +131,10 @@ int main(void)
     expect(run(&g, "MILL DRIVER machines/cnc/grbl/driver.om PROFILE machines/cnc/grbl/profiles/generic-300.om", &io) == 0 &&
                io.rc == OMR_OK && g.have_machine && g.machine.family == OM_CNC && buf[0],
            "MILL the generic mill");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
+               omr_host_var("ST.MILL") && !strcmp(omr_host_var("ST.MILL"), g.machine.name) &&
+               strstr(buf, "profile"),
+           "STATUS names the mill");
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] && strstr(buf, g.machine.name) &&
                strstr(buf, "profile.") && strstr(buf, "moves, 0 s."),
            "PREVIEW names the mill");
