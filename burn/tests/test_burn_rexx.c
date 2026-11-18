@@ -236,7 +236,10 @@ int main(void)
     expect(run(&g, "SET KEY end VALUE \"M300 S10\"", &io) == 0 && io.rc == OMR_OK && opts.end &&
                !strcmp(opts.end, "M300 S10"),
            "SET end");
-    expect(run(&g, "SAVE FILE build/rexx-burn.gcode", &io) == 0 && io.rc == OMR_OK && g.dirty == 0, "SAVE");
+    expect(run(&g, "SAVE FILE build/rexx-burn.gcode STEM ST", &io) == 0 && io.rc == OMR_OK && g.dirty == 0 &&
+               strstr(buf, "rexx-burn.gcode") && omr_host_var("ST.MOVES") && atoi(omr_host_var("ST.MOVES")) > 0 &&
+               omr_host_var("ST.SECONDS"),
+           "SAVE writes the cut, and the window's figures");
     expect(gcode_has_move("build/rexx-burn.gcode") && file_has("build/rexx-burn.gcode", "M117 hello") &&
                file_has("build/rexx-burn.gcode", "M300 S10"),
            "SAVE wrote the cut and the user's lines");
