@@ -147,7 +147,8 @@ int main(void)
                !strcmp(gpr_kind_app("print"), "GFOpenSlicer") &&
                !strcmp(gpr_kind_port("print"), "OPENMAKESLICER") && !strcmp(gpr_kind_app("laser"), "GFOpenBurn") &&
                !strcmp(gpr_kind_port("laser"), "OPENMAKEBURN") && !strcmp(gpr_kind_app("electronics"), "gfamigakicad") &&
-               gpr_kind_port("electronics") == NULL && gpr_kind_app("cnc") == NULL,
+               gpr_kind_port("electronics") == NULL && !strcmp(gpr_kind_app("cnc"), "GFOpenCNC") &&
+               gpr_kind_port("cnc") == NULL,
            "the app and port for each known kind");
     expect(!strcmp(gpr_kind_suggest("body.STL"), "cad") && !strcmp(gpr_kind_suggest("a.svg"), "laser") &&
                !strcmp(gpr_kind_suggest("a.dxf"), "laser") && !strcmp(gpr_kind_suggest("a.pgm"), "laser") &&
