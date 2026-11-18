@@ -173,6 +173,8 @@ int main(void)
     expect(run(&g, "GET KEY order", &io) == 0 && io.rc == OMR_OK && buf[0] == 0, "GET order is empty at first");
     expect(run(&g, "SET KEY order VALUE 2,1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "Open a drawing first"),
            "SET order before a drawing");
+    expect(run(&g, "ORDER INDEX 1 STEP -1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "Open a drawing first"),
+           "ORDER before a drawing");
     expect(run(&g, "LASER POWER 40 SPEED 15 CONSTANT 1", &io) == 0 && io.rc == OMR_OK && opts.power == 40.f &&
                opts.speed == 15.f && opts.constant == 1,
            "LASER");
@@ -294,6 +296,21 @@ int main(void)
            "a rebuild keeps the layer order");
     expect(run(&g, "SET KEY order VALUE \"\"", &io) == 0 && io.rc == OMR_OK && !g.have_order && opts.nseq == 0,
            "an empty order is the file order");
+    {
+        int dirty = g.dirty;
+        expect(run(&g, "ORDER INDEX 1 STEP -1", &io) == 0 && io.rc == OMR_OK && !g.have_order && g.dirty == dirty,
+               "Up on the first layer stays");
+        expect(run(&g, "ORDER INDEX 2 STEP -1", &io) == 0 && io.rc == OMR_OK && g.have_order && opts.nseq >= 2 &&
+                   opts.seq[0] == 1 && opts.seq[1] == 0 && !strcmp(buf, "2,1") && g.dirty,
+               "ORDER moves layer 2 up, as Up");
+        expect(run(&g, "ORDER INDEX 2 STEP 1", &io) == 0 && io.rc == OMR_OK && opts.seq[0] == 0 && opts.seq[1] == 1 &&
+                   !strcmp(buf, "1,2"),
+               "ORDER moves that layer down, as Dn");
+        expect(run(&g, "ORDER INDEX 2 STEP 3", &io) == 0 && io.rc == OMR_ERROR && opts.seq[0] == 0, "STEP is -1 or 1");
+        expect(run(&g, "ORDER INDEX 9 STEP -1", &io) == 0 && io.rc == OMR_ERROR && strstr(buf, "no such"),
+               "ORDER refuses a missing layer");
+        expect(run(&g, "SET KEY order VALUE \"\"", &io) == 0 && io.rc == OMR_OK && !g.have_order, "order cleared again");
+    }
     expect(run(&g, "SET KEY cuts_last VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.cuts_last == 1, "cuts last back on");
     expect(run(&g, "LAYER COLOUR #ff0000 POWER 70", &io) == 0 && io.rc == OMR_OK, "LAYER by colour");
     expect(run(&g, "OPEN FILE burn/tests/data/bars-8x2.pgm", &io) == 0 && io.rc == OMR_OK && have_image && have_doc,
