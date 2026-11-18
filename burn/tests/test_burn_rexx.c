@@ -216,7 +216,9 @@ int main(void)
     expect(run(&g, "SET KEY tabw VALUE 1", &io) == 0 && io.rc == OMR_OK && opts.tabw == 1.f, "tab width back to 1");
     expect(run(&g, "LAYER INDEX 9 POWER 10", &io) == 0 && io.rc == OMR_ERROR, "LAYER missing");
 
-    expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW");
+    expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2 && g.machine.name[0] &&
+               strstr(buf, "moves for ") && strstr(buf, g.machine.name),
+           "PREVIEW says the window's line");
     expect(run(&g, "PREVIEW FILE build/rexx-burn.ppm", &io) == 0 && io.rc == OMR_OK, "PREVIEW FILE");
     {
         FILE *f = fopen("build/rexx-burn.ppm", "rb");
