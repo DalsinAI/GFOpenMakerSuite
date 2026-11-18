@@ -780,7 +780,10 @@ its file, and the item it was made from, or empty).
 
 `NEW PATH NAME` creates a drawer and opens it. `ADD`, `REMOVE` and
 `RENAME` change the manifest; removing an item does not delete its file.
-`ITEMS` lists them, or one `KIND`. `PICK` shows that row, as a click on
+`ITEMS` lists them, or one `KIND`. `OPEN` picks the first item when there is
+one, and homes the view, as Open and as choosing a recent project. `ADD`
+picks the new item and homes the view, as the Add button. Neither marks
+the project dirty beyond the edit itself. `PICK` shows that row, as a click on
 the list: the window draws it, and homes the view. It does not open the
 item, and it does not mark the project dirty. `LOOK` is `top`, `front`,
 `side` or `frame`. Frame is the view at open. The window has no button
