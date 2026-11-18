@@ -1196,6 +1196,36 @@ static int cmd_place(void *c, void *g0)
     return OMR_OK;
 }
 
+/* Place's Size and At: the picked part's box, and its bottom middle. */
+static int cmd_where(void *c, void *g0)
+{
+    gm_rexx *g = app(g0);
+    gs_mesh *m = picked(g);
+    float pos[3], size[3];
+    char buf[120], nbuf[32];
+    if (!m || !m->n) {
+        omr_set_result(c, "no part");
+        return OMR_ERROR;
+    }
+    ge_where(m, pos, size);
+    snprintf(buf, sizeof buf, "%.1f x %.1f x %.1f mm at %.1f, %.1f, %.1f", (double)size[0], (double)size[1],
+             (double)size[2], (double)pos[0], (double)pos[1], (double)pos[2]);
+    omr_set_result(c, buf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)size[0]);
+    stem_put(c, "ST", "SX", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)size[1]);
+    stem_put(c, "ST", "SY", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)size[2]);
+    stem_put(c, "ST", "SZ", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)pos[0]);
+    stem_put(c, "ST", "X", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)pos[1]);
+    stem_put(c, "ST", "Y", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%.1f", (double)pos[2]);
+    stem_put(c, "ST", "Z", nbuf);
+    return OMR_OK;
+}
+
 static int axis_of(const char *s)
 {
     if (!s) return -1;
@@ -1837,6 +1867,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "INTERSECT", "", "intersect the picked part with the stock", cmd_bool},
     {sizeof(omr_verb), "MOVE", "X/K Y/K Z/K", "move the picked part", cmd_move},
     {sizeof(omr_verb), "PLACE", "X/K Y/K Z/K", "place the picked part", cmd_place},
+    {sizeof(omr_verb), "WHERE", "STEM/K VAR/K", "the picked part's size and where it sits", cmd_where},
     {sizeof(omr_verb), "SIZE", "X/K Y/K Z/K AXIS/K MM/K", "size the picked part", cmd_size},
     {sizeof(omr_verb), "HOLE", "KIND/A D/K N/K PCD/K PITCH/K CB/K DEEP/K", "cut holes in the picked part", cmd_hole},
     {sizeof(omr_verb), "WASHER", "", "a 32 mm washer on the bed", cmd_washer},

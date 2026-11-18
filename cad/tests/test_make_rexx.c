@@ -102,6 +102,15 @@ int main(void)
     expect(run(&g, "SELECT PART 1", &io) == 0 && io.rc == OMR_OK && gs_parts_picked(ps) == 0, "SELECT PART 1");
     expect(run(&g, "SELECT PART 9", &io) == 0 && io.rc == OMR_ERROR, "SELECT missing part");
     expect(run(&g, "SELECT NAME Box", &io) == 0 && io.rc == OMR_OK && gs_parts_picked(ps) == 0, "SELECT NAME");
+    {
+        int dirty = g.dirty, back = ge_steps_back(steps);
+        expect(run(&g, "WHERE STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "20.0 x 20.0 x 20.0 mm at 10.0, 10.0, 0.0"),
+               "WHERE the starting box");
+        expect(omr_host_var("ST.SX") && !strcmp(omr_host_var("ST.SX"), "20.0") && omr_host_var("ST.X") &&
+                   !strcmp(omr_host_var("ST.X"), "10.0") && omr_host_var("ST.Z") && !strcmp(omr_host_var("ST.Z"), "0.0"),
+               "WHERE stem is the Place fields");
+        expect(g.dirty == dirty && ge_steps_back(steps) == back, "WHERE is not an undo step");
+    }
 
     ge_where(gs_parts_mesh(ps, 0), pos, size);
     expect(run(&g, "MOVE X 5", &io) == 0 && io.rc == OMR_OK, "MOVE X 5");
