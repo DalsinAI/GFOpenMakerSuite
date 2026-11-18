@@ -652,6 +652,7 @@ static int cmd_status(void *c, void *g0)
     snprintf(nbuf, sizeof nbuf, "%d", layers);
     stem_put(c, NULL, "LAYERS", nbuf);
     stem_put(c, NULL, "MODE", mode);
+    stem_put(c, NULL, "MACHINE", (g->have_machine && g->machine.name[0]) ? g->machine.name : "");
     return OMR_OK;
 }
 
