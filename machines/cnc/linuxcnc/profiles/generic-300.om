@@ -1,0 +1,10 @@
+# A generic mill with a 300 mm table, for LinuxCNC. Change these to the
+# machine's own numbers. Not any maker's, and not taken from a sample
+# configuration.
+name = Generic LinuxCNC Mill 300
+area = 300 300 80
+speed = 80 80 20 0
+accel = 500 500 200 0
+# The time estimate stops at a corner when jerk is 0.
+jerk = 0 0 0 0
+rpm = 24000

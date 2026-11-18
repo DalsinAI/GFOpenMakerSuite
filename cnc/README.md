@@ -11,7 +11,8 @@ step-over at a time, the tool kept in. Drill plunges at the centre of
 each closed shape. Open paths are left out.
 
 The machine is the generic 300 mm Grbl mill in `machines/cnc/grbl` unless
-`DRIVER=` or `PROFILE=` name another. Lengths are millimetres. Feed and
+`DRIVER=` or `PROFILE=` name another. `machines/cnc/linuxcnc` is the same
+table for LinuxCNC, and its program ends with M2. Lengths are millimetres. Feed and
 plunge are millimetres a second, written as millimetres a minute.
 
 The window is `src/amiga.c`, binary GFOpenCNC. Open an SVG or a DXF,

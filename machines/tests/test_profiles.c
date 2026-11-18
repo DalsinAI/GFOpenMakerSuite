@@ -52,6 +52,7 @@ static const struct {
     unsigned features, send;
 } mills[] = {
     {"grbl", "generic-300", "Generic Grbl Mill 300", 300, 300, 80, 24000, OM_SPINDLE | OM_HOMING, OM_SEND_FILE},
+    {"linuxcnc", "generic-300", "Generic LinuxCNC Mill 300", 300, 300, 80, 24000, OM_SPINDLE | OM_HOMING, OM_SEND_FILE},
 };
 #define MILLS ((int)(sizeof mills / sizeof mills[0]))
 
@@ -112,9 +113,9 @@ static int count_files(void)
 {
     static const char *const printers[] = {"marlin", "klipper", "reprap"};
     static const char *const ldrv[] = {"grbl"};
-    static const char *const cdrv[] = {"grbl"};
+    static const char *const cdrv[] = {"grbl", "linuxcnc"};
     return count_in("printer", printers, 3, printer_known) + count_in("laser", ldrv, 1, laser_known) +
-           count_in("cnc", cdrv, 1, mill_known);
+           count_in("cnc", cdrv, 2, mill_known);
 }
 
 int main(void)
@@ -213,11 +214,15 @@ int main(void)
             expect(m.features == mills[k].features && m.send == mills[k].send, what);
             snprintf(what, sizeof what, "%s: the start is mm, absolute, spindle off", mills[k].profile);
             expect(om_code(m.start, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "G21") &&
-                       strstr(code, "G90") && strstr(code, "M5") && !strstr(code, "M104"),
+                       strstr(code, "G90") && strstr(code, "G94") && strstr(code, "M5") && !strstr(code, "M104"),
                    what);
             snprintf(what, sizeof what, "%s: the end stops the spindle and lifts", mills[k].profile);
             expect(om_code(m.end, 0.f, 0.f, code, (int)sizeof code) == 0 && strstr(code, "M5") && strstr(code, "G0 Z5"),
                    what);
+            if (!strcmp(mills[k].driver, "linuxcnc")) {
+                snprintf(what, sizeof what, "%s: M2 ends the program, after the lift", mills[k].profile);
+                expect(strstr(code, "M2") && strstr(code, "G0 Z5") && strstr(code, "M2") > strstr(code, "G0 Z5"), what);
+            }
         }
     }
     expect(count_files() == KNOWN + LASERS + MILLS, "every profile in the tree is here");

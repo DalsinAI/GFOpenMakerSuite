@@ -55,7 +55,8 @@ be `openmakemachine.library`, loaded once for every app.
 | `printer/reprap` | Written (RepRapFirmware, Duet): a generic 300 mm profile |
 | `laser/grbl` | Written: a generic 400 mm diode-laser profile |
 | `laser/ruida-later` | Later: a binary job, not G-code |
-| `cnc/grbl`, `cnc/linuxcnc` | Not yet |
+| `cnc/grbl` | Written: a generic 300 mm mill |
+| `cnc/linuxcnc` | Written: a generic 300 mm mill. M2 is the last line |
 
 Clean room: every driver is written from the firmware's public G-code
 documentation, never from its source, and every maker's profile from its

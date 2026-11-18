@@ -89,8 +89,10 @@ int main(void)
     cnc_ui_status(line, (int)sizeof line, "Generic Grbl Mill 300", CNC_PROFILE, 7, 7.f);
     expect(!strcmp(line, "Generic Grbl Mill 300, profile. 7 moves, 7 s.") && strlen(line) <= 78, "the status line");
     memset(&mills, 0, sizeof mills);
-    expect(omv_machines_scan(&mills, "machines", "cnc") == 1 && !strcmp(mills.at[0].name, "Generic Grbl Mill 300"),
-           "the mill picker finds the generic mill");
+    expect(omv_machines_scan(&mills, "machines", "cnc") == 2 && mills.at &&
+               !strcmp(mills.at[0].name, "Generic Grbl Mill 300") &&
+               !strcmp(mills.at[1].name, "Generic LinuxCNC Mill 300"),
+           "the mill picker finds the Grbl mill and the LinuxCNC mill");
     omv_machines_free(&mills);
     olui_free(ui);
     if (fails) {
