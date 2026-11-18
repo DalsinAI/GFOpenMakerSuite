@@ -4,7 +4,7 @@
 
 17 November 2026. The window has since taken the bench's extrude, pull, chamfer, arrange, layer walls, bolt circle, hole row, counterbore, one drill, a countersink, the washer, split, a dragged sketch, and the shelf. Top, front, side and frame are on the window. Metal, clay and wire are the picture. Snap is 1 mm, 15 degrees, and steps of 0.1 scale. The Face row shows the picked part's PLA, and marks it when it hangs off the plate. The bench's keys are too: G move, R turn, S scale, F frame, M measure, I solo, Delete. Section hides the picture above a height, and the layer walls follow that cut. It does not cut the part until Split. Slice lays the toolpath back on the solid, in the plate's frame. The example files are in `examples/`, listed in `docs/media-examples.md`. Shelf puts one of `examples/cad/` on the bed.
 
-18 November 2026. `gfopenslicer` and `openmake-slice` take `START=` and `END=`: lines of your own after the machine's start and before its end. The heat, the home and M84 stay. There is no window field for them yet.
+18 November 2026. `gfopenslicer` and `openmake-slice` take `START=` and `END=`: lines of your own after the machine's start and before its end. The heat, the home and M84 stay. There is no window field for them yet. `SUPPORT=1` adds one wall under an overhang steeper than 45 degrees, from the bed up to it. It does not fill the column, and the window has no field for it.
 
 ## What it is
 

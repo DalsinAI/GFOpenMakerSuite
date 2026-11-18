@@ -48,7 +48,9 @@ gfopenslicer in.stl out.gcode SETTINGS=settings/standard pattern=grid around=bri
 built-in defaults, written out to copy); any of its keys can be given as
 `key=value` after it. The older `LAYER=`, `INFILL=`, `SKIRT=` ... still work.
 `START=` and `END=` are lines of your own, after the machine's start and
-before its end. The heat, the home and M84 stay.
+before its end. The heat, the home and M84 stay. `SUPPORT=1` adds one wall
+under an overhang steeper than 45 degrees, from the bed up to it. It does
+not fill the column, and the window has no field for it.
 
 ## Where the view comes from
 
@@ -128,7 +130,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-Support. The mill's window is GFOpenCNC. Slice lays the toolpath back on the
+Filled support, and a window field for it. `SUPPORT=1` on the shell is one wall under an overhang, from the bed up. The mill's window is GFOpenCNC. Slice lays the toolpath back on the
 solid, in the plate's frame. The slicer's own view is still the close-up.
 
 ## Building

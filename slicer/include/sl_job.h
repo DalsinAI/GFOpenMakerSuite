@@ -19,6 +19,7 @@ typedef struct {
     int have_part, sliced;
     int tasks;                 /* the tasks the last slice ran on */
     char start[240], end[240]; /* the user's own G-code, around the machine's */
+    int support;               /* 0: none. Not 0: one wall under a steep overhang */
 } sl_job;
 
 void sl_init(sl_job *j);

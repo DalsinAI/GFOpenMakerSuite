@@ -363,7 +363,7 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	grep -q 'spped=60: no such setting' $(BUILD)/cli-bad.txt && test ! -e $(BUILD)/cli-bad.gcode
 	! $(BUILD)/gfopenslicer core/tests/data/nasa-wrench.stl $(BUILD)/cli-tiny.gcode PROFILE=slicer/tests/data/tiny-bed.om 2> $(BUILD)/cli-tiny.txt
 	grep -q 'Tiny 50 cannot print this' $(BUILD)/cli-tiny.txt && test ! -e $(BUILD)/cli-tiny.gcode
-	! $(BUILD)/gfopenslicer 2> $(BUILD)/cli-usage.txt && grep -q 'usage: gfopenslicer' $(BUILD)/cli-usage.txt && grep -q 'START=' $(BUILD)/cli-usage.txt
+	! $(BUILD)/gfopenslicer 2> $(BUILD)/cli-usage.txt && grep -q 'usage: gfopenslicer' $(BUILD)/cli-usage.txt && grep -q 'START=' $(BUILD)/cli-usage.txt && grep -q 'SUPPORT=' $(BUILD)/cli-usage.txt
 	# Every printer profile: loaded, and the wrench sliced for it.
 	$(BUILD)/test_profiles
 	$(BUILD)/test_burn
