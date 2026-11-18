@@ -1,0 +1,20 @@
+# LinuxCNC on a mill. Written from LinuxCNC's public G-code reference
+# (linuxcnc.org/docs, "G-code" Quick Reference and the overview), no
+# interpreter source.
+#
+# G21 is mm, G90 absolute, G94 units per minute. M3 turns the spindle on
+# clockwise and M5 turns it off; S is the speed, written by the job.
+# M2 ends the program. LinuxCNC reads nothing after M2, so M2 is the
+# last line. A semicolon starts a comment for the rest of the line.
+family = cnc
+dialect = linuxcnc
+send = file
+features = spindle homing
+start = G21 ; mm
+start += G90 ; absolute
+start += G94 ; mm per minute
+start += M5 ; spindle off
+end = M5
+end += G0 Z5
+end += G0 X0 Y0
+end += M2 ; program end

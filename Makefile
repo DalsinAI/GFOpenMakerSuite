@@ -500,6 +500,9 @@ test: $(BUILD)/test_stl $(BUILD)/test_model $(BUILD)/test_solids $(BUILD)/test_p
 	$(BUILD)/openmake-cnc core/tests/data/rect-10mm.svg $(BUILD)/cnc-rect.gcode > $(BUILD)/cnc-rect.txt
 	grep -q 'wrote .*cnc-rect.gcode' $(BUILD)/cnc-rect.txt && grep -q 'Generic Grbl Mill 300' $(BUILD)/cnc-rect.txt
 	grep -q '^M3 S' $(BUILD)/cnc-rect.gcode && grep -q '^G21' $(BUILD)/cnc-rect.gcode && grep -q '^M5' $(BUILD)/cnc-rect.gcode
+	$(BUILD)/openmake-cnc core/tests/data/rect-10mm.svg $(BUILD)/cnc-lcnc.gcode \
+	    DRIVER=machines/cnc/linuxcnc/driver.om PROFILE=machines/cnc/linuxcnc/profiles/generic-300.om > $(BUILD)/cnc-lcnc.txt
+	grep -q 'Generic LinuxCNC Mill 300' $(BUILD)/cnc-lcnc.txt && tail -n 1 $(BUILD)/cnc-lcnc.gcode | grep -q '^M2'
 	$(BUILD)/openmake-cnc core/tests/data/square-10mm.dxf $(BUILD)/cnc-pocket.gcode mode=pocket tool=3 depth=1 > /dev/null
 	grep -q '^G1 ' $(BUILD)/cnc-pocket.gcode
 	! $(BUILD)/openmake-cnc core/tests/data/rect-10mm.svg $(BUILD)/cnc-bad.gcode mode=fil 2> $(BUILD)/cnc-bad.txt
