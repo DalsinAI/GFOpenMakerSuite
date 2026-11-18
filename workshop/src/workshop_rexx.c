@@ -410,22 +410,27 @@ static const char *send_port(const char *app)
     return app;
 }
 
-static int send_line(void *c, const char *port, const char *line)
+static void note(char *err, int errlen, const char *s)
+{
+    if (err && errlen > 0) snprintf(err, (size_t)errlen, "%s", s ? s : "");
+}
+
+static int deliver(const char *port, const char *line, char *reply, int replylen, char *err, int errlen)
 {
     char found[40], result[512];
     omr_client *cl;
     omr_io io;
     if (!port) {
-        omr_set_result(c, "no port for that app");
+        note(err, errlen, "no port for that app");
         return OMR_ERROR;
     }
     if (omr_find(port, found, (int)sizeof found) != 0) {
-        omr_set_result(c, "the port is not up");
+        note(err, errlen, "the port is not up");
         return OMR_ERROR;
     }
     cl = omr_connect(found, NULL);
     if (!cl) {
-        omr_set_result(c, "the port is not up");
+        note(err, errlen, "the port is not up");
         return OMR_ERROR;
     }
     memset(&io, 0, sizeof io);
@@ -435,58 +440,84 @@ static int send_line(void *c, const char *port, const char *line)
     result[0] = 0;
     if (omr_send(cl, line, &io) != 0) {
         omr_disconnect(cl);
-        omr_set_result(c, result[0] ? result : "the other app did not answer");
+        note(err, errlen, result[0] ? result : "the other app did not answer");
         return OMR_FAIL;
     }
     omr_disconnect(cl);
-    omr_set_result(c, result);
+    if (io.rc != OMR_OK) note(err, errlen, result[0] ? result : "the other app refused");
+    else if (reply && replylen > 0) snprintf(reply, (size_t)replylen, "%s", result);
     return io.rc;
+}
+
+static int send_line(void *c, const char *port, const char *line)
+{
+    char reply[512], err[160];
+    int rc;
+    reply[0] = 0;
+    err[0] = 0;
+    rc = deliver(port, line, reply, (int)sizeof reply, err, (int)sizeof err);
+    omr_set_result(c, rc == OMR_OK ? reply : err);
+    return rc;
+}
+
+int gw_open_item(workshop *w, int index, char *used, int usedlen, char *err, int errlen)
+{
+    const gpr_item *it;
+    const char *aport, *prog, *name;
+    char file[GPR_PATH_MAX + 1], line[GPR_PATH_MAX + 32], found[40];
+    if (err && errlen > 0) err[0] = 0;
+    if (used && usedlen > 0) used[0] = 0;
+    if (!w || !w->have || index < 0 || index >= w->project.n) {
+        note(err, errlen, "no item is picked");
+        return OMR_ERROR;
+    }
+    it = &w->project.items[index];
+    prog = gpr_kind_app(it->kind);
+    aport = gpr_kind_port(it->kind);
+    if (!prog) {
+        note(err, errlen, "no app for this kind");
+        return OMR_ERROR;
+    }
+    if (gpr_resolve(&w->project, index, file, (int)sizeof file)) {
+        note(err, errlen, "the file path is too long");
+        return OMR_ERROR;
+    }
+    if (strchr(file, '"')) {
+        note(err, errlen, "the file name has a quote");
+        return OMR_ERROR;
+    }
+    w->picked = index;
+    if (aport && omr_find(aport, found, (int)sizeof found) == 0) {
+        int rc;
+        snprintf(line, sizeof line, "OPEN FILE \"%s\"", file);
+        rc = deliver(found, line, NULL, 0, err, errlen);
+        if (rc == OMR_OK) note(used, usedlen, found);
+        return rc;
+    }
+    if (workshop_launch(w, err, errlen)) {
+        if (err && errlen > 0 && !err[0]) note(err, errlen, "the app did not start");
+        return OMR_ERROR;
+    }
+    name = (aport && aport[0]) ? aport : prog;
+    note(used, usedlen, name);
+    return OMR_OK;
 }
 
 static int cmd_openitem(void *c, void *g0)
 {
     gw_rexx *g = app(g0);
     const char *item = omr_arg(c, "ITEM");
-    const gpr_item *it;
-    const char *aport, *prog;
-    char file[GPR_PATH_MAX + 1], err[160], line[GPR_PATH_MAX + 32], found[40];
-    int idx;
-    err[0] = 0;
+    char used[64], err[160];
+    int idx, rc;
     if (need(g, c)) return OMR_ERROR;
     idx = gpr_find(&g->ws->project, item);
     if (idx < 0) {
         omr_set_result(c, "no such item");
         return OMR_ERROR;
     }
-    it = &g->ws->project.items[idx];
-    prog = gpr_kind_app(it->kind);
-    aport = gpr_kind_port(it->kind);
-    if (!prog) {
-        omr_set_result(c, "no app for this kind");
-        return OMR_ERROR;
-    }
-    if (gpr_resolve(&g->ws->project, idx, file, (int)sizeof file)) {
-        omr_set_result(c, "the file path is too long");
-        return OMR_ERROR;
-    }
-    if (strchr(file, '"')) {
-        omr_set_result(c, "the file name has a quote");
-        return OMR_ERROR;
-    }
-    g->ws->picked = idx;
-    if (aport && omr_find(aport, found, (int)sizeof found) == 0) {
-        int rc;
-        snprintf(line, sizeof line, "OPEN FILE \"%s\"", file);
-        rc = send_line(c, found, line);
-        if (rc == OMR_OK) omr_set_result(c, found);
-        return rc;
-    }
-    if (workshop_launch(g->ws, err, (int)sizeof err)) {
-        omr_set_result(c, err[0] ? err : "the app did not start");
-        return OMR_ERROR;
-    }
-    omr_set_result(c, aport && aport[0] ? aport : prog);
-    return OMR_OK;
+    rc = gw_open_item(g->ws, idx, used, (int)sizeof used, err, (int)sizeof err);
+    omr_set_result(c, rc == OMR_OK ? used : err);
+    return rc;
 }
 
 static int cmd_send(void *c, void *g0)

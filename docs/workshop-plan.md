@@ -346,7 +346,7 @@ is the recent list (`stem.0` how many, `stem.1` the first path).
 
 `OPENMAKEWORKSHOP.1` is open on `openmakerexx.library`. Open in app, and
 `OPENITEM` when the other app's port is not up, still use the launch
-hook. `OPENITEM` sends `OPEN FILE` when that port is already up. `SEND`
+hook. `OPENITEM`, and the window's Launch button, send `OPEN FILE` when that port is already up. `SEND`
 does not start the other app.
 
 ## Order of work

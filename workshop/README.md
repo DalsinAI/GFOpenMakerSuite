@@ -19,14 +19,13 @@ the drawer), Save writes it. The left list always shows the known kind
 groups (CAD, Print, Laser, CNC, Electronics) and a group for any other
 kind the project has. The view is the picked item: an STL as a solid,
 an SVG or DXF as strokes, G-code as a toolpath; a KiCad file is listed
-and opened in gfamigakicad, never drawn or parsed. Launch starts
-the kind's program (`PROGDIR:` first, then the name) with the file on
-its command line. GFOpenMake, GFOpenSlicer, GFOpenBurn and GFOpenCNC
-open that file. That is a launch hook, used when the other app's port is
-not up. The window's own port is `OPENMAKEWORKSHOP.1`: `NEW`, `ADD`,
+and opened in gfamigakicad, never drawn or parsed. Launch does what
+`OPENITEM` does: `OPEN FILE` when that app's port is up, and otherwise
+the launch hook (`PROGDIR:` first, then the name) with the file on the
+command line. GFOpenMake, GFOpenSlicer, GFOpenBurn and GFOpenCNC
+open that file. The window's own port is `OPENMAKEWORKSHOP.1`: `NEW`, `ADD`,
 `REMOVE`, `RENAME`, `ITEMS`, `OPENITEM`, `SEND` and `RECENT`, plus the
-shared commands. `OPENITEM` sends `OPEN FILE` when the other port is
-already up.
+shared commands.
 
 A host render of the window (not an Amiga run):
 
