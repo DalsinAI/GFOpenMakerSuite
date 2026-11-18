@@ -847,7 +847,7 @@ its file, and the item it was made from, or empty).
 `ITEMS` lists them, or one `KIND`. `OPEN` picks the first item when there is
 one, and homes the view, as Open and as choosing a recent project. `ADD`
 picks the new item and homes the view, as the Add button. Neither marks
-the project dirty beyond the edit itself. `KINDS` names the Add buttons
+the project dirty beyond the edit itself. `KINDS` names the Add list
 and does not add an item. `PICK` shows that row, as a click on
 the list: the window draws it, and homes the view. It does not open the
 item, and it does not mark the project dirty. `LOOK` is `top`, `front`,
@@ -864,10 +864,10 @@ the recent project list.
 
 Template: `KINDS STEM/K`
 
-Names the Add buttons, in the window's order: CAD, Print, Laser, CNC and
+Names the Add list, in the window's order: CAD, Print, Laser, CNC and
 Electronics. It does not need a project, and it does not add an item.
 `RESULT` is how many. `STEM`, when given, has `stem.0` (that count),
-`stem.1` onwards the button's name, `stem.1.KIND` the word `ADD` takes,
+`stem.1` onwards the name the list shows, `stem.1.KIND` the word `ADD` takes,
 `stem.1.APP` the program, and `stem.1.PORT` that program's port, or empty
 when the kind has none.
 

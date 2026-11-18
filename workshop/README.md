@@ -25,7 +25,7 @@ and handed to gfamigakicad. It is not drawn or parsed. Launch does what
 the launch hook (`PROGDIR:` first, then the name) with the file on the
 command line. GFOpenMake, GFOpenSlicer, GFOpenBurn and GFOpenCNC
 open that file. The window's own port is `OPENMAKEWORKSHOP.1`: `NEW`, `ADD`,
-`REMOVE`, `RENAME`, `ITEMS`, `OPENITEM`, `SEND`, `RECENT` and `KINDS` (the Add buttons), plus the
+`REMOVE`, `RENAME`, `ITEMS`, `OPENITEM`, `SEND`, `RECENT` and `KINDS` (the Add list), plus the
 shared commands.
 
 A host render of the window (not an Amiga run):

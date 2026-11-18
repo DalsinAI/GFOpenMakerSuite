@@ -337,7 +337,7 @@ static int cmd_add(void *c, void *g0)
     return OMR_OK;
 }
 
-/* The Add buttons. It does not add an item and it does not need a project. */
+/* The Add list. It does not add an item and it does not need a project. */
 static int cmd_kinds(void *c, void *g0)
 {
     static const char *const keys[] = {"cad", "print", "laser", "cnc", "electronics"};
@@ -654,7 +654,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "STATUS", "STEM/K VAR/K", "The port, the project, whether it is dirty, how many items", cmd_status},
     {sizeof(omr_verb), "NEW", "PATH/A NAME/K", "Create a project drawer and open it", cmd_new},
     {sizeof(omr_verb), "ADD", "KIND/A FILE/A NAME/K FROM/N/K", "Add an item", cmd_add},
-    {sizeof(omr_verb), "KINDS", "STEM/K", "the kinds the Add buttons show", cmd_kinds},
+    {sizeof(omr_verb), "KINDS", "STEM/K", "the kinds the Add list shows", cmd_kinds},
     {sizeof(omr_verb), "REMOVE", "ITEM/A", "Drop an item from the manifest", cmd_remove},
     {sizeof(omr_verb), "RENAME", "ITEM/A NAME/A", "Rename an item in the manifest", cmd_rename},
     {sizeof(omr_verb), "ITEMS", "KIND/K STEM/K VAR/K", "List the items", cmd_items},
