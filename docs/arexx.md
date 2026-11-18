@@ -598,7 +598,8 @@ Template: `SLICE STEM/K VAR/K`
 
 Slices the loaded part with the current settings and printer. `RESULT` is
 a short line (layers, time, filament). `STEM` has `stem.LAYERS`,
-`stem.TIME` (seconds) and `stem.FILAMENT` (millimetres). RC 10 if there is
+`stem.TIME` (seconds), `stem.FILAMENT` (millimetres) and `stem.ROUGH`
+(`1` when the time is short, the window's "over", or `0`). RC 10 if there is
 no part, or if the printer cannot print it, with why in `RESULT`.
 
 ### STATS

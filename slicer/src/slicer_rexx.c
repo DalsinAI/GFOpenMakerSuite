@@ -3,6 +3,7 @@
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "slicer_rexx.h"
 
+#include "gs_gcode.h"
 #include "gs_plan.h"
 
 #include <stdio.h>
@@ -124,6 +125,8 @@ static int put_stats(omr_cmd *c, const sl_job *j)
     stem_put(c, NULL, "TIME", nbuf);
     snprintf(nbuf, sizeof nbuf, "%.3f", (j && j->sliced) ? (double)j->st.filament : 0.0);
     stem_put(c, NULL, "FILAMENT", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced && (j->how & GC_FELL_BACK)) ? 1 : 0);
+    stem_put(c, NULL, "ROUGH", nbuf);
     return OMR_OK;
 }
 
