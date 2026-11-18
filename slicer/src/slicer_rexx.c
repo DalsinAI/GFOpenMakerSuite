@@ -172,6 +172,7 @@ static int cmd_open(void *c, void *g0)
     }
     snprintf(g->file, sizeof g->file, "%s", file);
     g->dirty = 0;
+    g->home = 1;
     omr_set_result(c, g->file);
     return OMR_OK;
 }

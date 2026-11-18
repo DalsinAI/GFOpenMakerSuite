@@ -454,6 +454,10 @@ int main(int argc, char **argv)
                     }
                     gs_cam_frame(&cam, part, vw, vh);
                 } else gs_cam_look(&cam, rexx.look);
+                rexx.home = 0;
+            } else if (rexx.home) {
+                gs_cam_home(&cam);
+                rexx.home = 0;
             }
             refresh(ui);
             if (rexx.quit) goto done;
