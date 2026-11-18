@@ -4,15 +4,15 @@
  *   preview sliced out.ops stl [upto]
  * with SIZE=WxH last: the window's inside (640x480 to start). Sliced as
  * amiga.c's Slice does (sl_job, the toolpath engine on 4 tasks) for the
- * suite's printer picked first, and drawn as its view: the toolpath, layers
- * 1 to upto with Show ticked (0: all). With GPU=1 in the environment the
- * view is the OpenGPU batch amiga.c submits (omview_scene.h), its triangles
- * filled here on the host with a depth buffer: not a chip, not OpenGPU.
+ * suite's printer picked first, and drawn as its view: the part on the
+ * plate, the toolpath laid on it, layers 1 to upto with Show ticked (0:
+ * all). With GPU=1 in the environment the view is the OpenGPU batch
+ * amiga.c submits, its triangles filled here on the host with a depth
+ * buffer: not a chip, not OpenGPU.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "markup.h"
 #include "omview_machines.h"
 #include "gs_gpu.h"
-#include "omview_scene.h"
 #include "omview_settings.h"
 #include "omview_ui.h"
 #include "sl_job.h"
@@ -97,13 +97,18 @@ static void tri(unsigned char *rgb, uint32_t *zb, int w, int h, const uint32_t *
         }
 }
 
-/* The view as amiga.c's draw_gpu builds it (omv_scene), filled on the host. */
+/* The view as amiga.c's draw_gpu builds it: the part on the plate, the
+ * toolpath on that solid, filled on the host. */
 static int paint_batch(const sl_job *job, const gs_cam *cam, int upto, unsigned char *rgb, int w, int h)
 {
-    int need = omv_scene_need(&job->part, &job->path), i, n, nv;
-    uint32_t *v = calloc((size_t)need * 6, 4), *st = calloc(65536, 4), *zb = calloc((size_t)w * (size_t)h, 4);
-    n = v && st && zb ? omv_scene(&job->part, &job->path, cam, upto, 0, w, h, v, need, st, 65536, 0x10000, w * 4, 0x20000) : -1;
-    nv = n > 0 ? gs_gpu_toolpath(&job->path, cam, upto, 1, w, h, v, need) : -1;
+    int need = job->part.n * 3 + job->path.n * 6 + 6, i, nv = 0, nt;
+    uint32_t *v = calloc((size_t)need * 6, 4), *zb = calloc((size_t)w * (size_t)h, 4);
+    if (v && zb) {
+        nv = gs_gpu_vertices_plate(&job->part, cam, w, h, v, need);
+        if (nv < 0) nv = 0;
+        nt = gs_gpu_toolpath_on(&job->path, &job->part, cam, upto, w, h, v + nv * 6, need - nv);
+        if (nt > 0) nv += nt;
+    }
     for (i = 0; i < w * h; i++) {
         rgb[i * 3] = 0x14;
         rgb[i * 3 + 1] = 0x16;
@@ -111,7 +116,6 @@ static int paint_batch(const sl_job *job, const gs_cam *cam, int upto, unsigned 
     }
     for (i = 0; i + 2 < nv; i += 3) tri(rgb, zb, w, h, v + i * 6);
     free(v);
-    free(st);
     free(zb);
     return nv > 0 ? 0 : -1;
 }
@@ -199,7 +203,8 @@ int main(int argc, char **argv)
             rgb = (unsigned char *)malloc((size_t)box.w * (size_t)box.h * 3);
             gs_cam_home(&cam);
             if (rgb && !(getenv("GPU") ? paint_batch(&job, &cam, upto, rgb, box.w, box.h)
-                                       : gt_paint_part(&job.path, &cam, upto, rgb, box.w, box.h))) {
+                                       : gs_view_bed(&job.part, &cam, rgb, box.w, box.h) ||
+                                             gt_paint_on(&job.path, &job.part, &cam, upto, rgb, box.w, box.h))) {
                 char ppm[256];
                 FILE *pf;
                 snprintf(ppm, sizeof ppm, "%s.ppm", argv[2]);
