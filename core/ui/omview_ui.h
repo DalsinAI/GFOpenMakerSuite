@@ -46,4 +46,10 @@ int omv_pens(const unsigned char *rgb, int w, int h, omv_put_fn put, void *ud);
 #define OMV_MIN_H 480
 void omv_window_fit(int sw, int sh, int top, int bw, int bh, int *w, int *h);
 
+/* The file named at launch, as GFOpenMake reads argv[1]. Copies it into
+ * path, which holds n bytes. 1 when there is one, 0 when the program was
+ * started alone (or the name is empty), -1 when the name does not fit.
+ * A name that does not fit is not truncated. */
+int omv_startup_file(int argc, char **argv, char *path, int n);
+
 #endif
