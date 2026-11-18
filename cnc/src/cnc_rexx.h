@@ -27,6 +27,8 @@ typedef struct oc_rexx {
     void (*hide)(void *win);
     void *win;
     void *ui;
+    char start[240]; /* the user's own lines; opts->start points here when set */
+    char end[240];
 } oc_rexx;
 
 #define OC_REXX_PORT "GFOPENCNC"

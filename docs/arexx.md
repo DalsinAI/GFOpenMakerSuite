@@ -439,8 +439,9 @@ G-code for the mill picked, and is RC 10 when none is picked. `PREVIEW`
 plans the cut the window shows. With `FILE` it also writes a PPM of that
 picture. `GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
 `stepover`, `feed`, `plunge`, `safe`, `rpm`, `mode` (`profile`, `pocket`
-or `drill`), `x`, `y`. A number is held to that field's range on the
-window. `STATUS` adds `MODE`.
+or `drill`), `x`, `y`, `start`, `end`. A number is held to that field's range on the
+window. `start` and `end` are lines of your own, after the machine's start
+and before its end. The window has no field for them. `STATUS` adds `MODE`.
 
 ## GFOpenMakerWorkshop (port `OPENMAKEWORKSHOP.1`)
 

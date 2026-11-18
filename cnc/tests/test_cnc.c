@@ -1,6 +1,7 @@
 /* The mill's three tools, on a 10 mm square. MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "cnc_job.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -103,6 +104,55 @@ int main(void)
                    strstr(err, "rpm"),
                "faster than the spindle is refused, and no file");
         expect(fopen("build/cnc-fast.gcode", "r") == NULL, "the refused job is not left behind");
+        o.rpm = 12000.f;
+        o.start = "M117 hello";
+        o.end = "M300 S10";
+        expect(cnc_write("core/tests/data/rect-10mm.svg", "build/cnc-lines.gcode", &m, &o, &st, err, (int)sizeof err) ==
+                   0,
+               "written with the user's lines");
+        {
+            FILE *f = fopen("build/cnc-lines.gcode", "r");
+            char text[8000];
+            char *at, *hello, *spindle, *beep, *home;
+            size_t n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+            if (f) fclose(f);
+            text[n] = 0;
+            at = strstr(text, "G90");
+            hello = strstr(text, "M117 hello");
+            spindle = strstr(text, "M3 S");
+            beep = strstr(text, "M300 S10");
+            home = strstr(text, "G0 X0 Y0");
+            expect(at && hello && spindle && beep && home && at < hello && hello < spindle && beep < home,
+                   "the user's lines sit after the machine's start and before its end");
+        }
+        {
+            cnc_opts old;
+            memset(&old, 0x41, sizeof old);
+            old.size = (int)offsetof(cnc_opts, start);
+            old.tool = 0.f;
+            old.depth = 1.f;
+            old.stepdown = 0.f;
+            old.stepover = 0.f;
+            old.feed = 10.f;
+            old.plunge = 3.f;
+            old.safe = 0.f;
+            old.rpm = 12000.f;
+            old.mode = CNC_PROFILE;
+            old.x = 0.f;
+            old.y = 0.f;
+            expect(cnc_write("core/tests/data/rect-10mm.svg", "build/cnc-short.gcode", &m, &old, &st, err,
+                             (int)sizeof err) == 0,
+                   "a shorter cnc_opts still writes");
+            {
+                FILE *f = fopen("build/cnc-short.gcode", "r");
+                char text[8000];
+                size_t n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+                if (f) fclose(f);
+                text[n] = 0;
+                expect(strstr(text, "M3 S12000") && !strstr(text, "M117") && !strstr(text, "M300"),
+                       "a short cnc_opts does not read start or end");
+            }
+        }
     }
     gt_free(&p);
     gv_doc_free(&d);

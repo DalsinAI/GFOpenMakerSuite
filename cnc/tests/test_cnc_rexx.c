@@ -92,8 +92,9 @@ int main(void)
     expect(opts.mode == CNC_POCKET, "the refused mode left pocket in place");
     expect(run(&g, "SET KEY feed VALUE fast", &io) == 0 && io.rc == OMR_ERROR, "a word is not a feed");
     expect(run(&g, "GET KEY no-such", &io) == 0 && io.rc == OMR_ERROR, "an unknown key is refused");
-    expect(run(&g, "GET STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "11") && omr_host_var("ST.0") &&
-               !strcmp(omr_host_var("ST.0"), "11") && omr_host_var("ST.1") && !strcmp(omr_host_var("ST.1"), "tool"),
+    expect(run(&g, "GET STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "13") && omr_host_var("ST.0") &&
+               !strcmp(omr_host_var("ST.0"), "13") && omr_host_var("ST.1") && !strcmp(omr_host_var("ST.1"), "tool") &&
+               omr_host_var("ST.13") && !strcmp(omr_host_var("ST.13"), "end"),
            "GET with no key lists the settings");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "GFOPENCNC.1") &&
                strstr(buf, "rect-10mm.svg") && strstr(buf, "pocket") && omr_host_var("ST.DIRTY") &&
@@ -128,6 +129,27 @@ int main(void)
         expect(run(&g, "SAVE FILE build/cnc-rexx.nc", &io) == 0 && io.rc == OMR_OK && !g.dirty &&
                    gcode_has("build/cnc-rexx.nc", "G1"),
                "SAVE writes a cut");
+        expect(run(&g, "SET KEY start VALUE \"M117 hello\"", &io) == 0 && io.rc == OMR_OK && strstr(buf, "M117 hello"),
+               "SET start");
+        expect(run(&g, "SET KEY end VALUE \"M300 S10\"", &io) == 0 && io.rc == OMR_OK && strstr(buf, "M300"),
+               "SET end");
+        expect(run(&g, "GET KEY start", &io) == 0 && io.rc == OMR_OK && strstr(buf, "M117 hello"), "GET start");
+        g.dirty = 1;
+        expect(run(&g, "SAVE FILE build/cnc-rexx-lines.nc", &io) == 0 && io.rc == OMR_OK, "SAVE with the user's lines");
+        {
+            FILE *f = fopen("build/cnc-rexx-lines.nc", "r");
+            char text[8000];
+            char *hello, *spindle, *beep, *home;
+            size_t n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+            if (f) fclose(f);
+            text[n] = 0;
+            hello = strstr(text, "M117 hello");
+            spindle = strstr(text, "M3 S");
+            beep = strstr(text, "M300 S10");
+            home = strstr(text, "G0 X0 Y0");
+            expect(hello && spindle && beep && home && hello < spindle && beep < home,
+                   "the port's lines sit after the machine's start and before its end");
+        }
     }
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_OK && g.quit, "QUIT after a save");
     g.quit = 0;

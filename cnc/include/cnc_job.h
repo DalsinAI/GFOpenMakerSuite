@@ -25,6 +25,8 @@ typedef struct {
     float rpm;      /* spindle; 0: 10000 */
     int mode;       /* CNC_PROFILE, CNC_POCKET or CNC_DRILL */
     float x, y;     /* mm to move the drawing; 0: leave it */
+    const char *start; /* after the machine's start; NULL: none */
+    const char *end;   /* before the machine's end; NULL: none */
 } cnc_opts;
 
 void cnc_defaults(cnc_opts *o);
