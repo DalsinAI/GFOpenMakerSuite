@@ -162,7 +162,7 @@ print settings (`layer-height`, `line-width`, `walls`, `infill`,
 `distance`, `retract`, `retract-speed`). In OpenMakeBurn they are the
 job's keys (`power`, `speed`, `travel`, `passes`, `constant`, `s100`,
 `mode`, `interval`, `cuts_last`, `start`, `end`, `invert`, `width`, `x`, `y`,
-`rot`). `start` and `end` are
+`rot`, `kerf`, `tabs`, `tabw`). `start` and `end` are
 lines of your own, after the machine's start and before its end. Quote a
 line that has a space. `invert` is 1 to burn the white of a picture, and
 `width` is that picture's width in millimetres (0 uses the fill gap). The
@@ -395,7 +395,8 @@ port keeps them when the window rebuilds the job. `x`, `y` and `rot`
 move the drawing, the same as the place fields, and the window shows
 the values the port set. `SET` of `power`, `speed`, `passes`, `mode` or
 `interval` is written onto every layer row, and the next rebuild reads
-the first row back as the job. `travel` and `s100` have no row; the port
+the first row back as the job. `SET kerf`, `SET tabs` and `SET tabw` do
+the same for the holding tabs. `travel` and `s100` have no row; the port
 keeps them across a rebuild.
 
 ### LAYER
