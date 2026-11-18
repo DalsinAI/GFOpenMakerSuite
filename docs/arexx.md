@@ -794,10 +794,23 @@ and before its end. The window has no field for them. `STATUS` adds `MODE`,
 `KIND` (`SVG`, `DXF` or `File`, the window's drawing label) and `MILL`
 (the mill's name, or empty). `stem.X` and `stem.Y` are the place fields.
 `MILL DRIVER PROFILE` picks the mill, as the window's list. A printer is
-refused. When that mill is in the list, the list keeps it.
+refused. When that mill is in the list, the list keeps it. `MILLS` names
+that list and does not load one.
 `LOOK` is `top`, `front`, `side` or `frame`. Frame is the view at open:
 the cut is flat on the bed, so there is no solid to fit. The window has
 no button for it. The picture changes. The cut does not.
+
+### MILLS
+
+Template: `MILLS DIR/K STEM/K`
+
+Names the mills the window's list shows. `DIR` is the machines drawer
+(`machines` on the host, `PROGDIR:machines` on the Amiga), the same root
+the window scans. `RESULT` is how many. `STEM`, when given, has `stem.0`
+(that count), `stem.1` onwards the names, `stem.1.DRIVER` and
+`stem.1.PROFILE` the two files `MILL` takes. It does not load one, and
+it does not mark the cut dirty. A missing drawer is `0`. Out of memory
+is RC 10.
 
 ## GFOpenMakerWorkshop (port `OPENMAKEWORKSHOP.1`)
 
