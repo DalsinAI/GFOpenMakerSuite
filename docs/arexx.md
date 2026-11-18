@@ -560,7 +560,8 @@ there is no part.
 
 The slicer window. `OPEN` and `LOAD` both open an STL. `SAVE` writes
 G-code. `STATUS` also has `stem.LOADED`, `stem.SLICED`, `stem.LAYERS`,
-`stem.TIME` and `stem.FILAMENT`. `GET` and `SET` take the print settings,
+`stem.MOVES`, `stem.TIME`, `stem.FILAMENT` and `stem.ROUGH` (`1` when the
+time is short, the window's "over"). `GET` and `SET` take the print settings,
 and also `support`, `start`, `end` and `tasks` by name. `support`, `start`
 and `end` are the Settings side of the window, the same as `SUPPORT=`,
 `START=` and `END=` on the command. `support` is `1` or `0`. `start` and
@@ -602,8 +603,8 @@ Template: `SLICE STEM/K VAR/K`
 
 Slices the loaded part with the current settings and printer. `RESULT` is
 a short line (layers, time, filament). `STEM` has `stem.LAYERS`,
-`stem.TIME` (seconds), `stem.FILAMENT` (millimetres) and `stem.ROUGH`
-(`1` when the time is short, the window's "over", or `0`). RC 10 if there is
+`stem.MOVES`, `stem.TIME` (seconds), `stem.FILAMENT` (millimetres) and
+`stem.ROUGH` (`1` when the time is short, the window's "over", or `0`). RC 10 if there is
 no part, or if the printer cannot print it, with why in `RESULT`.
 
 ### STATS

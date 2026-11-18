@@ -125,7 +125,9 @@ int main(void)
            "OPEN stl");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.LOADED") &&
                strcmp(omr_host_var("ST.LOADED"), "1") == 0 && omr_host_var("ST.SLICED") &&
-               strcmp(omr_host_var("ST.SLICED"), "0") == 0,
+               strcmp(omr_host_var("ST.SLICED"), "0") == 0 && omr_host_var("ST.MOVES") &&
+               !strcmp(omr_host_var("ST.MOVES"), "0") && omr_host_var("ST.ROUGH") &&
+               !strcmp(omr_host_var("ST.ROUGH"), "0"),
            "STATUS LOADED");
     expect(run(&g, "LOAD FILE build/rexx-slicer.stl", &io) == 0 && io.rc == OMR_OK && job.have_part, "LOAD stl");
 
@@ -166,8 +168,14 @@ int main(void)
                job.tasks == 2 && g.fresh == 1 && strstr(buf, "layers") && omr_host_var("ST.LAYERS") &&
                atoi(omr_host_var("ST.LAYERS")) > 0,
            "SLICE");
-    expect(omr_host_var("ST.ROUGH") && !strcmp(omr_host_var("ST.ROUGH"), (job.how & GC_FELL_BACK) ? "1" : "0"),
+    expect(omr_host_var("ST.ROUGH") && !strcmp(omr_host_var("ST.ROUGH"), (job.how & GC_FELL_BACK) ? "1" : "0") &&
+               omr_host_var("ST.MOVES") && atoi(omr_host_var("ST.MOVES")) == job.st.moves && job.st.moves > 0,
            "SLICE says when the time is short");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKESLICER.1") &&
+               omr_host_var("ST.MOVES") && atoi(omr_host_var("ST.MOVES")) == job.st.moves &&
+               omr_host_var("ST.ROUGH") &&
+               !strcmp(omr_host_var("ST.ROUGH"), (job.how & GC_FELL_BACK) ? "1" : "0"),
+           "STATUS says the moves, and when the time is short");
     {
         int dirty = g.dirty, n = job.path.nlayers;
         expect(n > 4, "the cube has more than four layers");
@@ -204,7 +212,8 @@ int main(void)
         expect(g.dirty == dirty, "LOOK does not dirty");
     }
     expect(run(&g, "STATS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.TIME") &&
-               omr_host_var("ST.FILAMENT"),
+               omr_host_var("ST.FILAMENT") && omr_host_var("ST.MOVES") &&
+               atoi(omr_host_var("ST.MOVES")) == job.st.moves,
            "STATS");
     expect(run(&g, "SAVE FILE build/rexx-slicer.gcode", &io) == 0 && io.rc == OMR_OK && g.dirty == 0, "SAVE");
     expect(gcode_has_move("build/rexx-slicer.gcode") && file_has("build/rexx-slicer.gcode", "M117 hello") &&

@@ -121,6 +121,8 @@ static int put_stats(omr_cmd *c, const sl_job *j)
     omr_set_result(c, buf);
     snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced) ? j->path.nlayers : 0);
     stem_put(c, NULL, "LAYERS", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced) ? j->st.moves : 0);
+    stem_put(c, NULL, "MOVES", nbuf);
     snprintf(nbuf, sizeof nbuf, "%.3f", (j && j->sliced) ? (double)j->st.seconds : 0.0);
     stem_put(c, NULL, "TIME", nbuf);
     snprintf(nbuf, sizeof nbuf, "%.3f", (j && j->sliced) ? (double)j->st.filament : 0.0);
@@ -397,10 +399,14 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, NULL, "SLICED", (j && j->sliced) ? "1" : "0");
     snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced) ? j->path.nlayers : 0);
     stem_put(c, NULL, "LAYERS", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced) ? j->st.moves : 0);
+    stem_put(c, NULL, "MOVES", nbuf);
     snprintf(nbuf, sizeof nbuf, "%.3f", (j && j->sliced) ? (double)j->st.seconds : 0.0);
     stem_put(c, NULL, "TIME", nbuf);
     snprintf(nbuf, sizeof nbuf, "%.3f", (j && j->sliced) ? (double)j->st.filament : 0.0);
     stem_put(c, NULL, "FILAMENT", nbuf);
+    snprintf(nbuf, sizeof nbuf, "%d", (j && j->sliced && (j->how & GC_FELL_BACK)) ? 1 : 0);
+    stem_put(c, NULL, "ROUGH", nbuf);
     return OMR_OK;
 }
 
