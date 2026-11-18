@@ -393,7 +393,10 @@ writes Grbl laser G-code. `STATUS` also has `stem.KIND` (`SVG`, `DXF` or
 millimetres; 0 uses the fill gap). The window has no field for them. The
 port keeps them when the window rebuilds the job. `x`, `y` and `rot`
 move the drawing, the same as the place fields, and the window shows
-the values the port set.
+the values the port set. `SET` of `power`, `speed`, `passes`, `mode` or
+`interval` is written onto every layer row, and the next rebuild reads
+the first row back as the job. `travel` and `s100` have no row; the port
+keeps them across a rebuild.
 
 ### LAYER
 

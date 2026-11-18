@@ -295,6 +295,18 @@ void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out)
     }
 }
 
+void burn_job_from_layers(burn_opts *o)
+{
+    const burn_layer *L;
+    if (!o || !o->layer || o->nlayer < 1) return;
+    L = &o->layer[0];
+    if (L->set & BURN_SET_POWER) o->power = power_of(L->power);
+    if (L->set & BURN_SET_SPEED) o->speed = speed_of(L->speed);
+    if (L->set & BURN_SET_PASSES) o->passes = passes_of(L->passes);
+    if (L->set & BURN_SET_MODE) o->mode = L->mode;
+    if (L->set & BURN_SET_INTERVAL) o->interval = interval_of(L->interval);
+}
+
 static int grow_speed(float **spd, int *cap, int need)
 {
     int ncap;

@@ -90,6 +90,10 @@ int burn_parse_layer(const char *s, burn_layer *L, char *err, int errlen);
  * power, speed, passes, on, mode, interval, kerf, tabs and tabw are filled in. */
 void burn_layer_of(const burn_opts *o, const gv_doc *d, int L, burn_layer *out);
 
+/* Where a layer row is the window's copy of the job, copy the first
+ * row's power, speed, passes, mode and gap back onto the job. */
+void burn_job_from_layers(burn_opts *o);
+
 /* 0-based document layer indices into seq[0..d->nlayer-1] as the job will
  * run them. cap must be at least d->nlayer. 0, or -1 if cap is short. */
 int burn_seq(const burn_opts *o, const gv_doc *d, int *seq, int cap);

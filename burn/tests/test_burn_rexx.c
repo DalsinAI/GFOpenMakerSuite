@@ -129,6 +129,18 @@ int main(void)
     expect(run(&g, "MODE NAME line", &io) == 0 && io.rc == OMR_OK, "MODE line");
     expect(run(&g, "LAYER INDEX 1 POWER 90", &io) == 0 && io.rc == OMR_OK && opts.nlayer >= 1 && store[0].power == 90.f,
            "LAYER INDEX 1");
+    expect(run(&g, "SET KEY power VALUE 70", &io) == 0 && io.rc == OMR_OK && opts.power == 70.f && store[0].power == 70.f,
+           "SET power writes the layer row");
+    {
+        burn_layer row = store[0];
+        int n = opts.nlayer;
+        burn_defaults(&opts);
+        opts.layer = store;
+        opts.nlayer = n;
+        store[0] = row;
+        burn_job_from_layers(&opts);
+        expect(opts.power == 70.f, "a rebuild keeps the port's power from the layer row");
+    }
     expect(run(&g, "LAYER INDEX 9 POWER 10", &io) == 0 && io.rc == OMR_ERROR, "LAYER missing");
 
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW");
@@ -190,6 +202,15 @@ int main(void)
     expect(file_has("build/rexx-bars.gcode", "X16"), "invert and a 16 mm width reach the far edge");
 
     expect(run(&g, "OPEN FILE no-such.svg", &io) == 0 && io.rc == OMR_ERROR, "OPEN missing file");
+    expect(run(&g, "SET KEY travel VALUE 200", &io) == 0 && io.rc == OMR_OK && opts.travel == 200.f && g.have_travel,
+           "SET travel");
+    expect(run(&g, "SET KEY s100 VALUE 500", &io) == 0 && io.rc == OMR_OK && opts.s100 == 500.f && g.have_s100,
+           "SET s100");
+    burn_defaults(&opts);
+    opts.layer = store;
+    gb_rexx_keep(&g);
+    expect(opts.travel == 200.f && opts.s100 == 500.f && opts.start && !strcmp(opts.start, "M117 hello"),
+           "a rebuild keeps travel, S at 100%, and the start line");
     g.dirty = 1;
     expect(run(&g, "QUIT", &io) == 0 && io.rc == OMR_ERROR && g.quit == 0, "QUIT refuses a dirty document");
     expect(run(&g, "QUIT FORCE", &io) == 0 && io.rc == OMR_OK && g.quit == 1, "QUIT FORCE");
