@@ -255,6 +255,22 @@ static int cmd_status(void *c, void *g0)
     stem_put(c, "FILE", file);
     stem_put(c, "DIRTY", dirty ? "1" : "0");
     stem_put(c, "ITEMS", nbuf);
+    stem_put(c, "NAME", have(g) ? g->ws->project.name : "");
+    {
+        const gpr_item *it = NULL;
+        int at = -1;
+        if (have(g) && g->ws->picked >= 0 && g->ws->picked < g->ws->project.n) {
+            at = g->ws->picked;
+            it = &g->ws->project.items[at];
+        }
+        snprintf(nbuf, sizeof nbuf, "%d", at >= 0 ? at + 1 : 0);
+        stem_put(c, "PICKED", nbuf);
+        stem_put(c, "ITEM", it ? it->name : "");
+        stem_put(c, "KIND", it ? it->kind : "");
+        if (it && it->from > 0) snprintf(nbuf, sizeof nbuf, "%d", it->from);
+        else nbuf[0] = 0;
+        stem_put(c, "FROM", nbuf);
+    }
     var_put(c, buf);
     omr_set_result(c, buf);
     return OMR_OK;
