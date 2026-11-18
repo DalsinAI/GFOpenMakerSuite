@@ -156,6 +156,15 @@ int main(void)
         expect(run(&g, "MATERIALS DIR materials/laser/no-such STEM ST", &io) == 0 && io.rc == OMR_OK &&
                    !strcmp(buf, "0") && g.dirty == dirty,
                "MATERIALS of an empty drawer is none");
+        expect(run(&g, "MACHINES STEM ST", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "1") && g.dirty == dirty &&
+                   omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "1") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "Generic Diode 400") && omr_host_var("ST.1.DRIVER") &&
+                   strstr(omr_host_var("ST.1.DRIVER"), "grbl/driver.om") && omr_host_var("ST.1.PROFILE") &&
+                   strstr(omr_host_var("ST.1.PROFILE"), "generic-diode-400.om"),
+               "MACHINES names the picker");
+        expect(run(&g, "MACHINES DIR machines/no-such", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "0") &&
+                   g.dirty == dirty,
+               "MACHINES of a missing drawer is none");
     }
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
                omr_host_var("ST.MACHINE") && !strcmp(omr_host_var("ST.MACHINE"), g.machine.name) &&
