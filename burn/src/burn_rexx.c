@@ -141,6 +141,8 @@ static int cmd_open(void *c, void *g0)
         burn_defaults(g->opts);
         g->opts->layer = g->store;
         g->opts->nlayer = 0;
+        g->have_order = 0;
+        g->nseq = 0;
         gb_rexx_keep(g);
     }
     if (burn_is_image(file)) {
@@ -212,7 +214,8 @@ static int cmd_hide(void *c, void *g0)
 
 static const char *const job_keys[] = {"power",  "speed",    "travel", "passes",   "constant",
                                        "s100",   "mode",     "interval", "cuts_last", "start", "end",
-                                       "invert", "width", "x", "y", "rot", "kerf", "tabs", "tabw", NULL};
+                                       "invert", "width", "x", "y", "rot", "kerf", "tabs", "tabw",
+                                       "order", NULL};
 
 static int key_of(const char *s)
 {
@@ -285,6 +288,17 @@ static void key_value(const burn_opts *o, int k, char *buf, int len)
     case 18:
         snprintf(buf, (size_t)len, "%g", (double)o->tabw);
         break;
+    case 19: {
+        int i, p = 0;
+        buf[0] = 0;
+        if (!o->seq || o->nseq <= 0) break;
+        for (i = 0; i < o->nseq && p < len - 1; i++) {
+            int wr = snprintf(buf + p, (size_t)(len - p), i ? ",%d" : "%d", o->seq[i] + 1);
+            if (wr < 0 || wr >= len - p) break;
+            p += wr;
+        }
+        break;
+    }
     default:
         break;
     }
@@ -494,11 +508,66 @@ static int cmd_get(void *c, void *g0)
     return OMR_OK;
 }
 
+/* order= on the command: 1-based layers, comma separated. Empty is the
+ * file order. A layer left out follows, in file order. */
+static int parse_order(gb_rexx *g, const char *value, char *err, int errlen)
+{
+    const char *s = value ? value : "";
+    int seq[64], nseq = 0;
+    int nlayer;
+    while (*s == ' ' || *s == '\t') s++;
+    if (!*s) {
+        g->have_order = 0;
+        g->nseq = 0;
+        g->opts->seq = NULL;
+        g->opts->nseq = 0;
+        return 0;
+    }
+    if (!has_doc(g)) {
+        snprintf(err, (size_t)errlen, "Open a drawing first");
+        return -1;
+    }
+    nlayer = g->doc->nlayer;
+    while (*s) {
+        long n = 0;
+        if (*s == ',') s++;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s < '0' || *s > '9') {
+            snprintf(err, (size_t)errlen, "order is 1-based layers, comma separated");
+            return -1;
+        }
+        while (*s >= '0' && *s <= '9') {
+            n = n * 10 + (*s++ - '0');
+            if (n > 100000) break;
+        }
+        while (*s == ' ' || *s == '\t') s++;
+        if (n < 1 || nseq >= (int)(sizeof seq / sizeof seq[0])) {
+            snprintf(err, (size_t)errlen, "order is 1-based layers, comma separated");
+            return -1;
+        }
+        if (n > nlayer) {
+            snprintf(err, (size_t)errlen, "order: no such layer %d", (int)n);
+            return -1;
+        }
+        seq[nseq++] = (int)n - 1;
+        if (*s && *s != ',') {
+            snprintf(err, (size_t)errlen, "order is 1-based layers, comma separated");
+            return -1;
+        }
+    }
+    memcpy(g->seq, seq, (size_t)nseq * sizeof seq[0]);
+    g->nseq = nseq;
+    g->have_order = 1;
+    g->opts->seq = g->seq;
+    g->opts->nseq = nseq;
+    return 0;
+}
+
 static int cmd_set(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
     const char *key = omr_arg(c, "KEY"), *value = omr_arg(c, "VALUE");
-    char err[160], buf[64];
+    char err[160], buf[240];
     int k;
     err[0] = 0;
     if (!g->opts) {
@@ -518,6 +587,16 @@ static int cmd_set(void *c, void *g0)
         else g->opts->end = dst[0] ? dst : NULL;
         dirty(g);
         omr_set_result(c, dst);
+        return OMR_OK;
+    }
+    if (k == 19) {
+        if (parse_order(g, value, err, (int)sizeof err)) {
+            omr_set_result(c, err);
+            return OMR_ERROR;
+        }
+        dirty(g);
+        key_value(g->opts, k, buf, (int)sizeof buf);
+        omr_set_result(c, buf);
         return OMR_OK;
     }
     if (set_key(g->opts, k, value, err, (int)sizeof err)) {
@@ -994,6 +1073,10 @@ void gb_rexx_keep(gb_rexx *g)
     g->opts->width = g->width;
     if (g->have_travel) g->opts->travel = g->travel;
     if (g->have_s100) g->opts->s100 = g->s100;
+    if (g->have_order && g->nseq > 0) {
+        g->opts->seq = g->seq;
+        g->opts->nseq = g->nseq;
+    }
 }
 
 const omr_verb *gb_rexx_verbs(void) { return verbs; }

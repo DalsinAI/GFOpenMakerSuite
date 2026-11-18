@@ -91,6 +91,13 @@ static void read_opts(olui *ui)
     burn_ui_read(ui, &opts, layers, 64);
     opts.nseq = burn_ui_order(ui, layer_seq, 64);
     opts.seq = opts.nseq ? layer_seq : NULL;
+    if (opts.nseq > 0) {
+        int i, n = opts.nseq;
+        if (n > (int)(sizeof rexx.seq / sizeof rexx.seq[0])) n = (int)(sizeof rexx.seq / sizeof rexx.seq[0]);
+        for (i = 0; i < n; i++) rexx.seq[i] = layer_seq[i];
+        rexx.nseq = n;
+        rexx.have_order = 1;
+    }
     gb_rexx_keep(&rexx);
 }
 
