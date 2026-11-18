@@ -1681,6 +1681,7 @@ static int cmd_slice(void *c, void *g0)
     snprintf(buf, sizeof buf, "%d layers, %d moves, %.1f s, %.1f mm", layers, st.moves, (double)st.seconds,
              (double)st.filament);
     omr_set_result(c, buf);
+    stem_put(c, "ST", "ROUGH", (g->slice_how & GC_FELL_BACK) ? "1" : "0");
     return OMR_OK;
 }
 
@@ -1940,7 +1941,7 @@ static const omr_verb verbs[] = {
     {sizeof(omr_verb), "EXPORT", "FILE/A", "write the picked part as an STL", cmd_export},
     {sizeof(omr_verb), "PRINTER", "DRIVER/K PROFILE/K", "pick the printer from a driver and profile", cmd_printer},
     {sizeof(omr_verb), "GCODE", "FILE/A", "slice the shown parts and write G-code", cmd_gcode},
-    {sizeof(omr_verb), "SLICE", "", "slice the shown parts for the view", cmd_slice},
+    {sizeof(omr_verb), "SLICE", "STEM/K VAR/K", "slice the shown parts for the view", cmd_slice},
     {sizeof(omr_verb), "MEASURE", "X1/K Y1/K Z1/K X2/K Y2/K Z2/K STEM/K VAR/K", "the distance between two points",
      cmd_measure},
     {sizeof(omr_verb), "FACTS", "PART/N/K STEM/K VAR/K", "a part's volume, surface, size and triangles", cmd_facts},
