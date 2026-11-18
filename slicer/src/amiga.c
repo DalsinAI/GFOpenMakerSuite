@@ -3,7 +3,8 @@
  * tasks as there are cores (sl_job.h: gp_part_par, exec tasks here), the
  * slider shows it a layer at a time, and Save G-code writes it for the
  * printer picked (core/ui's machine picker), once the printer says it can.
- * The view is the part on the plate. Once sliced, the toolpath is laid on
+ * Support, Start and End on the Settings side are the shell's SUPPORT, START
+ * and END. The view is the part on the plate. Once sliced, the toolpath is laid on
  * that solid, in the same frame. OpenGPU draws it when gfopengpu.library
  * can, and the pens when not. A file named at launch is opened the way
  * Open opens one.
@@ -209,6 +210,18 @@ static void on_open(olui *ui, const olui_event *ev, void *userdata)
     open_stl(ui, path);
 }
 
+/* Support, and the user's own lines, from the Settings side. */
+static void take_own(olui *ui)
+{
+    char start[240], end[240];
+    int support = 0;
+    sl_ui_job_read(ui, &support, start, (int)sizeof start, end, (int)sizeof end);
+    job.support = support;
+    sl_own(&job, start, end);
+}
+
+static void show_own(olui *ui) { sl_ui_job_show(ui, job.support, job.start, job.end); }
+
 static void on_slice(olui *ui, const olui_event *ev, void *userdata)
 {
     gs_settings set;
@@ -221,6 +234,7 @@ static void on_slice(olui *ui, const olui_event *ev, void *userdata)
     if (job.have_part) gp_place(&job.part, m.area[0], m.area[1]); /* on the bed of the printer picked */
     if (have) omv_settings_fit(ui, &m, &set, err, (int)sizeof err); /* the fields held to the printer */
     sl_ui_settings(ui, &set);
+    take_own(ui);
     omv_say(ui, "Slicing...");
     if (sl_slice(&job, &set, have ? &m : NULL, gs_par_cores(), err, (int)sizeof err)) {
         omv_say(ui, err);
@@ -247,6 +261,7 @@ static void on_gcode(olui *ui, const olui_event *ev, void *userdata)
         return;
     }
     if (!ask_file(ui, "Save G-code", TRUE, "#?.gcode", path, (int)sizeof path)) return;
+    take_own(ui);
     if (sl_write(&job, path, &m, err, (int)sizeof err)) omv_say(ui, err);
     else omv_say(ui, path);
 }
@@ -380,9 +395,11 @@ int main(int argc, char **argv)
             char why[160];
             snprintf(rexx.file, sizeof rexx.file, "%s", stl_path);
             sl_ui_settings(ui, &rexx.set);
+            take_own(ui);
             rexx.have_machine = printer(ui, &rexx.machine, why, (int)sizeof why) == 0;
             while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, os_rexx_verbs(), os_rexx_nverbs(), &rexx);
             omv_settings_show(ui, &rexx.set);
+            show_own(ui);
             strncpy(stl_path, rexx.file, sizeof stl_path - 1);
             stl_path[sizeof stl_path - 1] = 0;
             if (olui_find(ui, "path")) olui_set_text(ui, olui_find(ui, "path"), stl_path);

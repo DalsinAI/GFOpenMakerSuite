@@ -50,7 +50,7 @@ built-in defaults, written out to copy); any of its keys can be given as
 `START=` and `END=` are lines of your own, after the machine's start and
 before its end. The heat, the home and M84 stay. `SUPPORT=1` adds one wall,
 and a line every four widths, under an overhang steeper than 45 degrees,
-from the bed up to it. The window has no field for it.
+from the bed up to it. The slicer window has the same three on the Settings side.
 
 ## Where the view comes from
 
@@ -130,7 +130,7 @@ not copied, are in [docs/media-examples.md](docs/media-examples.md).
 
 ## Not in this release
 
-A window field for start, end and support. `START=`, `END=` and `SUPPORT=1` are on the shell.
+GFOpenCNC's port has no PREVIEW. The laser window does not take your own start and end lines; the profile's do.
 
 ## Building
 

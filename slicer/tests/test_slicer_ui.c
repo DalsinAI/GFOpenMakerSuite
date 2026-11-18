@@ -44,6 +44,7 @@ static int overlap(const olui_rect *a, const olui_rect *b)
 /* Every control amiga.c reads or answers, and what it is. */
 static const char *const controls[][2] = {
     {"path", "input"}, {"open", "button"}, {"slice", "button"}, {"machine", "select"},
+    {"support", "checkbox"}, {"start", "input"}, {"end", "input"},
     {"set-layer-height", "spinner"}, {"set-walls", "spinner"}, {"show", "checkbox"}, {"prev", "button"},
     {"layerno", "slider"}, {"next", "button"}, {"gcode", "button"}
 };
@@ -106,6 +107,19 @@ int main(void)
         olui_select_set(ui, olui_find(ui, "set-pattern"), GS_GRID);
         sl_ui_settings(ui, &s);
         expect(s.layer_h == 0.3f && s.walls == 4 && s.pattern == GS_GRID, "and as they are changed");
+    }
+    {
+        int support = 0;
+        char start[240], end[240];
+        olui_set_checked(ui, olui_find(ui, "support"), 1);
+        olui_set_text(ui, olui_find(ui, "start"), "M117 hello");
+        olui_set_text(ui, olui_find(ui, "end"), "M300 S10");
+        sl_ui_job_read(ui, &support, start, (int)sizeof start, end, (int)sizeof end);
+        expect(support == 1 && !strcmp(start, "M117 hello") && !strcmp(end, "M300 S10"),
+               "support on, and the user's own lines");
+        sl_ui_job_show(ui, 0, "", "");
+        sl_ui_job_read(ui, &support, start, (int)sizeof start, end, (int)sizeof end);
+        expect(support == 0 && !start[0] && !end[0], "support off, and the lines cleared");
     }
     olui_free(ui);
     printf(fails ? "slicer ui: %d failed\n" : "slicer ui ok\n", fails);
