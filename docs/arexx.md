@@ -697,6 +697,17 @@ fill gap are written onto every layer row, as picking that profile does.
 it can still be changed with `LASER` or `SET`. Opening a drawing leaves
 the name, as the list does.
 
+### MATERIALS
+
+Template: `MATERIALS DIR/K STEM/K`
+
+The profiles in the window's materials list, sorted by name. `DIR` is
+that drawer; with none, it is `materials/laser` (and `PROGDIR:materials/laser`
+on the Amiga, the same drawer the window scans). `RESULT` is how many.
+`STEM` has `stem.0` (that count), `stem.1` the first name, `stem.1.PATH`
+its file, and so on. It does not load a profile, and it does not mark the
+job dirty. An empty drawer is `0`.
+
 ### LASER
 
 Template: `LASER POWER/K SPEED/K TRAVEL/K PASSES/N/K CONSTANT/N/K S100/K`

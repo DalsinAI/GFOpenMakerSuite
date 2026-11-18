@@ -144,6 +144,19 @@ int main(void)
            "HELP lists LAYER");
     expect(run(&g, "STATUS", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN.1") && strstr(buf, "0"),
            "STATUS, not dirty");
+    {
+        int dirty = g.dirty;
+        expect(run(&g, "MATERIALS STEM ST", &io) == 0 && io.rc == OMR_OK && atoi(buf) == 3 && g.dirty == dirty &&
+                   omr_host_var("ST.0") && !strcmp(omr_host_var("ST.0"), "3") && omr_host_var("ST.1") &&
+                   !strcmp(omr_host_var("ST.1"), "3 mm plywood") && omr_host_var("ST.2") &&
+                   !strcmp(omr_host_var("ST.2"), "Card") && omr_host_var("ST.2.PATH") &&
+                   strstr(omr_host_var("ST.2.PATH"), "card.om") && omr_host_var("ST.3") &&
+                   !strcmp(omr_host_var("ST.3"), "Draft engrave"),
+               "MATERIALS names the picker");
+        expect(run(&g, "MATERIALS DIR materials/laser/no-such STEM ST", &io) == 0 && io.rc == OMR_OK &&
+                   !strcmp(buf, "0") && g.dirty == dirty,
+               "MATERIALS of an empty drawer is none");
+    }
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && g.machine.name[0] &&
                omr_host_var("ST.MACHINE") && !strcmp(omr_host_var("ST.MACHINE"), g.machine.name) &&
                omr_host_var("ST.MATERIAL") && !strcmp(omr_host_var("ST.MATERIAL"), "") &&
