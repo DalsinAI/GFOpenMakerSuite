@@ -6,6 +6,7 @@
 
 #include "gs_gcode.h"
 #include "gs_model.h"
+#include "gs_par.h"
 #include "gs_plan.h"
 
 #include <stdio.h>
@@ -1461,7 +1462,7 @@ static int cmd_slice(void *c, void *g0)
     gc_more gx;
     gc_stats st;
     char buf[120];
-    int layers;
+    int layers, tasks;
     if (!ps) {
         omr_set_result(c, "no document");
         return OMR_ERROR;
@@ -1476,7 +1477,11 @@ static int cmd_slice(void *c, void *g0)
     }
     gs_settings_opts(&g->set, &o, &go);
     gs_settings_more(&g->set, &x);
-    if (gp_part_more(&path, &scene, &o, &x) || !path.n) {
+    tasks = gs_par_cores();
+    if (tasks < 1) tasks = 1;
+    if (tasks > 64) tasks = 64;
+    g->slice_tasks = tasks;
+    if (gp_part_par_more(&path, &scene, &o, &x, tasks) || !path.n) {
         gt_free(&path);
         gs_mesh_free(&scene);
         omr_set_result(c, "That did not slice: out of memory, or nothing to slice");
@@ -1535,9 +1540,14 @@ static int cmd_gcode(void *c, void *g0)
     gs_settings_opts(&g->set, &o, &go);
     gs_settings_more(&g->set, &x);
     gs_settings_gc_more(&g->set, &go, &gx);
-    if (gp_part_more(&path, &shown, &o, &x) || !path.n) {
-        omr_set_result(c, "That did not slice: out of memory, or nothing to slice");
-        goto done;
+    {
+        int tasks = gs_par_cores();
+        if (tasks < 1) tasks = 1;
+        if (tasks > 64) tasks = 64;
+        if (gp_part_par_more(&path, &shown, &o, &x, tasks) || !path.n) {
+            omr_set_result(c, "That did not slice: out of memory, or nothing to slice");
+            goto done;
+        }
     }
     if (!g->have_machine) {
         omr_set_result(c, "no printer");

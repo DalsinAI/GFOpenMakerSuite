@@ -45,6 +45,7 @@ typedef struct gm_rexx {
     float slice_seconds;
     float slice_filament;
     int slice_how; /* gc_estimate_more's flags */
+    int slice_tasks; /* tasks the last SLICE ran on; 1 to 64 */
 } gm_rexx;
 
 #define GM_REXX_PORT "GFOPENMAKE"

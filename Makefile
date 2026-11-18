@@ -50,9 +50,10 @@ $(BUILD)/test_edit: cad/tests/test_edit.c cad/src/edit.c core/src/parts.c core/s
 	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icad/include -o $@ cad/tests/test_edit.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c -lm
 
 # GFOpenMake's ARexx commands (cad/src/make_rexx.c), on the host stub.
-$(BUILD)/test_make_rexx: cad/tests/test_make_rexx.c cad/src/make_rexx.c cad/src/edit.c core/src/rexx.c $(PLAN) core/src/gcode.c core/src/settings.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c cad/src/make_rexx.h | $(BUILD)
-	$(CC) $(CFLAGS) $(WARN) -Icore/include -Icore/src -Icad/include -Icad/src -Imachines/include -o $@ \
+$(BUILD)/test_make_rexx: cad/tests/test_make_rexx.c cad/src/make_rexx.c cad/src/edit.c core/src/rexx.c $(PLAN) core/src/plan_par.c core/src/par_posix.c core/src/gcode.c core/src/settings.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c cad/src/make_rexx.h | $(BUILD)
+	$(CC) $(CFLAGS) $(WARN) -pthread -Icore/include -Icore/src -Icad/include -Icad/src -Imachines/include -o $@ \
 	    cad/tests/test_make_rexx.c cad/src/make_rexx.c cad/src/edit.c core/src/rexx.c $(PLAN) \
+	    core/src/plan_par.c core/src/par_posix.c \
 	    core/src/gcode.c core/src/settings.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c machines/src/machine.c -lm
 
 $(BUILD)/test_layer: core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c cad/src/edit.c core/src/parts.c core/src/model.c core/src/stl.c core/src/view.c core/src/solid.c core/include/gs_layer.h cad/include/gs_edit.h core/tests/data/nasa-wrench.stl | $(BUILD)
