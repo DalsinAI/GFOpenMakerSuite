@@ -344,10 +344,10 @@ Template: `RECENT STEM/K VAR/K`
 `RESULT` is the most recent project path, or empty. `STEM`, when given,
 is the recent list (`stem.0` how many, `stem.1` the first path).
 
-Workshop does not invent a second ARexx library. Until
-`openmakerexx.library` is merged, the window's Open in app uses the
-launch hook; the master port is wired to the shared library in the PR
-that follows that merge.
+`OPENMAKEWORKSHOP.1` is open on `openmakerexx.library`. Open in app, and
+`OPENITEM` when the other app's port is not up, still use the launch
+hook. `OPENITEM` sends `OPEN FILE` when that port is already up. `SEND`
+does not start the other app.
 
 ## Order of work
 

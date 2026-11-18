@@ -1,12 +1,14 @@
 /* GFOpenMakerWorkshop on the Amiga. The window is GFOpenLayout
  * (markup.h): New asks for a drawer, Open for a project.om (or the
  * drawer), Save writes it, the left list is the product's items, and
- * Launch starts the kind's program (the host hook; ARexx follows).
+ * Launch starts the kind's program (the host hook when that app's port
+ * is not up; OPENITEM uses the port when it is).
  * The view is the picked item (STL, SVG/DXF or G-code) drawn on the
  * CPU and put down with the pens (core/ui). The window is resizable,
  * 640 by 480 inside at the least.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "workshop_ui.h"
+#include "workshop_rexx.h"
 #include "omview_ui.h"
 #include "omview_window.h"
 
@@ -34,6 +36,17 @@ static struct Window *win;
 static workshop ws;
 static gs_cam cam;
 static int dragging, drag_x, drag_y, drag_shift;
+
+static gw_rexx rexx;
+static omr_port *rexx_port;
+
+static void rexx_activate(void *window)
+{
+    WindowToFront((struct Window *)window);
+    ActivateWindow((struct Window *)window);
+}
+
+static void rexx_hide(void *window) { WindowToBack((struct Window *)window); }
 
 static void path_join(char *path, int n, const char *drawer, const char *file)
 {
@@ -373,9 +386,33 @@ int main(void)
     olui_amiga_own(a, olui_find(ui, "view"), draw_view, NULL);
     workshop_ui_refresh(ui, &ws);
     olui_amiga_layout(a);
+    gw_rexx_init(&rexx);
+    rexx.ws = &ws;
+    rexx.version = "GFOpenMakerWorkshop 0.1.0";
+    rexx.activate = rexx_activate;
+    rexx.hide = rexx_hide;
+    rexx.win = w;
+    rexx.ui = ui;
+    rexx_port = omr_open(GW_REXX_PORT, rexx.version);
+    if (rexx_port) {
+        rexx.port_name = omr_name(rexx_port);
+        omr_attach(rexx_port, gw_rexx_verbs(), gw_rexx_nverbs(), &rexx);
+    }
     for (;;) {
         int r;
-        WaitPort(w->UserPort);
+        ULONG mask = 1UL << w->UserPort->mp_SigBit, got, rmask = omr_mask(rexx_port);
+        got = Wait(mask | rmask);
+        if (rmask && (got & rmask)) {
+            omr_cmd *cmd;
+            while ((cmd = omr_get(rexx_port))) omr_dispatch(cmd, gw_rexx_verbs(), gw_rexx_nverbs(), &rexx);
+            workshop_ui_refresh(ui, &ws);
+            olui_repaint(ui, olui_find(ui, "view"), NULL);
+            if (rexx.quit) goto done;
+        }
+        if (!(got & mask)) {
+            olui_amiga_draw(a);
+            continue;
+        }
         while ((msg = (struct IntuiMessage *)GetMsg(w->UserPort))) {
             WORD mx = msg->MouseX, my = msg->MouseY;
             ULONG cls = msg->Class;
@@ -408,6 +445,7 @@ int main(void)
         olui_amiga_draw(a);
     }
 done:
+    if (rexx_port) omr_close(rexx_port);
     if (a) olui_amiga_free(a);
     CloseWindow(w);
     olui_free(ui);

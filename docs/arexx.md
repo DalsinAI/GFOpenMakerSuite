@@ -163,7 +163,7 @@ print settings (`layer-height`, `line-width`, `walls`, `infill`,
 job's keys (`power`, `speed`, `travel`, `passes`, `constant`, `s100`,
 `mode`, `interval`, `cuts_last`, `start`, `end`). `start` and `end` are
 lines of your own, after the machine's start and before its end. Quote a
-line that has a space. Workshop's keys are Workshop's to list.
+line that has a space. Workshop's keys are `name` and `notes`.
 
 With no `KEY`, `STEM` receives every key: `stem.0` is how many, `stem.1`
 the first key, `stem.1.VALUE` its value, and so on. With `KEY`, `RESULT`
@@ -441,6 +441,22 @@ picture. `GET` and `SET` use the cut's keys: `tool`, `depth`, `stepdown`,
 `stepover`, `feed`, `plunge`, `safe`, `rpm`, `mode` (`profile`, `pocket`
 or `drill`), `x`, `y`. A number is held to that field's range on the
 window. `STATUS` adds `MODE`.
+
+## GFOpenMakerWorkshop (port `OPENMAKEWORKSHOP.1`)
+
+The project window. `OPEN` and `SAVE` are the project drawer (or its
+`project.om`). `SAVE` writes that project; a different `FILE` is refused.
+`GET` and `SET` are `name` and `notes`. `STATUS` also has `stem.ITEMS`.
+
+`NEW PATH NAME` creates a drawer and opens it. `ADD`, `REMOVE` and
+`RENAME` change the manifest; removing an item does not delete its file.
+`ITEMS` lists them, or one `KIND`. `OPENITEM` opens that item in its app:
+if the app's port is up, `OPEN FILE` is sent and `RESULT` is that port;
+if it is not, the launch hook starts the program and `RESULT` is the
+port stem, or the program name when the kind has no port. `SEND` passes
+`CMD` to `APP` (`CAD`, `SLICER`, `BURN`, `CNC`, `KICAD`, or a port name)
+and does not start the app. A port that is not up is RC 10. `RECENT` is
+the recent project list.
 
 ## The library
 
