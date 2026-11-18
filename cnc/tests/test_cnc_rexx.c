@@ -101,8 +101,16 @@ int main(void)
                !strcmp(omr_host_var("ST.DIRTY"), "1") && omr_host_var("ST.MODE") &&
                !strcmp(omr_host_var("ST.MODE"), "pocket") && omr_host_var("ST.KIND") &&
                !strcmp(omr_host_var("ST.KIND"), "SVG") && omr_host_var("ST.MILL") &&
-               !strcmp(omr_host_var("ST.MILL"), ""),
+               !strcmp(omr_host_var("ST.MILL"), "") && omr_host_var("ST.X") &&
+               !strcmp(omr_host_var("ST.X"), "0") && omr_host_var("ST.Y") && !strcmp(omr_host_var("ST.Y"), "0"),
            "STATUS is the port, the file, dirty, the mode and the drawing");
+    expect(run(&g, "SET KEY x VALUE 4", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "4"), "SET x");
+    expect(run(&g, "SET KEY y VALUE -2", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "-2"), "SET y");
+    expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.X") &&
+               !strcmp(omr_host_var("ST.X"), "4") && omr_host_var("ST.Y") && !strcmp(omr_host_var("ST.Y"), "-2"),
+           "STATUS reads the place fields");
+    expect(run(&g, "SET KEY x VALUE 0", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "0"), "x back to 0");
+    expect(run(&g, "SET KEY y VALUE 0", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "0"), "y back to 0");
     expect(run(&g, "SET KEY tool VALUE 3", &io) == 0 && io.rc == OMR_OK && !strcmp(buf, "3"), "tool 3 for a preview");
     expect(run(&g, "SET KEY mode VALUE profile", &io) == 0 && io.rc == OMR_OK, "profile for a preview");
     expect(run(&g, "PREVIEW", &io) == 0 && io.rc == OMR_OK && have_path && path.n >= 2, "PREVIEW plans the cut");
