@@ -756,7 +756,9 @@ its file, and the item it was made from, or empty).
 
 `NEW PATH NAME` creates a drawer and opens it. `ADD`, `REMOVE` and
 `RENAME` change the manifest; removing an item does not delete its file.
-`ITEMS` lists them, or one `KIND`. `OPENITEM` opens that item in its app:
+`ITEMS` lists them, or one `KIND`. `PICK` shows that row, as a click on
+the list: the window draws it, and homes the view. It does not open the
+item, and it does not mark the project dirty. `OPENITEM` opens that item in its app:
 if the app's port is up, `OPEN FILE` is sent and `RESULT` is that port;
 if it is not, the launch hook starts the program and `RESULT` is the
 port stem, or the program name when the kind has no port. `SEND` passes

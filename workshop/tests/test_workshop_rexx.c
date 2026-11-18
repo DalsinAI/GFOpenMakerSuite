@@ -100,6 +100,7 @@ int main(void)
                !strcmp(omr_host_var("ST.PATH"), ""),
            "STATUS has no project to name");
     expect(run(&g, "ADD KIND laser FILE x NAME Plate", &io) == 0 && io.rc == OMR_ERROR, "ADD with no project");
+    expect(run(&g, "PICK ITEM 1", &io) == 0 && io.rc == OMR_ERROR, "PICK with no project");
 
     cwd = getcwd(NULL, 0);
     expect(cwd != NULL && join2(dir, (int)sizeof dir, cwd ? cwd : ".", "/build/ws-rexx-proj") == 0, "the working directory");
@@ -152,6 +153,22 @@ int main(void)
                !strcmp(omr_host_var("ST.PICKED"), "0") && omr_host_var("ST.ITEM") && !strcmp(omr_host_var("ST.ITEM"), "") &&
                omr_host_var("ST.PATH") && !strcmp(omr_host_var("ST.PATH"), ""),
            "STATUS ITEMS");
+    expect(run(&g, "PICK ITEM 9", &io) == 0 && io.rc == OMR_ERROR && w.picked < 0 && strstr(buf, "no such"),
+           "PICK missing");
+    {
+        int dirty = w.project.dirty;
+        expect(run(&g, "PICK ITEM Front", &io) == 0 && io.rc == OMR_OK && w.picked == 0 && g.home == 1 &&
+                   !strcmp(buf, "Front") && w.project.dirty == dirty,
+               "PICK shows the row");
+        expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICKED") &&
+                   !strcmp(omr_host_var("ST.PICKED"), "1") && omr_host_var("ST.ITEM") &&
+                   !strcmp(omr_host_var("ST.ITEM"), "Front"),
+               "STATUS follows the pick");
+        expect(run(&g, "PICK ITEM 2", &io) == 0 && io.rc == OMR_OK && w.picked == 1 && !strcmp(buf, "Board"),
+               "PICK by number");
+        w.picked = -1;
+        g.home = 0;
+    }
 
     expect(run(&g, "OPENITEM ITEM Front", &io) == 0 && io.rc == OMR_OK && strstr(buf, "OPENMAKEBURN"), "OPENITEM launches");
     expect(run(&g, "STATUS STEM ST", &io) == 0 && io.rc == OMR_OK && omr_host_var("ST.PICKED") &&
