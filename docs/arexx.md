@@ -110,8 +110,8 @@ does. An unknown name is RC 10.
 
 Template: `VERSION`
 
-`RESULT` is the program name and version, as the window's `$VER` string
-(for example `GFOpenMake 0.3.0-rc1`).
+`RESULT` is the program name and version, the same text as the window title
+(for example `GFOpenMake 0.3.0-rc2`).
 
 ### QUIT
 

@@ -109,7 +109,7 @@ static void drop_job(gb_rexx *g)
 static int cmd_version(void *c, void *g0)
 {
     gb_rexx *g = app(g0);
-    omr_set_result(c, g->version && g->version[0] ? g->version : "OpenMakeBurn 0.1.0-rc1");
+    omr_set_result(c, g->version && g->version[0] ? g->version : "OpenMakeBurn 0.1.0-rc2");
     return OMR_OK;
 }
 

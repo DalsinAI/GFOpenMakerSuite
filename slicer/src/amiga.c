@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = GS_VERSTR;
+static const char version[] __attribute__((used)) = GS_VERSTR;
 static sl_job job;
 static omv_machines printers;
 static gs_cam cam;
@@ -367,7 +367,7 @@ int main(int argc, char **argv)
     /* OpenGPU when the library can draw the view; the pens when not. */
     omv_gpu_open(&gpu, 4096, 512);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
-    w = omv_window_open("GFOpenSlicer 0.3.0-rc1", olui_amiga_idcmp());
+    w = omv_window_open("GFOpenSlicer 0.3.0-rc2", olui_amiga_idcmp());
     if (!w) {
         olui_free(ui);
         omv_gpu_close(&gpu);
@@ -400,7 +400,7 @@ int main(int argc, char **argv)
     /* ARexx: Wait() on the window and OPENMAKESLICER.1 together. */
     os_rexx_init(&rexx);
     rexx.job = &job;
-    rexx.version = "GFOpenSlicer 0.3.0-rc1";
+    rexx.version = "GFOpenSlicer 0.3.0-rc2";
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;
     rexx.win = w;

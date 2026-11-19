@@ -5,9 +5,9 @@
 
 #include <stdio.h>
 
-#define GS_VERSION "0.3.0-rc1"
+#define GS_VERSION "0.3.0-rc2"
 #define GS_DATE "19.11.2026"
-#define GS_VERSTR "$VER: GFOpenSlicer 0.3.0-rc1 (19.11.2026) AmiCradle Team"
+#define GS_VERSTR "$VER: GFOpenSlicer 0.3.0-rc2 (19.11.2026) AmiCradle Team"
 
 typedef struct {
     float x, y, z;

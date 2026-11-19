@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "$VER: GFOpenWorkshop 0.1.0-rc1 (19.11.2026) AmiCradle Team";
-static const char title[] = "GFOpenMakerWorkshop 0.1.0-rc1";
+static const char version[] __attribute__((used)) = "$VER: GFOpenWorkshop 0.1.0-rc2 (19.11.2026) AmiCradle Team";
+static const char title[] = "GFOpenMakerWorkshop 0.1.0-rc2";
 
 static struct Window *win;
 static workshop ws;
