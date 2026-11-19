@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "$VER: GFOpenCNC 0.1.0-rc1 (19.11.2026) AmiCradle Team";
-static const char title[] = "GFOpenCNC 0.1.0-rc1";
+static const char version[] __attribute__((used)) = "$VER: GFOpenCNC 0.1.0-rc2 (19.11.2026) AmiCradle Team";
+static const char title[] = "GFOpenCNC 0.1.0-rc2";
 
 static struct Window *win;
 static char drawing[256];

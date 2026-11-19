@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = GS_VERSTR;
+static const char version[] __attribute__((used)) = GS_VERSTR;
 
 static const char *arg(int argc, char **argv, const char *name)
 {
