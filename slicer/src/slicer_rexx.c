@@ -136,7 +136,7 @@ static int put_stats(omr_cmd *c, const sl_job *j)
 static int cmd_version(void *c, void *g0)
 {
     os_rexx *g = app(g0);
-    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenSlicer 0.3.0-rc2");
+    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenSlicer 0.3.0-rc3");
     return OMR_OK;
 }
 

@@ -1,8 +1,8 @@
 #!/bin/sh
-# GFOpenMake and the core tests for AmigaOS 3.x, twice: with the FPU
-# (68040/68060, or a 68881/68882) and without it (soft float, for the
-# 68LC040, 68EC040 and the rest). The soft build must hold no FPU
-# instruction at all: that is checked here, and the build fails if it does.
+# GFOpenMake and the core tests for AmigaOS 3.x, twice: -m68040
+# -mhard-float, and -m68040 -msoft-float for a 68LC040 or 68EC040.
+# The hard-float build must contain no FPU instruction a 68040 traps.
+# The soft-float build must contain no FPU instruction at all.
 #
 #   CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
 #   OGT_ROOT=.../amicradle-guest/libraries/opengadtools ./build-amiga.sh
@@ -182,14 +182,8 @@ build() {
 }
 
 build fpu "-m68040 -mhard-float"
-# A stove run is the FPU build, which is what an AC090 lab runs. The
-# soft-float build is the check for a 68LC040, and a build off the stove
-# still does it. SOFT=1 on a stove runs that check too.
-if [ -n "${STOVE:-}" ] && [ -z "${SOFT+x}" ]; then
-    SOFT=0
-else
-    SOFT=${SOFT:-1}
-fi
+# Soft-float as well, including on a stove, unless SOFT=0.
+SOFT=${SOFT:-1}
 if [ "$SOFT" != 0 ]; then
     build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
     if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then

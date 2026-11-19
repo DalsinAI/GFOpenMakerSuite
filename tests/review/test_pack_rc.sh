@@ -1,12 +1,14 @@
 #!/bin/sh
-# Pack the FPU review drawer from the newest finished stove build of this
-# commit and attach it to the v0.3.0-rc2 prereleases. Runs on Daletop.
-# Does not commit the binaries.
+# Pack the FPU and soft-float review drawers from the newest finished
+# stove build of this commit and attach them to the v0.3.0-rc3
+# prereleases. Runs on Daletop. Does not commit the binaries.
 set -eu
 
 REPO=DalsinAI/GFOpenMakerSuite
-SUITE_TAG=v0.3.0-rc2
-DRAWER_NAME=OpenMake-0.3.0-rc2-fpu
+SUITE_TAG=v0.3.0-rc3
+FPU_NAME=OpenMake-0.3.0-rc3-fpu
+SOFT_NAME=OpenMake-0.3.0-rc3-soft
+STACK='$STACK:65536'
 JOBS_A=/run/media/da1ek/WorkingSpace/AmigaChrome/archive/daletop-offload-20261023/AmigaChrome-dev/cradle-builds/jobs
 JOBS_B=${HOME:-/home/da1ek}/AmiCradle-dev/cradle-builds/jobs
 
@@ -22,7 +24,21 @@ case "$sha" in
     *) echo "test_pack_rc: HEAD is not a full SHA ($sha)" >&2; exit 1 ;;
 esac
 
-FPU=$(SHA="$sha" python3 - "$JOBS_A" "$JOBS_B" << 'PY'
+ver_src() {
+    grep -o '\$VER:[^"]*' "$1" | head -1
+}
+
+VER_MAKE=$(ver_src "$root/cad/src/make.c")
+VER_SLICER=$(ver_src "$root/core/include/gs.h")
+VER_BURN=$(ver_src "$root/burn/src/amiga.c")
+VER_CNC=$(ver_src "$root/cnc/src/amiga.c")
+VER_WORKSHOP=$(ver_src "$root/workshop/src/amiga.c")
+case "$VER_SLICER" in
+    *0.3.0-rc3*) ;;
+    *) echo "test_pack_rc: slicer version is $VER_SLICER, not 0.3.0-rc3" >&2; exit 1 ;;
+esac
+
+TREE=$(SHA="$sha" python3 - "$JOBS_A" "$JOBS_B" << 'PY'
 import json, os, sys
 sha = os.environ["SHA"]
 repo = "DalsinAI/GFOpenMakerSuite"
@@ -43,97 +59,54 @@ for root in sys.argv[1:]:
             continue
         if rec.get("kind") != "build" or rec.get("state") != "done" or rec.get("exitCode") != 0:
             continue
-        fpu = os.path.join(root, name, "out", "fpu")
-        if not os.path.isfile(os.path.join(fpu, "GFOpenMake")):
+        out = os.path.join(root, name, "out")
+        if not os.path.isfile(os.path.join(out, "fpu", "GFOpenMake")):
+            continue
+        if not os.path.isfile(os.path.join(out, "soft", "GFOpenMake")):
             continue
         key = rec.get("endedAt") or ""
         if best is None or key > best_key:
-            best = fpu
+            best = out
             best_key = key
 if not best:
     sys.exit(1)
 print(best)
 PY
 ) || {
-    echo "test_pack_rc: no finished stove build of $sha" >&2
+    echo "test_pack_rc: no finished stove build of $sha with fpu and soft" >&2
     exit 1
 }
-echo "stove $FPU"
+echo "stove $TREE"
+job=$(basename "$(dirname "$TREE")")
 
-need_ver() {
+need_mark() {
     file=$1
     text=$2
-    if [ ! -f "$FPU/$file" ]; then
+    if [ ! -f "$file" ]; then
         echo "test_pack_rc: missing $file" >&2
         exit 1
     fi
-    if ! grep -a -F -q "$text" "$FPU/$file"; then
+    if ! grep -a -F -q "$text" "$file"; then
         echo "test_pack_rc: $file has no $text" >&2
         exit 1
     fi
-    echo "ok $file $(wc -c < "$FPU/$file" | tr -d ' ')"
 }
 
-need_ver GFOpenMake '$VER: GFOpenMake 0.3.0-rc2 (19.11.2026) AmiCradle Team'
-need_ver GFOpenSlicer '$VER: GFOpenSlicer 0.3.0-rc2 (19.11.2026) AmiCradle Team'
-need_ver GFOpenBurn '$VER: OpenMakeBurn 0.1.0-rc2 (19.11.2026) AmiCradle Team'
-need_ver GFOpenCNC '$VER: GFOpenCNC 0.1.0-rc2 (19.11.2026) AmiCradle Team'
-need_ver GFOpenWorkshop '$VER: GFOpenWorkshop 0.1.0-rc2 (19.11.2026) AmiCradle Team'
+check_tree() {
+    dir=$1
+    need_mark "$dir/GFOpenMake" "$VER_MAKE"
+    need_mark "$dir/GFOpenSlicer" "$VER_SLICER"
+    need_mark "$dir/GFOpenBurn" "$VER_BURN"
+    need_mark "$dir/GFOpenCNC" "$VER_CNC"
+    need_mark "$dir/GFOpenWorkshop" "$VER_WORKSHOP"
+    for f in GFOpenMake GFOpenSlicer GFOpenBurn GFOpenCNC GFOpenWorkshop; do
+        need_mark "$dir/$f" "$STACK"
+        echo "ok $dir/$f $(wc -c < "$dir/$f" | tr -d ' ')"
+    done
+}
 
-stage=$(mktemp -d)
-trap 'rm -rf "$stage"' EXIT
-drawer=$stage/$DRAWER_NAME
-mkdir -p "$drawer"
-cp -a "$FPU/." "$drawer/"
-
-for extra in examples/print examples/laser examples/cnc examples/electronics; do
-    if [ ! -d "$root/$extra" ]; then
-        echo "test_pack_rc: $extra is not in the checkout" >&2
-        exit 1
-    fi
-    mkdir -p "$drawer/$extra"
-    cp -a "$root/$extra/." "$drawer/$extra/"
-    if ! find "$drawer/$extra" -type f | grep -q .; then
-        echo "test_pack_rc: $extra copied no files" >&2
-        exit 1
-    fi
-done
-
-job=$(basename "$(dirname "$(dirname "$FPU")")")
-cat > "$drawer/README.txt" << EOF
-GFOpenMake suite 0.3.0-rc2
-FPU executables for review. Not a hardware sign-off.
-
-Commit $sha
-Stove os32-gcc16, job $job
-Built for a 68020 or later with a 68881 or 68882. These programs will not run on a machine with no FPU. There is no soft-float build in this archive.
-
-Copy this drawer somewhere on the Amiga and run the programs from it.
-PROGDIR is this drawer.
-
-  GFOpenSlicer      reports GFOpenSlicer 0.3.0-rc2
-  GFOpenMake        reports GFOpenMake 0.3.0-rc2
-  GFOpenBurn        reports OpenMakeBurn 0.1.0-rc2
-  GFOpenCNC         reports GFOpenCNC 0.1.0-rc2
-  GFOpenWorkshop    reports GFOpenMakerWorkshop 0.1.0-rc2
-
-Each of those five has a \$VER: line (Amiga version command).
-machines, materials, settings and examples/cad come from the stove.
-examples/print, examples/laser, examples/cnc and examples/electronics come from the same commit.
-The Test* programs are the stove's checks, not the review programs.
-
-Not in this drawer, and required on the machine: GFOpenLayout, and
-gfopengpu.library (Make, Slicer, Burn), asl.library, rexxsyslib.library,
-diskfont.library, dos.library, graphics.library, intuition.library,
-layers.library, cybergraphics.library, gfopenfont.library, keymap.library,
-mathieeedoubtrans.library, mathieeesingbas.library, mathieeesingtrans.library.
-Workshop starts PROGDIR:gfamigakicad for an electronics project. That program is not in this suite.
-EOF
-
-(
-    cd "$drawer"
-    sha256sum GFOpenMake GFOpenSlicer GFOpenBurn GFOpenCNC GFOpenWorkshop > SHA256SUMS
-)
+check_tree "$TREE/fpu"
+check_tree "$TREE/soft"
 
 if command -v gflha >/dev/null 2>&1; then
     gflha_bin=$(command -v gflha)
@@ -152,53 +125,127 @@ else
     gflha_bin=$src/gflha
 fi
 
-lha=$OUT/$DRAWER_NAME.lha
-rm -f "$lha"
-(
-    cd "$stage"
-    TZ=UTC "$gflha_bin" r "$lha" "$DRAWER_NAME"
-)
-TZ=UTC "$gflha_bin" t "$lha"
-sha256sum "$lha" | tee "$OUT/lha.sha256"
-cp "$drawer/SHA256SUMS" "$OUT/SHA256SUMS"
-echo "archive $(wc -c < "$lha" | tr -d ' ') bytes"
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+
+pack_one() {
+    kind=$1
+    name=$2
+    blurb=$3
+    src=$TREE/$kind
+    drawer=$stage/$name
+    rm -rf "$drawer"
+    mkdir -p "$drawer"
+    cp -a "$src/." "$drawer/"
+    for extra in examples/print examples/laser examples/cnc examples/electronics; do
+        if [ ! -d "$root/$extra" ]; then
+            echo "test_pack_rc: $extra is not in the checkout" >&2
+            exit 1
+        fi
+        mkdir -p "$drawer/$extra"
+        cp -a "$root/$extra/." "$drawer/$extra/"
+        if ! find "$drawer/$extra" -type f | grep -q .; then
+            echo "test_pack_rc: $extra copied no files" >&2
+            exit 1
+        fi
+    done
+    cat > "$drawer/README.txt" << EOF
+GFOpenMake suite 0.3.0-rc3
+$name. Not a hardware sign-off.
+
+Commit $sha
+Stove os32-gcc16, job $job
+$blurb
+
+Copy this drawer somewhere on the Amiga and run the programs from it.
+PROGDIR is this drawer. Each program has a \$VER: line and a \$STACK:65536 line.
+
+  GFOpenSlicer      $VER_SLICER
+  GFOpenMake        $VER_MAKE
+  GFOpenBurn        $VER_BURN
+  GFOpenCNC         $VER_CNC
+  GFOpenWorkshop    $VER_WORKSHOP
+
+machines, materials, settings and examples/cad come from the stove.
+examples/print, examples/laser, examples/cnc and examples/electronics come from the same commit.
+The Test* programs are the stove's checks, not the review programs.
+
+The window code is linked in. These programs do not open gfopenlayout.library.
+"GFOpenLayout is not open" means olui_new failed, not that a library is missing.
+Make, Slicer and Burn use gfopengpu.library when it is open, and the pen drawer when it is not.
+The theme asks for gfopenfont.library (1.2 wants a 68040 with an FPU) and otherwise uses the screen font.
+cybergraphics.library is optional. asl.library is the file requester. rexxsyslib.library is the ARexx port.
+Workshop starts PROGDIR:gfamigakicad for an electronics project, or that name on the path. That program is not in this suite.
+EOF
+    (
+        cd "$drawer"
+        sha256sum GFOpenMake GFOpenSlicer GFOpenBurn GFOpenCNC GFOpenWorkshop > SHA256SUMS
+    )
+    lha=$OUT/$name.lha
+    rm -f "$lha"
+    (
+        cd "$stage"
+        TZ=UTC "$gflha_bin" r "$lha" "$name"
+    )
+    TZ=UTC "$gflha_bin" t "$lha"
+    sha256sum "$lha" | tee "$OUT/$name.sha256"
+    cp "$drawer/SHA256SUMS" "$OUT/SHA256SUMS-$kind"
+    echo "archive $name $(wc -c < "$lha" | tr -d ' ') bytes"
+}
+
+pack_one fpu "$FPU_NAME" "Compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. Not run on a 68020. Will not run with no FPU."
+pack_one soft "$SOFT_NAME" "Compiled -m68040 -msoft-float, for a 68LC040 or 68EC040. No FPU instructions. Not a 68000 build."
 
 if ! command -v gh >/dev/null 2>&1; then
-    echo "test_pack_rc: gh is not installed; the archive is in OUT only" >&2
+    echo "test_pack_rc: gh is not installed; the archives are in OUT only" >&2
     exit 2
 fi
 
-suite_notes="GFOpenMake suite 0.3.0-rc2, for review. Not a hardware sign-off.
+fpu_hash=$(awk '{print $1}' "$OUT/$FPU_NAME.sha256")
+soft_hash=$(awk '{print $1}' "$OUT/$SOFT_NAME.sha256")
 
-Commit $sha. Stove os32-gcc16, job $job. 68020 or later with a 68881 or 68882. No soft-float build.
+suite_notes="GFOpenMake suite 0.3.0-rc3, for review. Not a hardware sign-off.
 
-\`$DRAWER_NAME.lha\` is the drawer: the five programs, machines, materials, settings, examples/cad, examples/print, examples/laser, examples/cnc and examples/electronics. \`SHA256SUMS\` is the five programs. Copy the drawer and run the programs from it.
+Commit $sha. Stove os32-gcc16, job $job.
 
-Each program keeps a \`\$VER:\` line. The window still needs GFOpenLayout, and Make, Slicer and Burn need gfopengpu.library. asl.library, rexxsyslib.library and the FPU maths libraries are not in the archive. Workshop can start PROGDIR:gfamigakicad; that program is not in this suite."
+\`$FPU_NAME.lha\` is compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. It was not run on a 68020, and it will not run with no FPU. SHA-256 \`$fpu_hash\`.
+
+\`$SOFT_NAME.lha\` is compiled -m68040 -msoft-float, for a 68LC040 or 68EC040. Not a 68000 build. SHA-256 \`$soft_hash\`.
+
+Each drawer is the five programs, machines, materials, settings, and examples/cad, print, laser, cnc and electronics. Copy one drawer and run the programs from it. Each program has a \`\$VER:\` line and a \`\$STACK:65536\` line. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs, not the examples and not the archive.
+
+The window code is linked in. The programs do not open gfopenlayout.library. Make, Slicer and Burn use gfopengpu.library when it is open. The theme asks for gfopenfont.library and otherwise uses the screen font. Workshop can start PROGDIR:gfamigakicad; that program is not in this suite."
 
 upload() {
     tag=$1
     title=$2
     notes=$3
+    sums_fpu=$OUT/SHA256SUMS-fpu
+    sums_soft=$OUT/SHA256SUMS-soft
     if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
-        gh release upload "$tag" "$lha" "$OUT/SHA256SUMS" --repo "$REPO" --clobber
+        gh release upload "$tag" \
+            "$OUT/$FPU_NAME.lha" "$OUT/$SOFT_NAME.lha" \
+            "$sums_fpu" "$sums_soft" \
+            --repo "$REPO" --clobber
         body=$(gh release view "$tag" --repo "$REPO" --json body -q .body)
         case "$body" in
-            *"$DRAWER_NAME.lha"*) echo "notes already name the archive ($tag)" ;;
+            *"$FPU_NAME.lha"*) echo "notes already name the archive ($tag)" ;;
             *) gh release edit "$tag" --repo "$REPO" --notes "${body}
 
 ${notes}" ;;
         esac
     else
-        gh release create "$tag" "$lha" "$OUT/SHA256SUMS" --repo "$REPO" \
-            --prerelease --target "$sha" --title "$title" --notes "$notes"
+        gh release create "$tag" \
+            "$OUT/$FPU_NAME.lha" "$OUT/$SOFT_NAME.lha" \
+            "$sums_fpu" "$sums_soft" \
+            --repo "$REPO" --prerelease --target "$sha" --title "$title" --notes "$notes"
     fi
     echo "uploaded $tag"
 }
 
-upload "$SUITE_TAG" "GFOpenMake suite 0.3.0-rc2" "$suite_notes"
-upload gfopenslicer-v0.3.0-rc2 "GFOpenSlicer 0.3.0-rc2" "GFOpenSlicer 0.3.0-rc2. The FPU binary is in \`$DRAWER_NAME.lha\` on this release (the suite stove build, 68881/68882). Not a hardware sign-off. \`SHA256SUMS\` lists the five programs."
-upload gfopenmake-v0.3.0-rc2 "GFOpenMake 0.3.0-rc2" "GFOpenMake 0.3.0-rc2. The FPU binary is in \`$DRAWER_NAME.lha\` on this release (the suite stove build, 68881/68882). Not a hardware sign-off. \`SHA256SUMS\` lists the five programs."
-upload openmakeburn-v0.1.0-rc2 "OpenMakeBurn 0.1.0-rc2" "OpenMakeBurn 0.1.0-rc2. The FPU binary is in \`$DRAWER_NAME.lha\` on this release (the suite stove build, 68881/68882). Not a hardware sign-off. \`SHA256SUMS\` lists the five programs."
-upload gfopencnc-v0.1.0-rc2 "GFOpenCNC 0.1.0-rc2" "GFOpenCNC 0.1.0-rc2. The FPU binary is in \`$DRAWER_NAME.lha\` on this release (the suite stove build, 68881/68882). Not a hardware sign-off. \`SHA256SUMS\` lists the five programs."
-upload gfopenworkshop-v0.1.0-rc2 "GFOpenWorkshop 0.1.0-rc2" "GFOpenWorkshop 0.1.0-rc2 (window title GFOpenMakerWorkshop 0.1.0-rc2). The FPU binary is in \`$DRAWER_NAME.lha\` on this release (the suite stove build, 68881/68882). Not a hardware sign-off. \`SHA256SUMS\` lists the five programs."
+upload "$SUITE_TAG" "GFOpenMake suite 0.3.0-rc3" "$suite_notes"
+upload gfopenslicer-v0.3.0-rc3 "GFOpenSlicer 0.3.0-rc3" "GFOpenSlicer 0.3.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
+upload gfopenmake-v0.3.0-rc3 "GFOpenMake 0.3.0-rc3" "GFOpenMake 0.3.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
+upload openmakeburn-v0.1.0-rc3 "OpenMakeBurn 0.1.0-rc3" "OpenMakeBurn 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
+upload gfopencnc-v0.1.0-rc3 "GFOpenCNC 0.1.0-rc3" "GFOpenCNC 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
+upload gfopenworkshop-v0.1.0-rc3 "GFOpenWorkshop 0.1.0-rc3" "GFOpenWorkshop 0.1.0-rc3. The window title and the \`\$VER:\` line are GFOpenMakerWorkshop 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off."
