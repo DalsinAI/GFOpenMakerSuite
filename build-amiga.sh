@@ -151,7 +151,7 @@ build() {
         core/ui/view_ui.c core/ui/window_amiga.c \
         $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
-    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
+    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c cad/src/edit.c core/src/parts.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     # The layers on exec tasks (par_exec.c): the same toolpath as one task's
     "$CC" $cf -s -o "$dir/TestPlanPar" core/tests/test_plan_par.c core/src/plan_par.c core/src/par_exec.c \
