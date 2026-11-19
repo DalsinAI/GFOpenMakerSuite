@@ -16,9 +16,9 @@ as the fallback.
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
 | `workshop/` | A project drawer for one product: CAD, print, laser and CNC, plus a KiCad project listed and opened in gfamigakicad; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
-The binaries are GFOpenSlicer, GFOpenMake, GFOpenBurn, GFOpenCNC and GFOpenWorkshop. Each reports 0.1.0. `make test` builds and runs every host test.
+The binaries are GFOpenSlicer, GFOpenMake, GFOpenBurn, GFOpenCNC and GFOpenWorkshop. The 19 November 2026 candidates report GFOpenSlicer 0.3.0-rc1, GFOpenMake 0.3.0-rc1, OpenMakeBurn 0.1.0-rc1, GFOpenCNC 0.1.0-rc1 and GFOpenMakerWorkshop 0.1.0-rc1. `make test` builds and runs every host test.
 
-Tags `v0.1.0-rc1` and `v0.2.0-rc1` are the slicer, then the solid editor on OpenGPU and the browser bench. No tag has been cut since. The same engine runs from the shell, and the host tests run it with no Amiga.
+Tags `v0.1.0-rc1` and `v0.2.0-rc1` are the slicer, then the solid editor on OpenGPU and the browser bench. `v0.3.0-rc1` is this suite (laser, mill and workshop included). The same commit is also `gfopenslicer-v0.3.0-rc1`, `gfopenmake-v0.3.0-rc1`, `openmakeburn-v0.1.0-rc1`, `gfopencnc-v0.1.0-rc1` and `gfopenworkshop-v0.1.0-rc1`. Host tests pass there. None of these is a sign-off on Amiga hardware.
 
 ![The window, before a file is sliced](docs/window-empty.png)
 

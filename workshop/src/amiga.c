@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "$VER: GFOpenWorkshop 0.1.0 (17.11.2026) AmiCradle Team";
-static const char title[] = "GFOpenMakerWorkshop 0.1.0";
+static const char version[] = "$VER: GFOpenWorkshop 0.1.0-rc1 (19.11.2026) AmiCradle Team";
+static const char title[] = "GFOpenMakerWorkshop 0.1.0-rc1";
 
 static struct Window *win;
 static workshop ws;
@@ -388,7 +388,7 @@ int main(void)
     olui_amiga_layout(a);
     gw_rexx_init(&rexx);
     rexx.ws = &ws;
-    rexx.version = "GFOpenMakerWorkshop 0.1.0";
+    rexx.version = title;
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;
     rexx.win = w;
