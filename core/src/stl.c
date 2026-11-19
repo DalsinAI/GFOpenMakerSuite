@@ -1,4 +1,5 @@
 #include "gs.h"
+#include "gs_num.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -48,69 +49,13 @@ static int space(char c)
     return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v';
 }
 
-/* Three numbers, as sscanf's "%f %f %f" took them. The decimal point is
- * always '.': strtof follows the locale, and on the Amiga a comma is a
- * decimal point, so "1, 2, 3" was read as three numbers. */
-static int number(const char *s, float *out, const char **end)
-{
-    const char *p = s;
-    int neg = 0, any = 0, exp = 0, digits = 0, k;
-    double m = 0;
-    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '\f' || *p == '\v') p++;
-    if (*p == '+' || *p == '-') neg = *p++ == '-';
-    for (; *p >= '0' && *p <= '9'; p++) {
-        any = 1;
-        if (digits < 9) {
-            m = m * 10.0 + (double)(*p - '0');
-            digits++;
-        } else {
-            exp++;
-        }
-    }
-    if (*p == '.') {
-        p++;
-        for (; *p >= '0' && *p <= '9'; p++) {
-            any = 1;
-            if (digits < 9) {
-                m = m * 10.0 + (double)(*p - '0');
-                digits++;
-                exp--;
-            }
-        }
-    }
-    if (!any) {
-        *end = s;
-        return 0;
-    }
-    if (*p == 'e' || *p == 'E') {
-        const char *q = p + 1;
-        int en = 0, eneg = 0, ed = 0;
-        if (*q == '+' || *q == '-') eneg = *q++ == '-';
-        for (; *q >= '0' && *q <= '9'; q++) {
-            ed = 1;
-            if (en < 1000) en = en * 10 + (*q - '0');
-        }
-        if (ed) {
-            exp += eneg ? -en : en;
-            p = q;
-        }
-    }
-    if (neg) m = -m;
-    if (exp > 0)
-        for (k = 0; k < exp; k++) m *= 10.0;
-    else
-        for (k = 0; k < -exp; k++) m /= 10.0;
-    *out = (float)m;
-    *end = p;
-    return 1;
-}
-
+/* Three numbers. The point is always '.'; see gs_number. */
 static int three(const char *s, float *x, float *y, float *z)
 {
     const char *e;
-    if (!number(s, x, &e)) return 0;
-    if (!number(e, y, &e)) return 0;
-    return number(e, z, &e);
+    if (!gs_number(s, x, &e)) return 0;
+    if (!gs_number(e, y, &e)) return 0;
+    return gs_number(e, z, &e);
 }
 
 static int load_ascii(gs_mesh *m, FILE *f, char *err, int errlen)
