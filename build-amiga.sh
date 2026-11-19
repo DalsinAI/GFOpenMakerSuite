@@ -7,6 +7,11 @@
 #   CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
 #   OGT_ROOT=.../amicradle-guest/libraries/opengadtools ./build-amiga.sh
 #
+# A stove build sets STOVE, OUT and GUEST and does not set SDK or LAYOUT.
+# This script then takes gfopensdk at the commit CI uses, GFOpenLayout at
+# gfopenlayout.ref, and opengadtools from GUEST. Those checkouts sit beside
+# this tree, not in OUT.
+#
 # SDK is the GFOpen SDK's root (Include, and Lib/m68k-soft-m68040.specs).
 # LAYOUT is a GFOpenLayout checkout at the commit in gfopenlayout.ref, the
 # one CI tests with (LAYOUT_ANY=1 takes any). OLUI is its UI link library
@@ -16,8 +21,46 @@
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# The commit .github/workflows/ci.yml checks out for Include/gfopengpu.
+SDK_PIN=79e8d48151082ef2ee3cfe97998ebb80eec2aa86
+
+take() {
+    dest=$1
+    url=$2
+    sha=$3
+    got=$(git -C "$dest" rev-parse HEAD 2>/dev/null || true)
+    if [ "$got" = "$sha" ]; then
+        return 0
+    fi
+    mkdir -p "$(dirname "$dest")"
+    rm -rf "$dest"
+    GIT_TERMINAL_PROMPT=0 git clone --quiet "$url" "$dest"
+    GIT_TERMINAL_PROMPT=0 git -C "$dest" checkout --quiet "$sha"
+}
+
+if [ -n "${STOVE:-}" ] && [ -z "${CC:-}" ]; then
+    CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
+fi
 CC=${CC:-m68k-amigaos-gcc}
 OBJDUMP=${OBJDUMP:-$(dirname "$CC")/m68k-amigaos-objdump}
+if [ -n "${STOVE:-}" ]; then
+    DEPS=$(CDPATH= cd -- "$HERE/.." && pwd)/.openmake-deps
+    if [ -z "${SDK:-}" ]; then
+        take "$DEPS/gfopensdk" https://github.com/DalsinAI/gfopensdk.git "$SDK_PIN"
+        SDK="$DEPS/gfopensdk"
+    fi
+    if [ -z "${LAYOUT:-}" ]; then
+        take "$DEPS/gfopenlayout" https://github.com/DalsinAI/gfopenlayout.git "$(cat "$HERE/gfopenlayout.ref")"
+        LAYOUT="$DEPS/gfopenlayout"
+    fi
+    if [ -z "${OGT_ROOT:-}" ]; then
+        if [ -z "${GUEST:-}" ] || [ ! -d "$GUEST/libraries/opengadtools" ]; then
+            echo "build-amiga: OGT_ROOT is not set, and GUEST has no libraries/opengadtools" >&2
+            exit 1
+        fi
+        OGT_ROOT="$GUEST/libraries/opengadtools"
+    fi
+fi
 SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 LAYOUT=${LAYOUT:?"LAYOUT: a GFOpenLayout checkout, for its headers"}
 OUT=${OUT:-"$HERE/build-amiga"}
