@@ -123,6 +123,12 @@ build() {
     # The print settings profiles, as PROGDIR:settings
     mkdir -p "$dir/settings"
     cp settings/* "$dir/settings/"
+    # The editor's shelf, as PROGDIR:examples/cad (ge_shelf_load).
+    for f in examples/cad/*/*; do
+        [ -f "$f" ] || continue
+        mkdir -p "$dir/$(dirname "$f")"
+        cp "$f" "$dir/$f"
+    done
     # GFOpenSlicer's window (slicer/src/amiga.c): the toolpath engine on
     # exec tasks (sl_job.c), on core/ui's helpers, picker and OpenGPU view
     "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/slicer_rexx.c slicer/src/sl_job.c core/src/rexx.c core/src/rexx_amiga.c \
