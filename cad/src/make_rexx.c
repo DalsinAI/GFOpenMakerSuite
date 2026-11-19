@@ -2092,7 +2092,7 @@ void gm_rexx_init(gm_rexx *g)
     g->look = -1;
     g->tool = -1;
     g->layer_no = 1;
-    g->version = "GFOpenMake 0.3.0-rc2";
+    g->version = "GFOpenMake 0.3.0-rc3";
     gs_settings_default(&g->set);
 }
 

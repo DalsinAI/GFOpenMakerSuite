@@ -16,13 +16,15 @@ as the fallback.
 | `machines/` | Machine drivers and profiles every app reads: limits, features, start and end code | OpenMakeMachine |
 | `workshop/` | A project drawer for one product: CAD, print, laser and CNC, plus a KiCad project listed and opened in gfamigakicad; the plan is [docs/workshop-plan.md](docs/workshop-plan.md) | OpenMakeWorkshop |
 
-The binaries are GFOpenSlicer, GFOpenMake, GFOpenBurn, GFOpenCNC and GFOpenWorkshop. The 19 November 2026 review candidate reports GFOpenSlicer 0.3.0-rc2, GFOpenMake 0.3.0-rc2, OpenMakeBurn 0.1.0-rc2, GFOpenCNC 0.1.0-rc2 and GFOpenMakerWorkshop 0.1.0-rc2. Each of those programs keeps a `$VER:` line for the Amiga `version` command. `make test` builds and runs every host test.
+The binaries are GFOpenSlicer, GFOpenMake, GFOpenBurn, GFOpenCNC and GFOpenWorkshop. The 19 November 2026 review candidate reports GFOpenSlicer 0.3.0-rc3, GFOpenMake 0.3.0-rc3, OpenMakeBurn 0.1.0-rc3, GFOpenCNC 0.1.0-rc3 and GFOpenMakerWorkshop 0.1.0-rc3. Each of those programs keeps a `$VER:` line and a `$STACK:65536` line. `make test` builds and runs every host test.
 
-`v0.3.0-rc2` is this suite. The same commit is also `gfopenslicer-v0.3.0-rc2`, `gfopenmake-v0.3.0-rc2`, `openmakeburn-v0.1.0-rc2`, `gfopencnc-v0.1.0-rc2` and `gfopenworkshop-v0.1.0-rc2`. The review download is `OpenMake-0.3.0-rc2-fpu.lha` on those releases, with `SHA256SUMS` for the five programs. It is the stove FPU build: a 68020 or later with a 68881 or 68882. There is no soft-float build in that archive. Copy the drawer and run the programs from it (`PROGDIR:` is the drawer). Beside the programs it holds `machines`, `materials`, `settings`, `examples/cad` (the editor shelf), and `examples/print`, `examples/laser`, `examples/cnc` and `examples/electronics`. The `Test*` files in the same drawer are the stove's checks, not the review programs.
+`v0.3.0-rc3` is this suite. The same commit is also `gfopenslicer-v0.3.0-rc3`, `gfopenmake-v0.3.0-rc3`, `openmakeburn-v0.1.0-rc3`, `gfopencnc-v0.1.0-rc3` and `gfopenworkshop-v0.1.0-rc3`. The review downloads on those releases are `OpenMake-0.3.0-rc3-fpu.lha` and `OpenMake-0.3.0-rc3-soft.lha`. `SHA256SUMS-fpu` and `SHA256SUMS-soft` list the five programs in each drawer. They do not list the examples or the archive. Copy one drawer and run the programs from it (`PROGDIR:` is that drawer). Beside the programs it holds `machines`, `materials`, `settings`, `examples/cad` (the editor shelf), and `examples/print`, `examples/laser`, `examples/cnc` and `examples/electronics`. The `Test*` files in the same drawer are the stove's checks, not the review programs.
 
-Those programs open libraries that are not in the archive. The window is GFOpenLayout; without it a program says "GFOpenLayout is not open". Make, Slicer and Burn draw through `gfopengpu.library` when it is open. All five also open `asl.library`, `rexxsyslib.library`, `diskfont.library`, `dos.library`, `graphics.library`, `intuition.library`, `layers.library`, `cybergraphics.library`, `gfopenfont.library`, `keymap.library`, and the FPU maths libraries `mathieeedoubtrans.library`, `mathieeesingbas.library` and `mathieeesingtrans.library`. Workshop starts `PROGDIR:gfamigakicad` for an electronics project. That program is not in this suite.
+The FPU archive is compiled `-m68040 -mhard-float`, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps, so those instructions are not left for a 68881 to emulate. It was not run on a 68020, and it will not run on a machine with no FPU. The soft archive is compiled `-m68040 -msoft-float`, for a 68LC040 or 68EC040. It is not a 68000 build. Neither is a sign-off on hardware.
 
-`v0.3.0-rc1` is the same suite one commit earlier: FPU binaries and the editor shelf, and no `$VER:` line in the files. `v0.1.0-rc1` and `v0.2.0-rc1` are the slicer, then the solid editor. None of these is a sign-off on Amiga hardware.
+The window code is linked into the programs. They do not open `gfopenlayout.library`. "GFOpenLayout is not open" means `olui_new` failed, not that a library is missing. Make, Slicer and Burn draw through `gfopengpu.library` when it is open, and use the pen drawer when it is not. The theme asks for `gfopenfont.library` (1.2 wants a 68040 with an FPU) and otherwise uses the screen font. `cybergraphics.library` is optional. The file requester uses `asl.library`. The ARexx port uses `rexxsyslib.library`. The programs also reference `diskfont.library`, `dos.library`, `graphics.library`, `intuition.library`, `layers.library`, `keymap.library`, `mathieeedoubtrans.library`, `mathieeesingbas.library` and `mathieeesingtrans.library`. Workshop starts `PROGDIR:gfamigakicad` for an electronics project, or that name on the path if the file is not in the drawer. That program is not in this suite.
+
+`v0.3.0-rc2` is the previous FPU drawer: `-m68040 -mhard-float`, a `$VER:` line, no `$STACK:` line, and no soft-float archive. `v0.3.0-rc1` has no `$VER:` line in the files. `v0.1.0-rc1` has a release and no binaries. `v0.2.0-rc1` is a tag with no release page. None of these is a sign-off on Amiga hardware.
 
 ![The window, before a file is sliced](docs/window-empty.png)
 
@@ -39,7 +41,7 @@ library is open. The editor submits the same kind of batch. The pen drawer
 is only the fallback. We already have OpenGPU. This tree does not grow a
 second GPU.
 
-From the shell:
+From the shell, on the host (this program is not in the Amiga archive; the Amiga `GFOpenSlicer` is the window, and it opens a file named on its command line):
 
 ```
 gfopenslicer in.stl out.gcode SETTINGS=settings/standard pattern=grid around=brim loops=3

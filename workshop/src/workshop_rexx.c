@@ -80,7 +80,7 @@ static const char *port_of(gw_rexx *g)
 static int cmd_version(void *c, void *g0)
 {
     gw_rexx *g = app(g0);
-    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenMakerWorkshop 0.1.0-rc2");
+    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenMakerWorkshop 0.1.0-rc3");
     return OMR_OK;
 }
 

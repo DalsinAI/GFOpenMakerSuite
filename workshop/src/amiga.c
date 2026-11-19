@@ -29,8 +29,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] __attribute__((used)) = "$VER: GFOpenWorkshop 0.1.0-rc2 (19.11.2026) AmiCradle Team";
-static const char title[] = "GFOpenMakerWorkshop 0.1.0-rc2";
+static const char version[] __attribute__((used)) = "$VER: GFOpenMakerWorkshop 0.1.0-rc3 (19.11.2026) AmiCradle Team";
+static const char stack_cookie[] __attribute__((used)) = "$STACK:65536";
+static const char title[] = "GFOpenMakerWorkshop 0.1.0-rc3";
 
 static struct Window *win;
 static workshop ws;
@@ -343,6 +344,7 @@ int main(void)
     char err[160];
 
     (void)version;
+    (void)stack_cookie;
     ui = olui_new();
     workshop_init(&ws);
     recent_path_init();

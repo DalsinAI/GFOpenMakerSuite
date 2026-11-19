@@ -46,7 +46,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] __attribute__((used)) = "$VER: GFOpenMake 0.3.0-rc2 (19.11.2026) AmiCradle Team";
+static const char version[] __attribute__((used)) = "$VER: GFOpenMake 0.3.0-rc3 (19.11.2026) AmiCradle Team";
+static const char stack_cookie[] __attribute__((used)) = "$STACK:65536";
 
 /* The bench's parts (gs_parts.h): up to 24, one picked; shown is every
  * shown part's triangles, for the view, picking and the slicer. */
@@ -1454,6 +1455,7 @@ int main(int argc, char **argv)
     gs_mesh first;
     const char *first_name = "Holed cube";
     (void)version;
+    (void)stack_cookie;
     memset(&first, 0, sizeof first);
     /* A file named at launch is opened, never written. Only Save writes. */
     if (argc > 1 && argv[1] && argv[1][0]) {
@@ -1579,7 +1581,7 @@ int main(int argc, char **argv)
     olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     gs_cam_home(&cam);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
-    w = omv_window_open("GFOpenMake 0.3.0-rc2", olui_amiga_idcmp());
+    w = omv_window_open("GFOpenMake 0.3.0-rc3", olui_amiga_idcmp());
     if (!w) {
         ge_steps_free(steps);
         gs_parts_free(parts);
@@ -1615,7 +1617,7 @@ int main(int argc, char **argv)
     gm_rexx_init(&rexx);
     rexx.parts = &parts;
     rexx.steps = steps;
-    rexx.version = "GFOpenMake 0.3.0-rc2";
+    rexx.version = "GFOpenMake 0.3.0-rc3";
     rexx.slice_into = &sliced;
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;

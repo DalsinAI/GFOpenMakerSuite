@@ -111,7 +111,7 @@ does. An unknown name is RC 10.
 Template: `VERSION`
 
 `RESULT` is the program name and version, the same text as the window title
-(for example `GFOpenMake 0.3.0-rc2`).
+(for example `GFOpenMake 0.3.0-rc3`).
 
 ### QUIT
 

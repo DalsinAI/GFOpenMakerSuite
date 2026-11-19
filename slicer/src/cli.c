@@ -25,6 +25,7 @@
 #include <string.h>
 
 static const char version[] __attribute__((used)) = GS_VERSTR;
+static const char stack_cookie[] __attribute__((used)) = "$STACK:65536";
 
 static const char *arg(int argc, char **argv, const char *name)
 {
@@ -50,6 +51,7 @@ int main(int argc, char **argv)
     char err[160];
     int rc = 1, tasks = gs_par_cores();
     (void)version;
+    (void)stack_cookie;
     if (argc < 3) {
         fprintf(stderr, "GFOpenSlicer %s (%s)\n", GS_VERSION, GS_DATE);
         fprintf(stderr, "usage: gfopenslicer in.stl out.gcode [DRIVER=driver.om] [PROFILE=profile.om]\n"
