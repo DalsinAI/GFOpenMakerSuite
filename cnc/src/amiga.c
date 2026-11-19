@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "$VER: GFOpenCNC 0.1.0 (18.11.2026) AmiCradle Team";
-static const char title[] = "GFOpenCNC 0.1.0";
+static const char version[] = "$VER: GFOpenCNC 0.1.0-rc1 (19.11.2026) AmiCradle Team";
+static const char title[] = "GFOpenCNC 0.1.0-rc1";
 
 static struct Window *win;
 static char drawing[256];
@@ -307,13 +307,13 @@ int main(int argc, char **argv)
     rexx.path = &path;
     rexx.have_path = &have_path;
     rexx.opts = &opts;
-    rexx.version = version;
+    rexx.version = title;
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;
     rexx.win = w;
     rexx.ui = ui;
     snprintf(rexx.file, sizeof rexx.file, "%s", drawing);
-    rexx_port = omr_open(OC_REXX_PORT, "GFOpenCNC 0.1.0");
+    rexx_port = omr_open(OC_REXX_PORT, title);
     if (rexx_port) {
         rexx.port_name = omr_name(rexx_port);
         omr_attach(rexx_port, oc_rexx_verbs(), oc_rexx_nverbs(), &rexx);

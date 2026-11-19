@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "OpenMakeBurn 0.1.0";
+static const char version[] = "$VER: OpenMakeBurn 0.1.0-rc1 (19.11.2026) AmiCradle Team";
 static char svg_path[256];
 static gv_doc doc;
 static burn_image pic;
@@ -409,7 +409,7 @@ int main(int argc, char **argv)
     gs_cam_home(&cam);
     omv_gpu_open(&gpu, 4096, 512);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
-    w = omv_window_open("OpenMakeBurn 0.1.0", olui_amiga_idcmp());
+    w = omv_window_open("OpenMakeBurn 0.1.0-rc1", olui_amiga_idcmp());
     if (!w) {
         olui_free(ui);
         omv_gpu_close(&gpu);
@@ -452,7 +452,7 @@ int main(int argc, char **argv)
     rexx.opts = &opts;
     rexx.store = layers;
     rexx.store_cap = 64;
-    rexx.version = "OpenMakeBurn 0.1.0";
+    rexx.version = "OpenMakeBurn 0.1.0-rc1";
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;
     rexx.win = w;

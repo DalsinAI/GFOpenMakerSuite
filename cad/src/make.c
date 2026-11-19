@@ -46,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char version[] = "$VER: GFOpenMake 0.1.0 (8.11.2026) AmiCradle Team";
+static const char version[] = "$VER: GFOpenMake 0.3.0-rc1 (19.11.2026) AmiCradle Team";
 
 /* The bench's parts (gs_parts.h): up to 24, one picked; shown is every
  * shown part's triangles, for the view, picking and the slicer. */
@@ -1579,7 +1579,7 @@ int main(int argc, char **argv)
     olui_on(ui, "gcode", OLUI_CLICK, on_gcode, NULL);
     gs_cam_home(&cam);
     /* Resizable, 640 by 480 inside at the least: a PAL screen, or more on RTG. */
-    w = omv_window_open("GFOpenMake 0.1.0", olui_amiga_idcmp());
+    w = omv_window_open("GFOpenMake 0.3.0-rc1", olui_amiga_idcmp());
     if (!w) {
         ge_steps_free(steps);
         gs_parts_free(parts);
@@ -1615,7 +1615,7 @@ int main(int argc, char **argv)
     gm_rexx_init(&rexx);
     rexx.parts = &parts;
     rexx.steps = steps;
-    rexx.version = "GFOpenMake 0.1.0";
+    rexx.version = "GFOpenMake 0.3.0-rc1";
     rexx.slice_into = &sliced;
     rexx.activate = rexx_activate;
     rexx.hide = rexx_hide;

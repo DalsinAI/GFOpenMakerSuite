@@ -147,7 +147,7 @@ static int set_key(cnc_opts *o, int k, const char *value, char *err, int errlen)
 static int cmd_version(void *c, void *g0)
 {
     oc_rexx *g = app(g0);
-    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenCNC 0.1.0");
+    omr_set_result(c, g->version && g->version[0] ? g->version : "GFOpenCNC 0.1.0-rc1");
     return OMR_OK;
 }
 
