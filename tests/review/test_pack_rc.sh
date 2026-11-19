@@ -1,13 +1,13 @@
 #!/bin/sh
-# Pack the FPU and soft-float review drawers from the newest finished
-# stove build of this commit and attach them to the v0.3.0-rc3
-# prereleases. Runs on Daletop. Does not commit the binaries.
+# Pack the FPU review drawer from the newest finished stove build of
+# this commit and attach it to the v0.3.0-rc3 prereleases. Runs on
+# Daletop. Does not commit the binaries. Soft-float is not packed:
+# the stove's -msoft-float output still has FPU instructions.
 set -eu
 
 REPO=DalsinAI/GFOpenMakerSuite
 SUITE_TAG=v0.3.0-rc3
 FPU_NAME=OpenMake-0.3.0-rc3-fpu
-SOFT_NAME=OpenMake-0.3.0-rc3-soft
 STACK='$STACK:65536'
 JOBS_A=/run/media/da1ek/WorkingSpace/AmigaChrome/archive/daletop-offload-20261023/AmigaChrome-dev/cradle-builds/jobs
 JOBS_B=${HOME:-/home/da1ek}/AmiCradle-dev/cradle-builds/jobs
@@ -62,8 +62,6 @@ for root in sys.argv[1:]:
         out = os.path.join(root, name, "out")
         if not os.path.isfile(os.path.join(out, "fpu", "GFOpenMake")):
             continue
-        if not os.path.isfile(os.path.join(out, "soft", "GFOpenMake")):
-            continue
         key = rec.get("endedAt") or ""
         if best is None or key > best_key:
             best = out
@@ -73,7 +71,7 @@ if not best:
 print(best)
 PY
 ) || {
-    echo "test_pack_rc: no finished stove build of $sha with fpu and soft" >&2
+    echo "test_pack_rc: no finished stove build of $sha" >&2
     exit 1
 }
 echo "stove $TREE"
@@ -106,7 +104,6 @@ check_tree() {
 }
 
 check_tree "$TREE/fpu"
-check_tree "$TREE/soft"
 
 if command -v gflha >/dev/null 2>&1; then
     gflha_bin=$(command -v gflha)
@@ -193,8 +190,7 @@ EOF
     echo "archive $name $(wc -c < "$lha" | tr -d ' ') bytes"
 }
 
-pack_one fpu "$FPU_NAME" "Compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. Not run on a 68020. Will not run with no FPU."
-pack_one soft "$SOFT_NAME" "Compiled -m68040 -msoft-float, for a 68LC040 or 68EC040. No FPU instructions. Not a 68000 build."
+pack_one fpu "$FPU_NAME" "Compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. Not run on a 68020. Will not run with no FPU. No soft-float archive: the stove's -msoft-float output still has FPU instructions, and the build rejects it."
 
 if ! command -v gh >/dev/null 2>&1; then
     echo "test_pack_rc: gh is not installed; the archives are in OUT only" >&2
@@ -202,17 +198,14 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 fpu_hash=$(awk '{print $1}' "$OUT/$FPU_NAME.sha256")
-soft_hash=$(awk '{print $1}' "$OUT/$SOFT_NAME.sha256")
 
 suite_notes="GFOpenMake suite 0.3.0-rc3, for review. Not a hardware sign-off.
 
 Commit $sha. Stove os32-gcc16, job $job.
 
-\`$FPU_NAME.lha\` is compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. It was not run on a 68020, and it will not run with no FPU. SHA-256 \`$fpu_hash\`.
+\`$FPU_NAME.lha\` is compiled -m68040 -mhard-float, for a 68040 or 68060 with an FPU. The build rejects an FPU instruction a 68040 traps. It was not run on a 68020, and it will not run with no FPU. SHA-256 \`$fpu_hash\`. There is no soft-float archive. A stove build with -msoft-float still contained FPU instructions, and the build rejects that.
 
-\`$SOFT_NAME.lha\` is compiled -m68040 -msoft-float, for a 68LC040 or 68EC040. Not a 68000 build. SHA-256 \`$soft_hash\`.
-
-Each drawer is the five programs, machines, materials, settings, and examples/cad, print, laser, cnc and electronics. Copy one drawer and run the programs from it. Each program has a \`\$VER:\` line and a \`\$STACK:65536\` line. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs, not the examples and not the archive.
+The drawer is the five programs, machines, materials, settings, and examples/cad, print, laser, cnc and electronics. Copy the drawer and run the programs from it. Each program has a \`\$VER:\` line and a \`\$STACK:65536\` line. \`SHA256SUMS\` lists the five programs, not the examples and not the archive.
 
 The window code is linked in. The programs do not open gfopenlayout.library. Make, Slicer and Burn use gfopengpu.library when it is open. The theme asks for gfopenfont.library and otherwise uses the screen font. Workshop can start PROGDIR:gfamigakicad; that program is not in this suite."
 
@@ -220,12 +213,11 @@ upload() {
     tag=$1
     title=$2
     notes=$3
-    sums_fpu=$OUT/SHA256SUMS-fpu
-    sums_soft=$OUT/SHA256SUMS-soft
+    sums=$OUT/SHA256SUMS
+    cp "$OUT/SHA256SUMS-fpu" "$sums"
     if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
         gh release upload "$tag" \
-            "$OUT/$FPU_NAME.lha" "$OUT/$SOFT_NAME.lha" \
-            "$sums_fpu" "$sums_soft" \
+            "$OUT/$FPU_NAME.lha" "$sums" \
             --repo "$REPO" --clobber
         body=$(gh release view "$tag" --repo "$REPO" --json body -q .body)
         case "$body" in
@@ -236,16 +228,15 @@ ${notes}" ;;
         esac
     else
         gh release create "$tag" \
-            "$OUT/$FPU_NAME.lha" "$OUT/$SOFT_NAME.lha" \
-            "$sums_fpu" "$sums_soft" \
+            "$OUT/$FPU_NAME.lha" "$sums" \
             --repo "$REPO" --prerelease --target "$sha" --title "$title" --notes "$notes"
     fi
     echo "uploaded $tag"
 }
 
 upload "$SUITE_TAG" "GFOpenMake suite 0.3.0-rc3" "$suite_notes"
-upload gfopenslicer-v0.3.0-rc3 "GFOpenSlicer 0.3.0-rc3" "GFOpenSlicer 0.3.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
-upload gfopenmake-v0.3.0-rc3 "GFOpenMake 0.3.0-rc3" "GFOpenMake 0.3.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
-upload openmakeburn-v0.1.0-rc3 "OpenMakeBurn 0.1.0-rc3" "OpenMakeBurn 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
-upload gfopencnc-v0.1.0-rc3 "GFOpenCNC 0.1.0-rc3" "GFOpenCNC 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off. \`SHA256SUMS-fpu\` and \`SHA256SUMS-soft\` list the five programs."
-upload gfopenworkshop-v0.1.0-rc3 "GFOpenWorkshop 0.1.0-rc3" "GFOpenWorkshop 0.1.0-rc3. The window title and the \`\$VER:\` line are GFOpenMakerWorkshop 0.1.0-rc3. FPU and soft-float binaries are in \`$FPU_NAME.lha\` and \`$SOFT_NAME.lha\` (stove build of $sha, -m68040). Not a hardware sign-off."
+upload gfopenslicer-v0.3.0-rc3 "GFOpenSlicer 0.3.0-rc3" "GFOpenSlicer 0.3.0-rc3. The FPU binary is in \`$FPU_NAME.lha\` (stove build of $sha, -m68040 -mhard-float). Not a hardware sign-off. No soft-float archive. \`SHA256SUMS\` lists the five programs."
+upload gfopenmake-v0.3.0-rc3 "GFOpenMake 0.3.0-rc3" "GFOpenMake 0.3.0-rc3. The FPU binary is in \`$FPU_NAME.lha\` (stove build of $sha, -m68040 -mhard-float). Not a hardware sign-off. No soft-float archive. \`SHA256SUMS\` lists the five programs."
+upload openmakeburn-v0.1.0-rc3 "OpenMakeBurn 0.1.0-rc3" "OpenMakeBurn 0.1.0-rc3. The FPU binary is in \`$FPU_NAME.lha\` (stove build of $sha, -m68040 -mhard-float). Not a hardware sign-off. No soft-float archive. \`SHA256SUMS\` lists the five programs."
+upload gfopencnc-v0.1.0-rc3 "GFOpenCNC 0.1.0-rc3" "GFOpenCNC 0.1.0-rc3. The FPU binary is in \`$FPU_NAME.lha\` (stove build of $sha, -m68040 -mhard-float). Not a hardware sign-off. No soft-float archive. \`SHA256SUMS\` lists the five programs."
+upload gfopenworkshop-v0.1.0-rc3 "GFOpenWorkshop 0.1.0-rc3" "GFOpenWorkshop 0.1.0-rc3. The window title and the \`\$VER:\` line are GFOpenMakerWorkshop 0.1.0-rc3. The FPU binary is in \`$FPU_NAME.lha\` (stove build of $sha, -m68040 -mhard-float). Not a hardware sign-off. No soft-float archive."

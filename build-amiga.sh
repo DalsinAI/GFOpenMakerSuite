@@ -182,8 +182,15 @@ build() {
 }
 
 build fpu "-m68040 -mhard-float"
-# Soft-float as well, including on a stove, unless SOFT=0.
-SOFT=${SOFT:-1}
+# The review archive is the FPU build. Soft-float stays off on a stove:
+# -m68040 -msoft-float still left FPU instructions (job
+# j20261119T105219-783c98, 56 to 103 in each program) and the check
+# below rejects that. SOFT=1 builds it anyway.
+if [ -n "${STOVE:-}" ] && [ -z "${SOFT+x}" ]; then
+    SOFT=0
+else
+    SOFT=${SOFT:-1}
+fi
 if [ "$SOFT" != 0 ]; then
     build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
     if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then
