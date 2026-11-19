@@ -176,16 +176,30 @@ build() {
 }
 
 build fpu "-m68040 -mhard-float"
-build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
-
-# The soft build may not touch the FPU; the FPU build should use it.
-if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then
-    echo "build-amiga: the soft build has FPU instructions" >&2
-    exit 1
+# A stove run is the FPU build, which is what an AC090 lab runs. The
+# soft-float build is the check for a 68LC040, and a build off the stove
+# still does it. SOFT=1 on a stove runs that check too.
+if [ -n "${STOVE:-}" ] && [ -z "${SOFT+x}" ]; then
+    SOFT=0
+else
+    SOFT=${SOFT:-1}
 fi
+if [ "$SOFT" != 0 ]; then
+    build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
+    if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then
+        echo "build-amiga: the soft build has FPU instructions" >&2
+        exit 1
+    fi
+fi
+
+# The FPU build should use the FPU.
 if awk '$1 == "TestLayer" && $2 == 0 { bad = 1 } END { exit !bad }' "$OUT/fpu.fpu"; then
     echo "build-amiga: the FPU build has no FPU instructions" >&2
     exit 1
 fi
 rm -f "$OUT/soft.fpu" "$OUT/fpu.fpu"
-echo "build-amiga: $OUT/fpu and $OUT/soft"
+if [ "$SOFT" != 0 ]; then
+    echo "build-amiga: $OUT/fpu and $OUT/soft"
+else
+    echo "build-amiga: $OUT/fpu"
+fi
