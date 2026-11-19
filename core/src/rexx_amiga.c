@@ -14,6 +14,7 @@
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <proto/rexxsyslib.h>
+#include <clib/alib_protos.h>
 #include <rexx/rxslib.h>
 #include <rexx/storage.h>
 #include "rexx_int.h"
