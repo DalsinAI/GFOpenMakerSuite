@@ -4,6 +4,7 @@
  * Amiga build is to be openmakevec.library; this is the C.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include "gs_vec.h"
+#include "gs_num.h"
 #include "vec_int.h"
 
 #include <math.h>
@@ -271,8 +272,7 @@ static int parse_colour(const char *s, unsigned *out)
         vv[2] = &vb;
         for (k = 0; k < 3; k++) {
             while (*p && space(*p)) p++;
-            *vv[k] = strtof(p, &e);
-            if (e == p) return -1;
+            if (!gs_number(p, vv[k], (const char **)&e)) return -1;
             p = e;
             while (*p && space(*p)) p++;
             pct = (*p == '%');
@@ -311,8 +311,7 @@ static int parse_len(const char *s, float ref, float *out)
     const char *p;
     if (!s) return -1;
     while (*s && space(*s)) s++;
-    v = strtof(s, &e);
-    if (e == s) return -1;
+    if (!gs_number(s, &v, (const char **)&e)) return -1;
     p = e;
     while (*p && space(*p)) p++;
     if (*p == 0) {
@@ -760,8 +759,7 @@ static int path_num(const char **ps, const char *e, float *out)
     char *end;
     if (s >= e) return -1;
     if (!digit(*s) && *s != '.' && *s != '+' && *s != '-') return -1;
-    *out = strtof(s, &end);
-    if (end == s || end > e) return -1;
+    if (!gs_number(s, out, (const char **)&end) || end > e) return -1;
     *ps = end;
     return 0;
 }
@@ -1042,8 +1040,7 @@ static const char *tf_num(const char *s, const char *e, float *out)
     char *end;
     s = skip_path_sep(s, e);
     if (s >= e) return NULL;
-    *out = strtof(s, &end);
-    if (end == s || end > e) return NULL;
+    if (!gs_number(s, out, (const char **)&end) || end > e) return NULL;
     return end;
 }
 
@@ -1569,8 +1566,7 @@ static int parse_viewport(const char *s, float fallback_px, float *mm)
     int k;
     if (!s) return -1;
     while (*s && space(*s)) s++;
-    v = strtof(s, &e);
-    if (e == s) return -1;
+    if (!gs_number(s, &v, (const char **)&e)) return -1;
     p = e;
     while (*p && space(*p)) p++;
     if (*p == 0) {

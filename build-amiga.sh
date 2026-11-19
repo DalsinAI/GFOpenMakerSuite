@@ -7,6 +7,11 @@
 #   CC=.../m68k-amigaos-gcc SDK=.../gfopensdk LAYOUT=.../gfopenlayout \
 #   OGT_ROOT=.../amicradle-guest/libraries/opengadtools ./build-amiga.sh
 #
+# A stove build sets STOVE, OUT and GUEST and does not set SDK or LAYOUT.
+# This script then takes gfopensdk at the commit CI uses, GFOpenLayout at
+# gfopenlayout.ref, and opengadtools from GUEST. Those checkouts sit beside
+# this tree, not in OUT.
+#
 # SDK is the GFOpen SDK's root (Include, and Lib/m68k-soft-m68040.specs).
 # LAYOUT is a GFOpenLayout checkout at the commit in gfopenlayout.ref, the
 # one CI tests with (LAYOUT_ANY=1 takes any). OLUI is its UI link library
@@ -16,8 +21,46 @@
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# The commit .github/workflows/ci.yml checks out for Include/gfopengpu.
+SDK_PIN=79e8d48151082ef2ee3cfe97998ebb80eec2aa86
+
+take() {
+    dest=$1
+    url=$2
+    sha=$3
+    got=$(git -C "$dest" rev-parse HEAD 2>/dev/null || true)
+    if [ "$got" = "$sha" ]; then
+        return 0
+    fi
+    mkdir -p "$(dirname "$dest")"
+    rm -rf "$dest"
+    GIT_TERMINAL_PROMPT=0 git clone --quiet "$url" "$dest"
+    GIT_TERMINAL_PROMPT=0 git -C "$dest" checkout --quiet "$sha"
+}
+
+if [ -n "${STOVE:-}" ] && [ -z "${CC:-}" ]; then
+    CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
+fi
 CC=${CC:-m68k-amigaos-gcc}
 OBJDUMP=${OBJDUMP:-$(dirname "$CC")/m68k-amigaos-objdump}
+if [ -n "${STOVE:-}" ]; then
+    DEPS=$(CDPATH= cd -- "$HERE/.." && pwd)/.openmake-deps
+    if [ -z "${SDK:-}" ]; then
+        take "$DEPS/gfopensdk" https://github.com/DalsinAI/gfopensdk.git "$SDK_PIN"
+        SDK="$DEPS/gfopensdk"
+    fi
+    if [ -z "${LAYOUT:-}" ]; then
+        take "$DEPS/gfopenlayout" https://github.com/DalsinAI/gfopenlayout.git "$(cat "$HERE/gfopenlayout.ref")"
+        LAYOUT="$DEPS/gfopenlayout"
+    fi
+    if [ -z "${OGT_ROOT:-}" ]; then
+        if [ -z "${GUEST:-}" ] || [ ! -d "$GUEST/libraries/opengadtools" ]; then
+            echo "build-amiga: OGT_ROOT is not set, and GUEST has no libraries/opengadtools" >&2
+            exit 1
+        fi
+        OGT_ROOT="$GUEST/libraries/opengadtools"
+    fi
+fi
 SDK=${SDK:?"SDK: the GFOpen SDK's root"}
 LAYOUT=${LAYOUT:?"LAYOUT: a GFOpenLayout checkout, for its headers"}
 OUT=${OUT:-"$HERE/build-amiga"}
@@ -80,6 +123,12 @@ build() {
     # The print settings profiles, as PROGDIR:settings
     mkdir -p "$dir/settings"
     cp settings/* "$dir/settings/"
+    # The editor's shelf, as PROGDIR:examples/cad (ge_shelf_load).
+    for f in examples/cad/*/*; do
+        [ -f "$f" ] || continue
+        mkdir -p "$dir/$(dirname "$f")"
+        cp "$f" "$dir/$f"
+    done
     # GFOpenSlicer's window (slicer/src/amiga.c): the toolpath engine on
     # exec tasks (sl_job.c), on core/ui's helpers, picker and OpenGPU view
     "$CC" $cf -Islicer/include -Islicer/src -s -o "$dir/GFOpenSlicer" slicer/src/amiga.c slicer/src/slicer_rexx.c slicer/src/sl_job.c core/src/rexx.c core/src/rexx_amiga.c \
@@ -108,7 +157,7 @@ build() {
         core/ui/view_ui.c core/ui/window_amiga.c \
         $CORE "$OLUI" -lm
     "$CC" $cf -s -o "$dir/TestModel" core/tests/test_model.c $CORE -lm
-    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c $CORE -lm
+    "$CC" $cf -s -o "$dir/TestLayer" core/tests/test_layer.c core/src/layer.c core/src/layer_paint.c core/src/loops.c cad/src/edit.c core/src/parts.c $CORE -lm
     "$CC" $cf -s -o "$dir/TestGpu" core/tests/test_gpu.c core/src/gpu.c core/src/layer.c core/src/loops.c $PLAN $CORE -lm
     # The layers on exec tasks (par_exec.c): the same toolpath as one task's
     "$CC" $cf -s -o "$dir/TestPlanPar" core/tests/test_plan_par.c core/src/plan_par.c core/src/par_exec.c \
@@ -133,16 +182,30 @@ build() {
 }
 
 build fpu "-m68040 -mhard-float"
-build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
-
-# The soft build may not touch the FPU; the FPU build should use it.
-if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then
-    echo "build-amiga: the soft build has FPU instructions" >&2
-    exit 1
+# A stove run is the FPU build, which is what an AC090 lab runs. The
+# soft-float build is the check for a 68LC040, and a build off the stove
+# still does it. SOFT=1 on a stove runs that check too.
+if [ -n "${STOVE:-}" ] && [ -z "${SOFT+x}" ]; then
+    SOFT=0
+else
+    SOFT=${SOFT:-1}
 fi
+if [ "$SOFT" != 0 ]; then
+    build soft "-m68040 -msoft-float -specs=$SDK/Lib/m68k-soft-m68040.specs"
+    if awk '$2 != 0 { bad = 1 } END { exit !bad }' "$OUT/soft.fpu"; then
+        echo "build-amiga: the soft build has FPU instructions" >&2
+        exit 1
+    fi
+fi
+
+# The FPU build should use the FPU.
 if awk '$1 == "TestLayer" && $2 == 0 { bad = 1 } END { exit !bad }' "$OUT/fpu.fpu"; then
     echo "build-amiga: the FPU build has no FPU instructions" >&2
     exit 1
 fi
 rm -f "$OUT/soft.fpu" "$OUT/fpu.fpu"
-echo "build-amiga: $OUT/fpu and $OUT/soft"
+if [ "$SOFT" != 0 ]; then
+    echo "build-amiga: $OUT/fpu and $OUT/soft"
+else
+    echo "build-amiga: $OUT/fpu"
+fi

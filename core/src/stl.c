@@ -1,4 +1,5 @@
 #include "gs.h"
+#include "gs_num.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -48,19 +49,13 @@ static int space(char c)
     return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v';
 }
 
-/* Three numbers, as sscanf's "%f %f %f" took them; strtof skips the
- * spaces before each. */
+/* Three numbers. The point is always '.'; see gs_number. */
 static int three(const char *s, float *x, float *y, float *z)
 {
-    char *e;
-    *x = strtof(s, &e);
-    if (e == s) return 0;
-    s = e;
-    *y = strtof(s, &e);
-    if (e == s) return 0;
-    s = e;
-    *z = strtof(s, &e);
-    return e != s;
+    const char *e;
+    if (!gs_number(s, x, &e)) return 0;
+    if (!gs_number(e, y, &e)) return 0;
+    return gs_number(e, z, &e);
 }
 
 static int load_ascii(gs_mesh *m, FILE *f, char *err, int errlen)
